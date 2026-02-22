@@ -13,17 +13,15 @@ import SimulationResults from './components/SimulationResults';
 function App() {
   return (
     <Router>
-      <div className="">
-        <nav className="">
-          <ul className="list-none">
-            <li className="float-left p-5"><Link to="/">Home</Link></li>
-            <li className="float-left p-5"><Link to="/account">Account</Link></li>
-            <li className="float-left p-5"><Link to="/leaderboard">Leaderboard</Link></li>
-            <li className="float-left p-5"><Link to="/sim">Simulation/Generate</Link></li>
-            <li className="float-left p-5"><Link to="/sim-results">Simulation Results</Link></li>
-          </ul>
-        </nav>
-      </div>
+      <nav className="fixed top-0 left-0 right-0">
+        <ul className="list-none">
+          <li className="float-left p-5"><Link to="/">Home</Link></li>
+          <li className="float-left p-5"><Link to="/account">Account</Link></li>
+          <li className="float-left p-5"><Link to="/leaderboard">Leaderboard</Link></li>
+          <li className="float-left p-5"><Link to="/sim">Simulation/Generate</Link></li>
+          <li className="float-left p-5"><Link to="/sim-results">Simulation Results</Link></li>
+        </ul>
+      </nav>
 
       <Routes>
         <Route path="/" element={<Home />} />
