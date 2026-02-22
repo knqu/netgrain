@@ -8,7 +8,7 @@ source .env
 # FLAGS="$FLAGS ./common/*.cpp"
 # FLAGS="$FLAGS ./generated/*.cpp"
 # FLAGS="$FLAGS -I./generated"
-# FLAGS="$FLAGS -I./common"
+FLAGS="$FLAGS -I./common"
 FLAGS="$FLAGS -std=c++2c"
 
 SIM_FLAGS="$FLAGS ./core/src/simulator/*.cpp"
