@@ -3,33 +3,37 @@ import reactLogo from './assets/react.svg'
 import viteLogo from '/vite.svg'
 import './App.css'
 
-function App() {
-  const [count, setCount] = useState(0)
+import { BrowserRouter as Router, Route, Routes, Link } from 'react-router-dom';
+import Home from './components/Home';
+import Account from './components/Account';
+import Leaderboard from './components/Leaderboard';
+import Simulation from './components/Simulation';
+import SimulationResults from './components/SimulationResults';
 
+function App() {
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
+    <Router>
+      <div className="">
+        <nav className="">
+          <ul className="list-none">
+            <li className="float-left p-5"><Link to="/">Home</Link></li>
+            <li className="float-left p-5"><Link to="/account">Account</Link></li>
+            <li className="float-left p-5"><Link to="/leaderboard">Leaderboard</Link></li>
+            <li className="float-left p-5"><Link to="/sim">Simulation/Generate</Link></li>
+            <li className="float-left p-5"><Link to="/sim-results">Simulation Results</Link></li>
+          </ul>
+        </nav>
       </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/account" element={<Account />} />
+        <Route path="/leaderboard" element={<Leaderboard />} />
+        <Route path="/sim" element={<Simulation />} />
+        <Route path="/sim-results" element={<SimulationResults />} />
+      </Routes>
+    </Router>
+  );
 }
 
 export default App
