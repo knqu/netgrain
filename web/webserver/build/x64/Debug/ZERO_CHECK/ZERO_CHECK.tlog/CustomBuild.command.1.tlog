@@ -1,0 +1,10 @@
+^C:\PURDUE 2ND YEAR\2 SEMESTER\CS 307 PROJ\NETGRAIN\WEB\WEBSERVER\BUILD\CMAKEFILES\20211BB469FD23ABC2A294ED1F8849C3\GENERATE.STAMP.RULE
+setlocal
+"C:\Coding Languages\cmake-3.30.3-windows-x86_64\cmake-3.30.3-windows-x86_64\bin\cmake.exe" "-SC:/Purdue 2nd Year/2 Semester/CS 307 Proj/netgrain/web/webserver" "-BC:/Purdue 2nd Year/2 Semester/CS 307 Proj/netgrain/web/webserver/build" --check-stamp-list CMakeFiles/generate.stamp.list --vs-solution-file "C:/Purdue 2nd Year/2 Semester/CS 307 Proj/netgrain/web/webserver/build/webserver.sln"
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
