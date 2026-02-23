@@ -8,8 +8,15 @@ source .env
 # FLAGS="$FLAGS ./common/*.cpp"
 # FLAGS="$FLAGS ./generated/*.cpp"
 # FLAGS="$FLAGS -I./generated"
-FLAGS="$FLAGS -I./common"
 FLAGS="$FLAGS -std=c++2c"
+FLAGS="$FLAGS -L./lib/fmtlib/bin"
+FLAGS="$FLAGS -lfmt"
+FLAGS="$FLAGS -I./lib/fmtlib/include"
+FLAGS="$FLAGS -I./common"
+FLAGS="$FLAGS -I./lib/crow/"
+FLAGS="$FLAGS -I./lib/asio/include"
+FLAGS="$FLAGS ./patch/__hashing.cpp"
+FLAGS="$FLAGS -include-pch ./pch/crow.h.pch"
 
 SIM_FLAGS="$FLAGS ./core/src/simulator/*.cpp"
 SIM_FLAGS="$SIM_FLAGS -I./core/src/simulator/"
@@ -73,8 +80,7 @@ elif [ $1 = "clean" ]; then
     mkdir -p out/debug/macos
 
 else
-    
+
     echo "Unknown build option"
 
 fi
-
