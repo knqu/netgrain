@@ -1,3 +1,7 @@
 .env
+.cache
 out/
 **/.DS_Store
+pch/
+.clangd
+compile_commands.json
