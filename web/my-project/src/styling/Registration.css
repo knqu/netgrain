@@ -1,0 +1,63 @@
+.inter-font {
+  font-family: "Inter", 'Times New Roman';
+  font-optical-sizing: auto;
+  font-weight: 400;
+  font-style: normal;
+}
+
+.registration-parent {
+    background-color: #3D3F42;
+    border-radius: 0.4em;
+    border-color: white;
+    padding: 0.5em;
+}
+
+.registration-container {
+    background-color: #252628;
+    border-radius: 0.4em;
+    padding: 1em;
+}
+
+.registration-form {
+    display: flex;
+    flex-direction: column;
+    justify-content: start;
+    padding: 0.8em 0 0.8em 0
+}
+
+.input-field {
+    padding: 0.3em 0 0.3em 0
+}
+
+.align-left {
+    text-align: left;
+}
+
+input {
+    background-color: black;
+    padding: 0.4em;
+    border-radius: 0.3em;
+    margin-bottom: 0.1em;
+}
+
+textarea:focus, input:focus {
+    outline: solid #68E2EB;
+    outline-width: 0.15em;
+}
+
+.buttons-and-links {
+    display: flex;
+    flex-direction: column;
+    justify-content: baseline;
+}
+
+.registration-signup-button {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+}
+
+#registration-button:hover {
+    background-color: #68E2EB;
+    color: black
+}
