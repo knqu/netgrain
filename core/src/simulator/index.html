@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSV Upload Test</title>
+    <style>
+        body { 
+            font-family: sans-serif; 
+            padding: 20px; 
+        }
+        .upload-container { 
+            border: 1px solid #000; 
+            padding: 20px; 
+            width: max-content; 
+        }
+        .message { 
+            margin-top: 15px; 
+            font-weight: bold; 
+        }
+        .error { color: red; }
+        .success { color: green; }
+    </style>
+</head>
+<body>
+
+<div class="upload-container">
+    <h3>Test Historical Data Upload</h3>
+    
+    <input type="file" id="fileInput" accept=".csv, .txt">
+    <br><br>
+    
+    <button id="uploadBtn" disabled>Send to Engine</button>
+    
+    <div id="statusMessage" class="message"></div>
+</div>
+
+<script>
+    const fileInput = document.getElementById('fileInput');
+    const uploadBtn = document.getElementById('uploadBtn');
+    const statusMessage = document.getElementById('statusMessage');
+    let selectedFile = null;
+
+    // Handle file selection and validation
+    fileInput.addEventListener('change', function(event) {
+        const file = event.target.files[0];
+        if (!file) {
+            resetState();
+            return;
+        }
+
+        // AC5 Validation: Check if it's a CSV or TXT file
+        if (!file.name.endsWith('.csv') && !file.name.endsWith('.txt')) {
+            statusMessage.textContent = 'Error: Please select a .csv or .txt file.';
+            statusMessage.className = 'message error';
+            uploadBtn.disabled = true;
+            selectedFile = null;
+            return;
+        }
+
+        selectedFile = file;
+        statusMessage.textContent = `Selected: ${file.name} (${(file.size / 1024).toFixed(2)} KB)`;
+        statusMessage.className = 'message success';
+        uploadBtn.disabled = false;
+    });
+
+    // Handle the mock upload
+   // Handle the mock upload
+    uploadBtn.addEventListener('click', function() {
+        if (!selectedFile) return;
+
+        statusMessage.textContent = '⏳ Uploading...';
+        statusMessage.className = 'message';
+        uploadBtn.disabled = true;
+
+        // Send the raw file directly in the body!
+        fetch('http://localhost:8080/api/upload', {
+            method: 'POST',
+            body: selectedFile
+        })
+        .then(response => {
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            return response.text();
+        })
+        .then(data => {
+            statusMessage.textContent = '✅ Upload successful! Engine is processing.';
+            statusMessage.className = 'message success';
+            uploadBtn.disabled = false;
+        })
+        .catch(error => {
+            statusMessage.textContent = '❌ Upload failed: ' + error.message;
+            statusMessage.className = 'message error';
+            uploadBtn.disabled = false;
+        });
+    });
+
+    function resetState() {
+        selectedFile = null;
+        uploadBtn.disabled = true;
+        statusMessage.textContent = '';
+    }
+</script>
+
+</body>
+</html>

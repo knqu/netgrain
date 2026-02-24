@@ -1,0 +1,12 @@
+************************************* Invoked: Thu Jan 29 14:44:52 2026
+[0] Arguments: C:\Users\natha\Downloads\msys2-x86_64-20251213.exe
+[4] Operations sanity check succeeded.
+[4] Warning: Cannot create lock file "C:\Users\natha\AppData\Local\Temp\msys2-x86_64-202512131234865.lock": The process cannot access the file because it is being used by another process.
+ (0x00000020)
+[27] UnableToStart : Unable to start installer : Another msys2-x86_64-20251213 instance is already running. Wait until it finishes, close it, or restart your system.
+************************************* Invoked: Thu Jan 29 14:44:57 2026
+[0] Arguments: C:\Users\natha\Downloads\msys2-x86_64-20251213.exe
+[2] Operations sanity check succeeded.
+[2] Warning: Cannot create lock file "C:\Users\natha\AppData\Local\Temp\msys2-x86_64-202512131234865.lock": The process cannot access the file because it is being used by another process.
+ (0x00000020)
+[21] UnableToStart : Unable to start installer : Another msys2-x86_64-20251213 instance is already running. Wait until it finishes, close it, or restart your system.
