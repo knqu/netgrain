@@ -2,21 +2,20 @@
 
 #include <App.h>
 
+#include <crow.h>
+
 int main()
 {
-  fmt::println("Hello, world!");
+  fmt::print("Hello, world!\n");
 
-  uWS::SSLApp({
-    .key_file_name = "misc/key.pem",
-    .cert_file_name = "misc/cert.pem",
-    .passphrase = "1234"
-  }).get("/*", [](auto *res, auto */*req*/) {
+  uWS::App().get("/*", [](auto *res, auto *req) {
     res->end("Hello world!");
   }).listen(3000, [](auto *listen_socket) {
     if (listen_socket) {
-      std::cout << "Listening on port " << 3000 << std::endl;
+      fmt::print("Listening on port {}\n", 3000);
     }
   }).run();
 
-  fmt::println("Failed to listen on port 3000");
+  fmt::print("Failed to listen on port 3000\n");
 }
+
