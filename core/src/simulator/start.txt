@@ -1,0 +1,17 @@
+
+g++ -std=c++17 \
+    -I../../../lib/fmtlib/include \
+    -I../../../lib/crow \
+    -I../../../lib/asio/include \
+    -I../../../lib/uwebsockets/include \
+    -I../../../lib/usockets/include \
+    -DUWS_NO_ZLIB \
+    historicalData.cpp   main.cpp \
+    ../../../lib/fmtlib/bin/libfmt.a \
+    -L../../../lib/usockets/bin/debug -luSockets \
+    -L/mingw64/lib -luv \
+    -lpthread -lws2_32 -lmswsock \
+    -o server
+
+
+    To run and then ./server
