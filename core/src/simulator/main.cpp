@@ -48,10 +48,10 @@ int main() {
             res->writeHeader("Access-Control-Allow-Headers", "Content-Type, X-File-Name");
             res->end();
         })
-        
+
         // 2. File Upload Handler
         .post("/api/upload", [](auto *res, auto *req) {
-            
+
             // Extract the filename from the custom header (uWS headers are strictly lowercase)
             string filename(req->getHeader("x-file-name"));
             if (filename.empty()) {
@@ -128,7 +128,7 @@ int main() {
         .get("/api/market", [](auto *res, auto *req) {
             string json = "{";
             bool first = true;
-            
+
             // Loop through the global map
             for (const auto& [ticker, data_vector] : market) {
                 if (!first) json += ", ";
