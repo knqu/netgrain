@@ -61,7 +61,8 @@ std::vector<MarketDataRow> parse_csv_file(const std::string& filepath) {
 
                 rows.push_back(row);
             } catch (const std::exception& e) {
-                std::cerr << "Data type conversion failed for row: " << line << "\n";
+                std::cerr << "Incorrect data found in row: " << line << "\n"; //return on incorrect data format
+                return {};
             }
         } else {
             std::cerr << "Warning: Incorrect number of columns in row: " << line << "\n";
