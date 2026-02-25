@@ -6,6 +6,8 @@
 #include <memory>
 #include <string>
 #include <algorithm>
+#include <cstdio>
+
 
 MarketDataMap market; //contains all objectified csvs.
 
@@ -49,11 +51,42 @@ int main() {
                         out_file.close();
                         std::cout << "Saved file: " << save_path << " (" << buffer->size() << " bytes)\n";
                         
-                        //PARSING AND LOADING
                         std::string ticker = filename.substr(0, filename.find('.'));
                         std::transform(ticker.begin(), ticker.end(), ticker.begin(), 
                             [](unsigned char c){ return std::toupper(c); });//idk what this does dawg
+
+                        // DUPLICATE HANDLING
+                        if (market.find(ticker) != market.end()) {
+                            std::cout << "Duplicate " << ticker << " already in map.\n";
+                            std::remove(save_path.c_str());
+                            res->writeHeader("Access-Control-Allow-Origin", "*");
+                            res->writeStatus("409 Conflict")->end("Error: " + ticker + " already exists.");
+                            return;
+                        }
+
+                        //Parsing and Loading main() -> load_ticker_data() -> parse_csv_file() -> helpers for parsing decimals and dates.
                         load_ticker_data(market, ticker, save_path);
+
+                        if (!market[ticker].empty()) {
+                            const auto& first_row = market[ticker].front();
+                            std::cout << "\n--- FIRST ROW OF " << ticker << " ---\n";
+                            std::cout << "Date:     " << first_row.date << "\n";
+                            std::cout << "Open:     " << first_row.open << "\n";
+                            std::cout << "High:     " << first_row.high << "\n";
+                            std::cout << "Low:      " << first_row.low << "\n";
+                            std::cout << "Close:    " << first_row.close << "\n";
+                            std::cout << "Volume:   " << first_row.volume << "\n";
+                            std::cout << "Open Int: " << first_row.open_int << "\n";
+                            std::cout << "---------------------------\n\n";
+                        }
+
+                        if (std::remove(save_path.c_str()) == 0) { //rmv file once in object.
+                            std::cout << "Removed File after loading" << save_path << "\n";
+                        }
+                        else {
+                            std::cout << "error in remvoing file" << save_path << "\n";
+
+                        }
 
                         res->writeHeader("Access-Control-Allow-Origin", "*");
                         res->end(ticker);
@@ -64,6 +97,7 @@ int main() {
                 }
             });
         })
+
         .get("/api/market", [](auto *res, auto *req) {
             std::string json = "{";
             bool first = true;

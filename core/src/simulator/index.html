@@ -6,17 +6,29 @@
     <title>Multi-CSV Upload Test</title>
     <style>
         body { font-family: sans-serif; padding: 20px; }
-        .upload-container { border: 1px solid #000; padding: 20px; width: max-content; }
+        .upload-container { border: 1px solid #000; padding: 20px; width: max-content; margin-bottom: 20px; }
         .message { margin-top: 15px; font-weight: bold; }
         .error { color: red; }
         .success { color: green; }
         .file-list { margin-top: 10px; font-size: 0.9em; color: #555; }
+        
+        /* New styling for the market state box */
+        .market-board { 
+            border: 1px solid #333; 
+            background-color: #f9f9f9; 
+            padding: 15px; 
+            border-radius: 5px; 
+            font-family: monospace; 
+            white-space: pre-line;
+            width: max-content;
+            min-width: 300px;
+        }
     </style>
 </head>
 <body>
 
 <div class="upload-container">
-    <h3>Test Historical Data Upload (Multiple Files)</h3>
+    <h3>Test Historical Data Upload</h3>
     
     <input type="file" id="fileInput" accept=".csv, .txt" multiple>
     <br>
@@ -28,11 +40,16 @@
     <div id="statusMessage" class="message"></div>
 </div>
 
+<div id="marketState" class="market-board">
+    Engine Memory State: Waiting for data...
+</div>
+
 <script>
     const fileInput = document.getElementById('fileInput');
     const uploadBtn = document.getElementById('uploadBtn');
     const statusMessage = document.getElementById('statusMessage');
     const fileListDiv = document.getElementById('fileList');
+    const marketStateDiv = document.getElementById('marketState'); // New reference
     let selectedFiles = [];
 
     fileInput.addEventListener('change', function(event) {
@@ -43,7 +60,6 @@
             return;
         }
 
-        // Validate all files
         let allValid = true;
         let fileNames = [];
         
@@ -69,15 +85,17 @@
         uploadBtn.disabled = false;
     });
 
-    uploadBtn.addEventListener('click', async function() {
+    uploadBtn.addEventListener('click', async function(event) {
+        event.preventDefault(); // Stops the button from accidentally refreshing the page
+
         if (selectedFiles.length === 0) return;
 
         statusMessage.textContent = `Uploading ${selectedFiles.length} files...`;
         statusMessage.className = 'message';
         uploadBtn.disabled = true;
 
-try {
-            // 1. Upload all files concurrently
+        try {
+            // 1. Upload files
             const uploadPromises = selectedFiles.map(file => {
                 return fetch('http://localhost:8080/api/upload', {
                     method: 'POST',
@@ -90,23 +108,27 @@ try {
 
             await Promise.all(uploadPromises);
 
-            // 2. Ask the engine for its current memory state
+            // 2. Fetch the state
             const stateRes = await fetch('http://localhost:8080/api/market');
             const marketState = await stateRes.json();
 
-            // 3. Format and display the map state!
-            let displayText = 'Engine Memory State:\n';
+            // 3. Update the dedicated Market State board
+            let displayText = 'Engine Memory State:\n\n';
             const tickers = Object.keys(marketState);
             
             if (tickers.length === 0) {
-                displayText += "Map is empty.";
+                displayText += "Map is currently empty.";
             } else {
                 for (const ticker of tickers) {
                     displayText += `• ${ticker}: ${marketState[ticker]} rows\n`;
                 }
             }
 
-            statusMessage.innerText = displayText; // innerText respects the \n line breaks
+            // Write to the permanent board, NOT the status message!
+            marketStateDiv.innerText = displayText; 
+            
+            // Set the status message back to a simple success alert
+            statusMessage.textContent = 'Upload successful! Engine memory updated.';
             statusMessage.className = 'message success';
             
         } catch (error) {
