@@ -26,9 +26,9 @@ int main() {
                 string file_name = entry.path().filename().string();
 
                 std::string ticker = file_name.substr(0, file_name.find('.'));
-                std::transform(ticker.begin(), ticker.end(), ticker.begin(), 
+                std::transform(ticker.begin(), ticker.end(), ticker.begin(),
                     [](unsigned char c){ return std::toupper(c); });
-                
+
                 load_ticker_data(market, ticker, file_path);
             }
         }
@@ -72,14 +72,14 @@ int main() {
                     // Prepend the data directory to the filename
                     string save_path = "temp_data/" + filename;
                     ofstream out_file(save_path, ios::binary);
-                    
+
                     if (out_file.is_open()) {
                         out_file << *buffer;
                         out_file.close();
                         cout << "Saved file: " << save_path << " (" << buffer->size() << " bytes)\n";
-                        
+
                         string ticker = filename.substr(0, filename.find('.'));
-                        transform(ticker.begin(), ticker.end(), ticker.begin(), 
+                        transform(ticker.begin(), ticker.end(), ticker.begin(),
                             [](unsigned char c){ return toupper(c); });//idk what this does dawg
 
                         // DUPLICATE HANDLING
