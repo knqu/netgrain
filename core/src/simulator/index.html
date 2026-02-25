@@ -3,32 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CSV Upload Test</title>
+    <title>Multi-CSV Upload Test</title>
     <style>
-        body { 
-            font-family: sans-serif; 
-            padding: 20px; 
-        }
-        .upload-container { 
-            border: 1px solid #000; 
-            padding: 20px; 
-            width: max-content; 
-        }
-        .message { 
-            margin-top: 15px; 
-            font-weight: bold; 
-        }
+        body { font-family: sans-serif; padding: 20px; }
+        .upload-container { border: 1px solid #000; padding: 20px; width: max-content; }
+        .message { margin-top: 15px; font-weight: bold; }
         .error { color: red; }
         .success { color: green; }
+        .file-list { margin-top: 10px; font-size: 0.9em; color: #555; }
     </style>
 </head>
 <body>
 
 <div class="upload-container">
-    <h3>Test Historical Data Upload</h3>
+    <h3>Test Historical Data Upload (Multiple Files)</h3>
     
-    <input type="file" id="fileInput" accept=".csv, .txt">
-    <br><br>
+    <input type="file" id="fileInput" accept=".csv, .txt" multiple>
+    <br>
+    <div id="fileList" class="file-list"></div>
+    <br>
     
     <button id="uploadBtn" disabled>Send to Engine</button>
     
@@ -39,65 +32,95 @@
     const fileInput = document.getElementById('fileInput');
     const uploadBtn = document.getElementById('uploadBtn');
     const statusMessage = document.getElementById('statusMessage');
-    let selectedFile = null;
+    const fileListDiv = document.getElementById('fileList');
+    let selectedFiles = [];
 
-    // Handle file selection and validation
     fileInput.addEventListener('change', function(event) {
-        const file = event.target.files[0];
-        if (!file) {
+        selectedFiles = Array.from(event.target.files);
+        
+        if (selectedFiles.length === 0) {
             resetState();
             return;
         }
 
-        // AC5 Validation: Check if it's a CSV or TXT file
-        if (!file.name.endsWith('.csv') && !file.name.endsWith('.txt')) {
-            statusMessage.textContent = 'Error: Please select a .csv or .txt file.';
+        // Validate all files
+        let allValid = true;
+        let fileNames = [];
+        
+        selectedFiles.forEach(file => {
+            fileNames.push(file.name);
+            if (!file.name.endsWith('.csv') && !file.name.endsWith('.txt')) {
+                allValid = false;
+            }
+        });
+
+        if (!allValid) {
+            statusMessage.textContent = 'Error: All files must be .csv or .txt.';
             statusMessage.className = 'message error';
             uploadBtn.disabled = true;
-            selectedFile = null;
+            selectedFiles = [];
+            fileListDiv.textContent = '';
             return;
         }
 
-        selectedFile = file;
-        statusMessage.textContent = `Selected: ${file.name} (${(file.size / 1024).toFixed(2)} KB)`;
+        fileListDiv.innerHTML = `<strong>Selected:</strong><br>` + fileNames.join('<br>');
+        statusMessage.textContent = 'Files ready for upload.';
         statusMessage.className = 'message success';
         uploadBtn.disabled = false;
     });
 
-    // Handle the mock upload
-   // Handle the mock upload
-    uploadBtn.addEventListener('click', function() {
-        if (!selectedFile) return;
+    uploadBtn.addEventListener('click', async function() {
+        if (selectedFiles.length === 0) return;
 
-        statusMessage.textContent = '⏳ Uploading...';
+        statusMessage.textContent = `Uploading ${selectedFiles.length} files...`;
         statusMessage.className = 'message';
         uploadBtn.disabled = true;
 
-        // Send the raw file directly in the body!
-        fetch('http://localhost:8080/api/upload', {
-            method: 'POST',
-            body: selectedFile
-        })
-        .then(response => {
-            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-            return response.text();
-        })
-        .then(data => {
-            statusMessage.textContent = '✅ Upload successful! Engine is processing.';
+try {
+            // 1. Upload all files concurrently
+            const uploadPromises = selectedFiles.map(file => {
+                return fetch('http://localhost:8080/api/upload', {
+                    method: 'POST',
+                    headers: { 'X-File-Name': file.name },
+                    body: file 
+                }).then(res => {
+                    if (!res.ok) throw new Error(`Failed to upload ${file.name}`);
+                });
+            });
+
+            await Promise.all(uploadPromises);
+
+            // 2. Ask the engine for its current memory state
+            const stateRes = await fetch('http://localhost:8080/api/market');
+            const marketState = await stateRes.json();
+
+            // 3. Format and display the map state!
+            let displayText = 'Engine Memory State:\n';
+            const tickers = Object.keys(marketState);
+            
+            if (tickers.length === 0) {
+                displayText += "Map is empty.";
+            } else {
+                for (const ticker of tickers) {
+                    displayText += `• ${ticker}: ${marketState[ticker]} rows\n`;
+                }
+            }
+
+            statusMessage.innerText = displayText; // innerText respects the \n line breaks
             statusMessage.className = 'message success';
-            uploadBtn.disabled = false;
-        })
-        .catch(error => {
-            statusMessage.textContent = '❌ Upload failed: ' + error.message;
+            
+        } catch (error) {
+            statusMessage.textContent = error.message;
             statusMessage.className = 'message error';
             uploadBtn.disabled = false;
-        });
+        }
     });
 
     function resetState() {
-        selectedFile = null;
+        selectedFiles = [];
         uploadBtn.disabled = true;
         statusMessage.textContent = '';
+        fileListDiv.textContent = '';
     }
 </script>
 

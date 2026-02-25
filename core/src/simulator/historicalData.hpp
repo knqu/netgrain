@@ -3,9 +3,12 @@
 #include <string>
 #include <vector>
 #include <cstdint>
+#include <unordered_map>
+
+
 # include "def.hpp"
 
-constexpr int64_t PRICE_SCALE_FACTOR = 100000;
+constexpr i64 PRICE_SCALE_FACTOR = 100000; // mult prices to avoid floating point issues
 
 // The struct representing a single row of historical market data
 struct MarketDataRow {
@@ -18,5 +21,7 @@ struct MarketDataRow {
     u64 open_int;
 };
 
+using MarketDataMap = std::unordered_map<std::string, std::vector<MarketDataRow>>; // Ticker Historical Data Map
 
 std::vector<MarketDataRow> parse_csv_file(const std::string& filepath);
+void load_ticker_data(MarketDataMap& market_map, const std::string& ticker, const std::string& filepath);
