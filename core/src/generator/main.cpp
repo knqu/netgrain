@@ -4,4 +4,3 @@ int main()
 {
   printf("Hello world, generator!\n");
 }
-
