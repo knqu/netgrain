@@ -6,8 +6,6 @@
 #include <mutex>
 #include "array_list.hpp"
 
-constexpr size_t initial_arr_cap = 128;
-constexpr f32 resize_factor = 1.7;
 
 template<typename T, class Allocator = void>
 struct Queue
@@ -18,7 +16,6 @@ struct Queue
     size_t cap;
     size_t front_ptr;
     size_t back_ptr;
-    std::mutex queue_mutex;
 
     T *data;
 
@@ -73,7 +70,7 @@ struct Queue
   Queue(size_t init_cap) {
     m = Members();
 
-    m.cap = initial_cap;
+    m.cap = init_cap;
     m.len = 0;
     
     m.data = (T *) m.alloc(sizeof(T) * m.cap);
@@ -96,25 +93,24 @@ struct Queue
     }
 
   void enqueue(T val) {
-    std::lock_guard<std::mutex> lock(m.queue_metx);
     if (m.len == m.cap) {
       size_t new_cap = m.cap * resize_factor;
-      T *new_arr = m.alloc(sizoef(T) * new_cap);
+      T *new_arr = (T *) m.alloc(sizeof(T) * new_cap);
       size_t count = 0;
       while (m.front_ptr != m.back_ptr) {
         new_arr[count] = m.data[m.front_ptr];
         m.front_ptr += 1;
         count += 1;
-        if (m.front_ptr == m.cap - 1) m.front = 0;
+        if (m.front_ptr == m.cap - 1) m.front_ptr = 0;
       }
       m.front_ptr = 0;
       m.back_ptr = m.cap;
       m.cap = new_cap;
-      delete[] m.data;
+      m.dealloc(m.data);
       m.data = new_arr;
     }
 
-    m.data[back_ptr] = val;
+    m.data[m.back_ptr] = val;
     m.back_ptr = (m.back_ptr + 1) % m.cap;
 
     m.len += 1;
@@ -122,7 +118,6 @@ struct Queue
   }
 
   T dequeue() {
-    std::lock_guard<std::mutex> lock(m.queue_metx);
     assert(m.len > 0);
 
     // get front pointer, get value, move front pointer forward one place
@@ -141,7 +136,6 @@ struct Queue
 
   void reset()
   {
-    std::lock_guard<std::mutex> lock(m.queue_metx);
     m.len = 0;
     m.front_ptr = 0;
     m.back_ptr = 0;
