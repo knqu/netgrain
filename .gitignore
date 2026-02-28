@@ -1,3 +1,10 @@
 .env
+.cache
 out/
 **/.DS_Store
+pch/
+.clangd
+compile_commands.json
+core/src/simulator/server.exe
+lib/usockets/bin/debug/libuSockets.a
+ core/src/simulator/temp_data
