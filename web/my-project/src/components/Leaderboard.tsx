@@ -62,7 +62,7 @@ function Leaderboard({entries} : {entries : Leaderboard_row_entry[]}) {
   );
 }
 
-export default function App() {
+export default function LeaderboardComponent() {
   return <Leaderboard entries={testData}/>
 };
 
