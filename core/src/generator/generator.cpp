@@ -20,7 +20,7 @@ private:
   double percent_volatility;
 
   // queue for streaming data
-  Queue<u32> *dataBuffer;
+  Queue<double> *dataBuffer;
   // create a random device for normal distribution
   
   std::random_device *device;
@@ -33,7 +33,7 @@ public:
   generator(double drift, double volatility, int price) {
     percent_drift = drift;
     percent_volatility = volatility;
-    dataBuffer = new Queue<u32>();
+    dataBuffer = new Queue<double>();
     (*dataBuffer).enqueue(price);
     
   }
@@ -44,7 +44,7 @@ public:
   void get_event(double new_drift, double new_vol, int new_price) {
     percent_drift = new_drift;
     percent_volatility = new_vol;
-    dataBuffer->enqueue(new_price);
+    dataBuffer->enqueue(0.00);
   }
 
   int sendPrice() {
@@ -69,26 +69,14 @@ public:
     dataBuffer->enqueue(new_data);
   }
 
-    // TODO: create loop function to keep generating data, (throttling output at some point)
-    // also have this function recieve signals from the simulator so that it can stop if needed
     
-    // dW = sqrt(dt) * Normal (0, dt) 
-    // W = sum(dW)
-  double weiner_process(int t, int n, std::normal_distribution<double> &d, std::mt19937 &gen) {
-    // generate a normal distribution of 0 to dt
-    double sum = 0.0;
-    for (int i = 0; i < n; i++) {
-      sum += d(gen);
-    }
-    return sum * sqrt(n);
-  }
 
   /*
    * This function returns the brownian motion at increment t, given the Weiner process at time t
    */
-  double geometirc_brownian_motion(int t, double w, double S_0) {
-    double ret = this->percent_drift - (this->percent_volatility * this->percent_volatility / 2)
-                 * t + this->percent_volatility * w;
+  double gbm(double dt, double S_0, std::normal_distribution<double> &d, std::mt19937 &gen) {
+    double ret = (this->percent_drift - (this->percent_volatility * this->percent_volatility / 2))
+                 * dt + this->percent_volatility * sqrt(dt) * d(gen);
     ret = S_0 * exp(ret);
     return ret;
   }
@@ -99,10 +87,15 @@ public:
     std::mt19937 gen{rd()};
     std::normal_distribution<double> norm{0.0,1.0};
 
-    printf("%lf\n", weiner_process(5, 500, norm, gen));
     // Values near the mean are the most likely. Standard deviation
     // affects the dispersion of generated values from the mean.
-    
+    int i = 0;
+    while (i < 100) {
+      // generate the next data point in the weiner process and add it onto the data buffer, before dequeuing it
+      dataBuffer->enqueue(gbm(0.02, dataBuffer->peek(), norm, gen));
+      printf("%lf\n",dataBuffer->dequeue());
+      i += 1;
+    }
   }
 
 };

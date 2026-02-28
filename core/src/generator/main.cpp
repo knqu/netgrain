@@ -11,8 +11,10 @@ int main()
     printf("test\n");
     std::random_device rd{};
     std::mt19937 gen{rd()};
-    generator gene(1.03, 0.50, 500);
+    generator gene(0.05, 0.25, 500);
 
     gene.generate();
+
+
     
 }
