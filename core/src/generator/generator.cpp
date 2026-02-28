@@ -3,8 +3,11 @@
 
 // this is based on drifts, but with our events, we might need to be able to model jumps as well
 
+#pragma once
+
 #include "def.hpp"
 #include "queue.hpp"
+#include "dataTransfer.cpp"
 #include <cmath>
 #include <iomanip>
 #include <iostream>
@@ -52,9 +55,6 @@ public:
   }
 
     
-
-    
-
   /* 
    * Basic data generation function,
    * takes, current price
@@ -81,8 +81,8 @@ public:
     return ret;
   }
 
-
-  void generate() {
+  // return the number of datapoints generated
+  int generate(dataTransfer *gen_settings) {
     std::random_device rd{};
     std::mt19937 gen{rd()};
     std::normal_distribution<double> norm{0.0,1.0};
@@ -90,15 +90,13 @@ public:
     // Values near the mean are the most likely. Standard deviation
     // affects the dispersion of generated values from the mean.
     int i = 0;
-    while (i < 100) {
+    while (gen_settings->gen) {
       // generate the next data point in the weiner process and add it onto the data buffer, before dequeuing it
       dataBuffer->enqueue(gbm(0.02, dataBuffer->peek(), norm, gen));
-      printf("%lf\n",dataBuffer->dequeue());
+      dataBuffer->dequeue();
       i += 1;
     }
+    return i;
   }
 
 };
-// TODO: implement data generation with stochastic diff eq
-// dS_t = vol*S_t dt + drift S_t dW_t-
-// solves to S_t = S_0 e^(( drift - vol^2/2)t + vol*W_t)
