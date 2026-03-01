@@ -9,8 +9,8 @@ type Leaderboard_row_entry = {
 
 function Leaderboard_Row({ player_entry } : {player_entry : Leaderboard_row_entry}) {
   return(
-    <div className="row_entry_container">
-      <div
+    <tr className="row_entry_container">
+      <td
         className='row_entry_content'
         style={{
           backgroundColor :
@@ -30,8 +30,8 @@ function Leaderboard_Row({ player_entry } : {player_entry : Leaderboard_row_entr
         <div className='right_content'>
           <h5 >${player_entry.profit}</h5>
         </div>
-      </div>
-    </div>
+      </td>
+    </tr>
   );
 }
 
