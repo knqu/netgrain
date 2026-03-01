@@ -1,0 +1,42 @@
+.LeaderboardContainer {
+    width: max-content;
+    background-color: #3D3F42;
+    border-radius: 0.5em;
+    box-shadow: 0.3em 0.3em 1em rgb(16, 16, 16);
+}
+
+.Leaderboard {
+    font-family: "Inter", 'Times New Roman';
+    font-weight: 600;
+    display: flex;
+    flex-direction: column;
+    justify-content: baseline;
+    align-items: start;
+    padding: 1em;
+    height: 90vh;
+}
+
+.Leaderboard_text {
+    margin-bottom: 0.25em;
+    font-size: 24pt;
+}
+
+.row_entry_container {
+    background-color: #3D3F42;
+    padding-bottom: 0.6em
+}
+
+.row_entry_content {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    border-radius: 0.4em;
+    padding: 0.4em;
+    gap: 2em;
+}
+
+.left_content {
+    display: flex;
+    flex-direction: row;
+    gap: 0.5em;
+}
