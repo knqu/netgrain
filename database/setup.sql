@@ -8,8 +8,8 @@ CREATE TABLE userLogin (
 
 CREATE TABLE leaderboard (
   userID int UNIQUE,
-  profit int,
-  simulationTime timestamp,
+  profit int NOT NULL,
+  simulationTime text NOT NULL,
   FOREIGN KEY (userID) REFERENCES userLogin(userID)
 );
 
