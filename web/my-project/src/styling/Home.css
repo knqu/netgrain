@@ -24,8 +24,9 @@
 .DashboardButtonContainer {
     display: flex;
     flex-direction: row;
-    justify-content: space-evenly;
+    justify-content: center;
     align-items: center;
+    gap: 5em;
 }
 
 .Grid {
@@ -39,4 +40,16 @@
 .LeaderboardContainer {
     grid-row: 1;
     grid-column: 2 / span 1;;
+}
+
+.navButtons {
+    font-size: 1em;
+    width: 7.5%;
+    background-color: #6B6E71;
+    color: #C9D6E0;
+}
+
+.navButtons.active {
+    background-color: #68E2EB;
+    color: #434648;
 }

@@ -1,5 +1,3 @@
-import React from 'react';
-
 function Simulation() {
   return <h1>About Page</h1>;
 }
