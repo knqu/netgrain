@@ -1,0 +1,12 @@
+services:
+  app:
+    image: drogonframework/drogon
+    volumes:
+      - .:/root/project
+      - .vimrc:/root/.vimrc
+    ports:
+      - "8080:80"
+    working_dir: /root/project
+    command: /bin/bash -c "apt-get update && apt-get install -y vim && /bin/bash"
+    stdin_open: true
+    tty: true
