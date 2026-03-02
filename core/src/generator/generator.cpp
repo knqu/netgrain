@@ -9,6 +9,7 @@
 #include "queue.hpp"
 #include "dataTransfer.cpp"
 #include <cmath>
+#include <thread>
 #include <iomanip>
 #include <iostream>
 #include <map>
@@ -92,9 +93,10 @@ public:
     int i = 0;
     while (gen_settings->gen) {
       // generate the next data point in the weiner process and add it onto the data buffer, before dequeuing it
-      dataBuffer->enqueue(gbm(0.02, dataBuffer->peek(), norm, gen));
+      dataBuffer->enqueue(gbm(0.01, dataBuffer->peek(), norm, gen));
       dataBuffer->dequeue();
       i += 1;
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
     return i;
   }

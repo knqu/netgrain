@@ -27,6 +27,9 @@ FLAGS="$FLAGS -DASIO_STANDALONE"
 SIM_FLAGS="$FLAGS ./core/src/simulator/*.cpp"
 SIM_FLAGS="$SIM_FLAGS -I./core/src/simulator/"
 
+SIM_SERVER_FLAGS="$FLAGS ./core/src/simulator/server/*.cpp"
+SIM_SERVER_FLAGS="$SIM_SERVER_FLAGS -I./core/src/simulator/"
+
 GEN_FLAGS="$FLAGS ./core/src/generator/*.cpp"
 GEN_FLAGS="$GEN_FLAGS -I./core/src/generator/"
 
@@ -38,6 +41,10 @@ DB_FLAGS="$DB_FLAGS -I$libpqxx"
 
 simulator_compile_cmd () {
     $clang_path -Wall $SIM_FLAGS -g -o out/debug/macos/simulator
+}
+
+simulator_server_compile_cmd () {
+    $clang_path -Wall $SIM_SERVER_FLAGS -g -o out/debug/macos/sim_server
 }
 
 generator_compile_cmd () {
@@ -75,6 +82,15 @@ if [ $1 = "run" ]; then
             ./out/debug/macos/generator
         fi
 
+    elif [ $2 = "serve" ]; then
+
+        mkdir -p out/debug/macos
+        simulator_server_compile_cmd
+
+        if [ $? -eq 0 ]; then
+            ./out/debug/macos/sim_server
+        fi
+
     elif [ $2 = "db" ]; then
 
         mkdir -p out/debug/macos
@@ -97,6 +113,11 @@ elif [ $1 = "build" ]; then
 
         mkdir -p out/debug/macos
         generator_compile_cmd
+
+    elif [ $2 = "serve" ]; then
+
+        mkdir -p out/debug/macos
+        simulator_server_compile_cmd
 
     elif [ $2 = "db" ]; then
 
