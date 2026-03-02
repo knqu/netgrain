@@ -11,7 +11,8 @@
 
 using namespace std;
 
-MarketDataMap market; //contains all objectified csvs.
+//changed to global object
+MarketDataManager data_manager;
 
 int main() {
     // Loading int from /data...
@@ -29,17 +30,18 @@ int main() {
                 std::transform(ticker.begin(), ticker.end(), ticker.begin(),
                     [](unsigned char c){ return std::toupper(c); });
 
-                load_ticker_data(market, ticker, file_path);
+                
+                data_manager.load_ticker_data(ticker, file_path);
             }
         }
-        cout << "Success Loading in stored data";
+        cout << "Success Loading in stored data\n";
     }
     else {
         cout << "No Default Data Directory Found, continuing to user inputs\n";
     }
 
 
-    uWS::App()
+    uWS::App() // lowk just let chat route with uws bc idk how to do it and its not fun and I was bored
         // 1. CORS Preflight
         .options("/api/upload", [](auto *res, auto *req) {
             res->writeHeader("Access-Control-Allow-Origin", "*");
@@ -83,7 +85,7 @@ int main() {
                             [](unsigned char c){ return toupper(c); });//idk what this does dawg
 
                         // DUPLICATE HANDLING
-                        if (market.find(ticker) != market.end()) {
+                        if (data_manager.has_ticker(ticker)) {
                             cout << "Duplicate " << ticker << " already in map.\n";
                             remove(save_path.c_str());
                             res->writeHeader("Access-Control-Allow-Origin", "*");
@@ -92,27 +94,14 @@ int main() {
                         }
 
                         //Parsing and Loading main() -> load_ticker_data() -> parse_csv_file() -> helpers for parsing decimals and dates.
-                        load_ticker_data(market, ticker, save_path);
-
-                        if (!market[ticker].empty()) {
-                            const auto& first_row = market[ticker].front();
-                            cout << "\n--- FIRST ROW OF " << ticker << " ---\n";
-                            cout << "Date:     " << first_row.date << "\n";
-                            cout << "Open:     " << first_row.open << "\n";
-                            cout << "High:     " << first_row.high << "\n";
-                            cout << "Low:      " << first_row.low << "\n";
-                            cout << "Close:    " << first_row.close << "\n";
-                            cout << "Volume:   " << first_row.volume << "\n";
-                            cout << "Open Int: " << first_row.open_int << "\n";
-                            cout << "---------------------------\n\n";
-                        }
+                        data_manager.load_ticker_data(ticker, save_path);
+                        data_manager.print_first_row(ticker); //print first row to verify loading and parsing worked
 
                         if (remove(save_path.c_str()) == 0) { //rmv file once in object.
                             cout << "Removed File after loading" << save_path << "\n";
                         }
                         else {
                             cout << "error in remvoing file" << save_path << "\n";
-
                         }
 
                         res->writeHeader("Access-Control-Allow-Origin", "*");
@@ -126,17 +115,7 @@ int main() {
         })
 
         .get("/api/market", [](auto *res, auto *req) {
-            string json = "{";
-            bool first = true;
-
-            // Loop through the global map
-            for (const auto& [ticker, data_vector] : market) {
-                if (!first) json += ", ";
-                // Format: "AAPL": 10543
-                json += "\"" + ticker + "\": " + to_string(data_vector.size());
-                first = false;
-            }
-            json += "}";
+            string json = data_manager.get_market_state_json();//call to jsonify market state to index.html for testing purposes.
 
             res->writeHeader("Access-Control-Allow-Origin", "*");
             res->writeHeader("Content-Type", "application/json");

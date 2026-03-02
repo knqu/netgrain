@@ -5,23 +5,35 @@
 #include <cstdint>
 #include <unordered_map>
 
+#include "def.hpp"
 
-# include "def.hpp"
 
-constexpr i64 PRICE_SCALE_FACTOR = 100000; // mult prices to avoid floating point issues
+constexpr i64 PRICE_SCALE_FACTOR = 100000;
 
-// The struct representing a single row of historical market data
 struct MarketDataRow {
-    u32 date;
-    i64  open;
-    i64  high;
-    i64  low; 
-    i64  close;
-    u64 volume;
-    u64 open_int;
+    u32 date;      
+    i64 open;      
+    i64 high;      
+    i64 low;       
+    i64 close;     
+    uint64_t volume;    
+    uint64_t open_int;  
 };
 
-using MarketDataMap = std::unordered_map<std::string, std::vector<MarketDataRow>>; // Ticker Historical Data Map
+using MarketDataMap = std::unordered_map<std::string, std::vector<MarketDataRow>>;
 
-std::vector<MarketDataRow> parse_csv_file(const std::string& filepath);
-void load_ticker_data(MarketDataMap& market_map, const std::string& ticker, const std::string& filepath);
+class MarketDataManager {
+private:
+    MarketDataMap market;
+    //helpers
+    u32 parse_date(std::string date_str);
+    i64 parse_price(const std::string& price_str);
+    std::vector<MarketDataRow> parse_csv_file(const std::string& filepath);
+
+public:
+    //main func
+    void load_ticker_data(const std::string& ticker, const std::string& filepath);
+    bool has_ticker(const std::string& ticker);
+    void print_first_row(const std::string& ticker);
+    std::string get_market_state_json();
+};
