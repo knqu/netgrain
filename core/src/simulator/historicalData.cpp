@@ -5,16 +5,12 @@
 #include <iostream>
 #include <stdexcept>
 
-
 //helper function to parse date string in format "YYYY-MM-DD" and convert to u32 in format YYYYMMDD for easier storage and comparison
 u32 MarketDataManager::parse_date(std::string date_str) {
-
     std::string out = "";
-
     for (char c : date_str) {
         if (c != '-') out += c;
     }
-
     return std::stoul(out);
 }
 
@@ -46,8 +42,8 @@ std::vector<MarketDataRow> MarketDataManager::parse_csv_file(const std::string& 
         std::string token;
 
         std::string t_date, t_open, t_high, t_low, t_close, t_vol, t_oi; 
-        //validation check
         
+        //validation check
         if (std::getline(ss, t_date, ',') && std::getline(ss, t_open, ',') &&
             std::getline(ss, t_high, ',') && std::getline(ss, t_low, ',') &&
             std::getline(ss, t_close, ',') && std::getline(ss, t_vol, ',') &&
@@ -64,11 +60,14 @@ std::vector<MarketDataRow> MarketDataManager::parse_csv_file(const std::string& 
 
                 rows.push_back(row);
             } catch (const std::exception& e) {
-                std::cerr << "Incorrect data found in row: " << line << "\n"; //return on incorrect data format
-                return {};
+                std::cerr << " Error: Incorrect data found in row: " << line << "\n"; 
+                file.close();
+                return {}; // INSTANTLY ABORT
             }
         } else {
-            std::cerr << "Warning: Incorrect number of columns in row: " << line << "\n";
+            std::cerr << " Error: Incorrect number of columns in row: " << line << "\n";
+            file.close();
+            return {}; // INSTANTLY ABORT
         }
     }
 
@@ -77,17 +76,20 @@ std::vector<MarketDataRow> MarketDataManager::parse_csv_file(const std::string& 
 }
 
 //main function to load ticker data and ticker from file, calls parsing function and stores result in market map for later retrieval
-void MarketDataManager::load_ticker_data(const std::string& ticker, const std::string& filepath) {
+// --- CHANGED TO RETURN BOOL ---
+bool MarketDataManager::load_ticker_data(const std::string& ticker, const std::string& filepath) {
     std::cout << "Loading data for " << ticker << "...\n";
     
     // Call the parser
     std::vector<MarketDataRow> data = parse_csv_file(filepath);
     
     if (!data.empty()) {
-        market[ticker] = data; // Store it in map (using the private class variable!)
+        market[ticker] = data; // Store it in map
         std::cout<< ticker << " loaded successfully into memory.\n";
+        return true;  // TELL MAIN.CPP IT WORKED
     } else {
-        std::cerr << "Failed to load data for " << ticker << "\n";
+        std::cerr << "Failed to load data for " << ticker << " due to corrupted data.\n";
+        return false; // TELL MAIN.CPP IT FAILED
     }
 }
 
@@ -111,7 +113,6 @@ void MarketDataManager::print_first_row(const std::string& ticker) {
         std::cout << "---------------------------\n\n";
     }
 }
-
 
 //added helper function to get market state as json string for testing purposes
 std::string MarketDataManager::get_market_state_json() {
@@ -139,11 +140,8 @@ std::string MarketDataManager::run_basic_backtest(const std::string& ticker) {
     int losing_trades = 0;
     i64 total_profit_scaled = 0;
 
-    // 2. THE ALGORITHM: Step through time chronologically -- Ye I chatted this part because I didnt want to think about it
     for (const auto& row : data) {
-        // Buy at open, sell at close. 
         i64 daily_profit = row.close - row.open;
-        
         total_profit_scaled += daily_profit;
 
         if (daily_profit > 0) {
@@ -154,7 +152,7 @@ std::string MarketDataManager::run_basic_backtest(const std::string& ticker) {
     }
 
     double actual_profit = static_cast<double>(total_profit_scaled) / 100000.0; 
-    //result format
+    
     std::string result = "BACKTEST RESULTS FOR " + ticker + "\n";
     result += "Days Analyzed: " + std::to_string(data.size()) + "\n";
     result += "Winning Days:  " + std::to_string(winning_trades) + "\n";

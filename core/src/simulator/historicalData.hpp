@@ -32,7 +32,7 @@ private:
 
 public:
     //main func + tests
-    void load_ticker_data(const std::string& ticker, const std::string& filepath);
+    bool load_ticker_data(const std::string& ticker, const std::string& filepath);
     bool has_ticker(const std::string& ticker);
     void print_first_row(const std::string& ticker);
     std::string get_market_state_json();
