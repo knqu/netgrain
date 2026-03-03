@@ -13,11 +13,25 @@ int main()
     std::random_device rd{};
     std::mt19937 gen{rd()};
 
-    generator gene(0.05, 0.25, 500);
+    // get info for initial stock data
+
+    double vol;
+    double drift;
+    int init_price;
+    std::cout << "Please enter the percent drift of the stock data: ";
+    std::cin >> drift;
+    std::cout << "Please enter the percent volatility of the stock data: ";
+    std::cin >> vol;
+    std::cout << "Please enter the initial price: ";
+    std::cin >> init_price;
+
+    // generator gene(drift, vol, init_price);
+
 
     
     gen_benchmark tester;
-    tester.speed_benchmark(0.05, 0.25, 500);
+    tester.speed_benchmark(vol, drift, init_price);
+    tester.data_benchmark(vol, drift, init_price);
 
 
     

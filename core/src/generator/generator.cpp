@@ -45,13 +45,13 @@ public:
   ~generator() {
   }
 
-  void get_event(double new_drift, double new_vol, int new_price) {
-    percent_drift = new_drift;
-    percent_volatility = new_vol;
-    dataBuffer->enqueue(0.00);
+  void get_event(double n_drift, double n_vol, int n_price) {
+    percent_drift = n_drift;
+    percent_volatility = n_vol;
+    dataBuffer->enqueue(n_price);
   }
 
-  int sendPrice() {
+  double sendPrice() {
     return dataBuffer->dequeue();
   }
 
@@ -82,7 +82,7 @@ public:
     return ret;
   }
 
-  // return the number of datapoints generated
+  // return the number of datapoints generated, if data is not being tested
   int generate(dataTransfer *gen_settings) {
     std::random_device rd{};
     std::mt19937 gen{rd()};
@@ -94,9 +94,23 @@ public:
     while (gen_settings->gen) {
       // generate the next data point in the weiner process and add it onto the data buffer, before dequeuing it
       dataBuffer->enqueue(gbm(0.01, dataBuffer->peek(), norm, gen));
-      dataBuffer->dequeue();
+      
+      // TODO: way to send data would go here, this could be in the format of a
+      // second queue, extra fields in the dataTransfer, etc. for now
+      // printing to console will suffice
+      
+      if (gen_settings->send_data) {
+        printf("%lf\n", sendPrice());
+      }
+
+      // TODO: process events, rn all I do is call the call the get_event function
+      // but this logic might need to be adjusted
+      if (gen_settings->new_event) {
+        get_event(gen_settings->n_drift, gen_settings->n_vol, gen_settings->n_price);
+      }
+      
       i += 1;
-      std::this_thread::sleep_for(std::chrono::milliseconds(10));
+      std::this_thread::sleep_for(std::chrono::milliseconds(9));
     }
     return i;
   }
