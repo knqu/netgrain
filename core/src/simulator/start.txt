@@ -11,7 +11,9 @@ g++ -std=c++17 \
     -L../../../lib/usockets/bin/debug -luSockets \
     -L/mingw64/lib -luv \
     -lpthread -lws2_32 -lmswsock \
-    -o server
+    -o parser
 
 
-    To run and then ./server
+    To run and then ./parser
+
+    to run very basic execution ond data: http://localhost:8080/api/run/AAPL

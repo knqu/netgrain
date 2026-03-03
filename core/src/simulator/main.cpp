@@ -128,5 +128,23 @@ int main() {
                 cout << "Failed to start server.\n";
             }
         })
+        .get("/api/run/:ticker", [](auto *res, auto *req) { //added this to run execution on the stored data as a demo purpose, will delete later
+               
+            // Grab the ticker from the URL (e.g., "AAPL")
+            std::string ticker(req->getParameter(0));
+            
+            // Ensure it's uppercase
+            std::transform(ticker.begin(), ticker.end(), ticker.begin(),
+                [](unsigned char c){ return std::toupper(c); });
+
+            // Run the algorithm
+            std::string report = data_manager.run_basic_backtest(ticker);
+
+            res->writeHeader("Access-Control-Allow-Origin", "*");
+            res->writeHeader("Content-Type", "text/plain");
+            res->end(report);
+        })
+
         .run();
+        
 }
