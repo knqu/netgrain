@@ -1,9 +1,17 @@
 import React, { useState } from 'react';
 import '../styling/Simulation.css';
 
+export interface StockParams {
+    ticker: string;
+    base_price: number;
+    liquidity: number;
+    volatility: number;
+    market_cap: number;
+}
+
 export interface SimulationConfigRequest {
     initial_capital: number;
-    tickers: string[];
+    stocks: StockParams[];
     start_date: string;
     end_date: string;
     trade_fee: number;
@@ -12,7 +20,33 @@ export interface SimulationConfigRequest {
 const Simulation: React.FC = () => {
     // --- SIMULATION STATE ---
     const [initialCapital, setInitialCapital] = useState<number | string>(100000);
-    const [tickersInput, setTickersInput] = useState<string>("AAPL, MSFT");
+
+    // (stocks list)
+    const [stocks, setStocks] = useState<StockParams[]>([
+      { ticker: "", base_price: 0, liquidity: 0, volatility: 0, market_cap: 0},
+    ]);
+
+    const addStock = () => {
+      setStocks([...stocks, { ticker: "", base_price: 0, liquidity: 0, volatility: 0, market_cap: 0 }]);
+    };
+
+    const removeStock = (index: number) => {
+      setStocks(stocks.filter((_, i) => i !== index));
+    };
+
+    const updateStock = (index: number, field: keyof StockData, value: string | number) => {
+      setStocks(currentStocks => {
+        const currStocks = [...currentStocks];
+
+        currStocks[index] = { 
+          ...currStocks[index], 
+          [field]: field === 'ticker' ? value : Number(value) 
+        };
+
+        return currStocks; 
+      });
+    };
+
     const [startDate, setStartDate] = useState<string>("");
     const [endDate, setEndDate] = useState<string>("");
     const [tradeFee, setTradeFee] = useState<number | string>(1.50);
@@ -84,23 +118,16 @@ const Simulation: React.FC = () => {
             return;
         }
 
-        const parsedTickers = tickersInput
-            .split(',')
-            .map(t => t.trim().toUpperCase())
-            .filter(t => t.length > 0);
-
-        if (parsedTickers.length === 0) {
-            alert("Please enter at least one ticker.");
-            return;
-        }
-
         const payload: SimulationConfigRequest = {
             initial_capital: Number(initialCapital),
-            tickers: parsedTickers,
+            stocks: stocks,
             start_date: startDate,
             end_date: endDate,
             trade_fee: Number(tradeFee)
         };
+
+        console.log(JSON.stringify(payload))
+
 
         setIsRunning(true);
         setEngineStatus("Sending configuration to engine...");
@@ -172,17 +199,6 @@ const Simulation: React.FC = () => {
                             />
                         </div>
 
-                        <div className="sim-form-group">
-                            <label className="sim-label">Tickers (comma separated)</label>
-                            <input 
-                                type="text" 
-                                className="sim-input"
-                                value={tickersInput} 
-                                onChange={(e) => setTickersInput(e.target.value)}
-                                placeholder="e.g. AAPL, MSFT"
-                            />
-                        </div>
-
                         <div className="sim-form-row">
                             <div className="sim-form-col">
                                 <label className="sim-label">Start Date</label>
@@ -214,6 +230,79 @@ const Simulation: React.FC = () => {
                                 onChange={(e) => setTradeFee(e.target.value)}
                             />
                         </div>
+
+                        {stocks.map((stock, index) => (
+                          <div key={index} className="sim-stock-card">
+                              <div className="sim-form-row">
+                                  <div className="sim-form-col">
+                                      <label className="sim-label">Ticker</label>
+                                      <input 
+                                          type="text" 
+                                          className="sim-input"
+                                          value={stock.ticker}
+                                          onChange={(e) => updateStock(index, 'ticker', e.target.value.toUpperCase())}
+                                          placeholder="e.g. AAPL"
+                                      />
+                                  </div>
+                                  <div className="sim-form-col">
+                                      <label className="sim-label">Base Price ($)</label>
+                                      <input 
+                                          type="number" 
+                                          min="0"
+                                          className="sim-input"
+                                          value={stock.base_price}
+                                          onChange={(e) => updateStock(index, 'base_price', e.target.value)}
+                                      />
+                                  </div>
+                              </div>
+
+                              <div className="sim-form-row" style={{ marginTop: '10px' }}>
+                                  <div className="sim-form-col">
+                                      <label className="sim-label">Volatility</label>
+                                      <input 
+                                          type="number" 
+                                          min="0"
+                                          className="sim-input"
+                                          value={stock.volatility}
+                                          onChange={(e) => updateStock(index, 'volatility', e.target.value)}
+                                      />
+                                  </div>
+                                  <div className="sim-form-col">
+                                      <label className="sim-label">Liquidity</label>
+                                      <input 
+                                          type="number" 
+                                          min="0"
+                                          className="sim-input"
+                                          value={stock.liquidity}
+                                          onChange={(e) => updateStock(index, 'liquidity', e.target.value)}
+                                      />
+                                  </div>
+                                  <div className="sim-form-col">
+                                      <label className="sim-label">Market Cap</label>
+                                      <input 
+                                          type="number" 
+                                          min="0"
+                                          className="sim-input"
+                                          value={stock.market_cap}
+                                          onChange={(e) => updateStock(index, 'market_cap', e.target.value)}
+                                      />
+                                  </div>
+                              </div>
+
+                              {stocks.length > 1 && (
+                                  <button 
+                                      className="sim-btn-secondary" 
+                                      onClick={() => setStocks(stocks.filter((_, i) => i !== index))}
+                                  >
+                                      Remove Stock
+                                  </button>
+                              )}
+                          </div>
+                    ))}
+
+                    <button className="sim-btn-secondary" onClick={addStock} style={{ marginBottom: '20px' }}>
+                        + Add Stock
+                    </button>
 
                         <button 
                             className="sim-btn-primary"
