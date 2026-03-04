@@ -297,18 +297,43 @@ class ConnectorSingleton {
     /*
      * Currently prints out to console, no testing for this yet
      */
-    void fetchLeaderBoard() {
+    std::string fetchLeaderBoard() {
       pqxx::work tx(*conn);
       std::string query = "SELECT * FROM leaderboard ORDER BY profit DESC, simulationtime DESC";
       pqxx::result r = tx.exec(query);
+      std::string result;
 
-      for (auto row = std::begin(r); row != std::end(r); row++)
-      {
-        for (auto field = std::begin(row); field != std::end(row); field++)
-          fmt::print("{}\t", field->c_str());
-        fmt::print("\n");
+      for (auto row = std::begin(r); row != std::end(r); row++) {
+        std::string tmp = "{";
+        int i = 0;
+        for (auto field = std::begin(row); field != std::end(row); field++) {
+          if (i == 0) {
+            tmp.append("rank : ");
+          }
+          else if (i == 1) {
+            tmp.append("username : ");
+          }
+          else if (i == 2) {
+            tmp.append("profit : \"");
+          }
+          tmp.append(field->c_str());
+          if (i == 2) {
+            tmp.append("\"");
+          }
+          else {
+            tmp.append(",");
+          }
+          i++;
+        }
+        tmp.append("},");
+        result.append(tmp);
       }
-      return;
+
+      if (result.length() > 0) {
+        result.pop_back();
+      }
+
+      return result;
     }
 
     /*
@@ -400,6 +425,12 @@ class ConnectorSingleton {
       return r[0].as<int>();
     }
 };
+
+void testLeaderboard() {
+  ConnectorSingleton::getInstance();
+  std::string test = ConnectorSingleton::getInstance().fetchLeaderBoard();
+  fmt::print("{}\n", test);
+}
 
 void test() {
   fmt::print("\n---Initializing Testing---\n");
