@@ -19,15 +19,14 @@ enum error_codes {
 };
 
 /*
- * TODO: refactor code? (statement parameters, thread-safety, etc.)
+ * General Connector class (used Singleton design pattern) that can be used to interact with PostgreSQL database
  */
-
-/*
- * General Connector class that can be used to interact with PostgreSQL database
- */
-class Connector {
+class ConnectorSingleton {
   private:
-      pqxx::connection* conn;
+      ConnectorSingleton() = default;
+      ~ConnectorSingleton() = default;
+      inline static ConnectorSingleton* instance = nullptr;
+      inline static pqxx::connection* conn;
 
       /*
        * Helper function to determine if email provided is correct format (doesn't check if it actually exists)
@@ -59,19 +58,23 @@ class Connector {
       }
 
   public:
-    Connector() {
-      try
-      {
-      conn = new pqxx::connection(
-        "host=localhost "
-        "dbname=netgrain_db");
+    static ConnectorSingleton& getInstance() {
+      if (!instance) {
+          instance = new ConnectorSingleton();
+          try
+          {
+            conn = new pqxx::connection(
+              "host=localhost "
+              "dbname=netgrain_db");
+          }
+          catch (const std::exception &e)
+          {
+              std::cerr << e.what() << std::endl;
+          }
       }
-      catch (const std::exception &e)
-      {
-          std::cerr << e.what() << std::endl;
-      }
+      return *instance;
     }
-  
+
     /*
      * Login: determines if given username/email and password is found in userlogin table
      */
@@ -398,10 +401,10 @@ class Connector {
     }
 };
 
-int main() {
+void test() {
   fmt::print("\n---Initializing Testing---\n");
 
-  Connector* conn = new Connector();
+  ConnectorSingleton::getInstance();
 
   /*
    * To testers, you may need to addUser() up to 7 users for below tests to work, otherwise just change literals below
@@ -412,27 +415,27 @@ int main() {
    */
 
   // Table userlogin -- addUser (aka registering a user)
-  conn->addUser("uniqueEmail@email.com", "12341234", "uniqueUser"); //insert unique user
-  conn->addUser("uniqueEmail2@email.com", "12341234", "uniqueUser2"); //insert unique user
-  assert(conn->addUser("different@gmail.com", "", "uniqueUser") == USERNAME_ALREADY_REGISTERED);
-  assert(conn->addUser("uniqueEmail@email.com", "", "asdf") == EMAIL_ALREADY_REGISTERED);
+  ConnectorSingleton::getInstance().addUser("uniqueEmail@email.com", "12341234", "uniqueUser"); //insert unique user
+  ConnectorSingleton::getInstance().addUser("uniqueEmail2@email.com", "12341234", "uniqueUser2"); //insert unique user
+  assert(ConnectorSingleton::getInstance().addUser("different@gmail.com", "", "uniqueUser") == USERNAME_ALREADY_REGISTERED);
+  assert(ConnectorSingleton::getInstance().addUser("uniqueEmail@email.com", "", "asdf") == EMAIL_ALREADY_REGISTERED);
 
-  assert(conn->addUser("thisIsNotAnEmail", "", "") == INVALID_EMAIL_FORMAT);
+  assert(ConnectorSingleton::getInstance().addUser("thisIsNotAnEmail", "", "") == INVALID_EMAIL_FORMAT);
 
   // Table userlogin -- login
-  assert(conn->login("uniqueEmail@email.com", "12341234")); // Test Case 1 (user exists): verify login successfully
+  assert(ConnectorSingleton::getInstance().login("uniqueEmail@email.com", "12341234")); // Test Case 1 (user exists): verify login successfully
   
-  assert(! conn->login("hiIDontExist.com", "pleaseFail")); // Test Case 2 (user doesn't exist): verify login failed
+  assert(! ConnectorSingleton::getInstance().login("hiIDontExist.com", "pleaseFail")); // Test Case 2 (user doesn't exist): verify login failed
   
   // Table userlogin -- link + get customGUI tied to a user
   // Pre-condition: web server handles file IO (initialize and write to file)
-  assert(conn->linkCustomGUILayout(1000, "/path/to/file") == UUID_NOT_FOUND); // attempt to link file with not found uuid
-  assert(conn->userHasCustomLayout(1000) == UUID_NOT_FOUND); // attempt to look for file with not found uuid
-  assert(conn->userHasCustomLayout(2) == CUSTOM_DASHBOARD_CONFIG_NOT_FOUND); // see if it detects user without config
+  assert(ConnectorSingleton::getInstance().linkCustomGUILayout(1000, "/path/to/file") == UUID_NOT_FOUND); // attempt to link file with not found uuid
+  assert(ConnectorSingleton::getInstance().userHasCustomLayout(1000) == UUID_NOT_FOUND); // attempt to look for file with not found uuid
+  assert(ConnectorSingleton::getInstance().userHasCustomLayout(2) == CUSTOM_DASHBOARD_CONFIG_NOT_FOUND); // see if it detects user without config
 
-  assert(conn->linkCustomGUILayout(1, "/path/to/file") == SUCCESS); // link file with found uuid
-  assert(conn->userHasCustomLayout(1) == SUCCESS); // see if file was written from above
-  assert(! conn->getCustomGUILayout(1).compare("/path/to/file")); // determine if written successfully
+  assert(ConnectorSingleton::getInstance().linkCustomGUILayout(1, "/path/to/file") == SUCCESS); // link file with found uuid
+  assert(ConnectorSingleton::getInstance().userHasCustomLayout(1) == SUCCESS); // see if file was written from above
+  assert(! ConnectorSingleton::getInstance().getCustomGUILayout(1).compare("/path/to/file")); // determine if written successfully
 
   /*
    * TESTS FOR LEADERBOARD
@@ -440,23 +443,23 @@ int main() {
   // CHOOSE DIFFERENT EMAIL AND USERNAME HERE EVERY TIME
   std::string email = "asdfaasdf@gmail.com";
   std::string username = "alsdfsdkjfa";
-  int uuid = conn->addUser(email, "helllo", username); //insert unique user
+  int uuid = ConnectorSingleton::getInstance().addUser(email, "helllo", username); //insert unique user
 
   fmt::print("SUCCESS TEST\n");
-  assert(conn->addLeaderboardAttempt(uuid, 100000, "12:12:12") == SUCCESS); // normal write
+  assert(ConnectorSingleton::getInstance().addLeaderboardAttempt(uuid, 100000, "12:12:12") == SUCCESS); // normal write
   fmt::print("ATTEMPT TEST\n");
-  assert(conn->addLeaderboardAttempt(uuid, 200000, "14:14:14") == LEADERBOARD_ATTEMPT_MADE); // same user makes another attempt
+  assert(ConnectorSingleton::getInstance().addLeaderboardAttempt(uuid, 200000, "14:14:14") == LEADERBOARD_ATTEMPT_MADE); // same user makes another attempt
   fmt::print("UUID NOT FOUND TEST\n");
-  assert(conn->addLeaderboardAttempt(-1, 200000, "14:14:14") == UUID_NOT_FOUND); // invalid user makes attempt
+  assert(ConnectorSingleton::getInstance().addLeaderboardAttempt(-1, 200000, "14:14:14") == UUID_NOT_FOUND); // invalid user makes attempt
 
   /*
    * TESTS FOR A USER's SIMULATION
    */
-  assert(conn->createSimulation(2, "insertSomeSmartAnalytics", "/path/to/config/used", -1) == SUCCESS); // normal write
-  assert(conn->createSimulation(2, "insertSomeSmartAnalytics", "/path/to/config/used", 100) == PRESET_ID_NOT_FOUND); // unknown preset ID
+  assert(ConnectorSingleton::getInstance().createSimulation(2, "insertSomeSmartAnalytics", "/path/to/config/used", -1) == SUCCESS); // normal write
+  assert(ConnectorSingleton::getInstance().createSimulation(2, "insertSomeSmartAnalytics", "/path/to/config/used", 100) == PRESET_ID_NOT_FOUND); // unknown preset ID
 
   /*
    * TESTS FOR GLOBAL PRESETS
    */
-  assert(conn->createCustomGlobalPreset(10, 10, 10, 10) == DUPLICATE_PRESET_FOUND);
+  assert(ConnectorSingleton::getInstance().createCustomGlobalPreset(10, 10, 10, 10) == DUPLICATE_PRESET_FOUND);
 }
