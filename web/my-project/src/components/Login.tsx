@@ -16,7 +16,7 @@ export default function Login() {
                     method: "POST",
                     headers : {"Content-Type" : "application/json"},
                     body: JSON.stringify({login_submitted_email : email, login_submitted_password : password}),
-                    redirect: "manual"
+                    redirect: "manual",
                 }
             );
             console.log(response);

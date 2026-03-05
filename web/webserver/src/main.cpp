@@ -40,15 +40,17 @@ int main() {
 
     CROW_ROUTE(app, "/api/loginAttempt").methods(crow::HTTPMethod::POST, crow::HTTPMethod::PATCH)([&](const crow::request& req) {
       auto& session = app.get_context<Session>(req);
+      auto& cookie = app.get_context<crow::CookieParser>(req);
       auto reqBody = crow::json::load(req.body);
 
       std::string email = reqBody["login_submitted_email"].s();
       std::string password = reqBody["login_submitted_password"].s();
 
       std::cout << "Email: " << email << std::endl << "Password: " << password << std::endl;
+      std::cout << cookie.get_cookie("email") << "\n";
 
-      if (session.get<bool>(email) == true) {
-        return crow::response(200);
+      if (session.get<bool>(cookie.get_cookie("email")) == true) {
+          return crow::response(200);
       }
 
       int dbResponse = ConnectorSingleton::getInstance().login(
@@ -57,15 +59,21 @@ int main() {
       );
 
      if (dbResponse == true) {
-        std::cout << "success" << std::endl;
+        crow::response res;
+        res.set_header("Access-Control-Allow-Origin", "http://localhost:18080");
+        res.set_header("Access-Control-Allow-Credentials", "true");
         session.set(email, true);
-        return crow::response(200);
+        cookie.set_cookie("email", email).max_age(120).path("/");
+        res.code = 200;
+        std::cout << "Success" << std::endl;
+        return res;
       }
       else {
-        std::cout << "Invalid" << std::endl;
-        return crow::response(40);
+          std::cout << "Invalid" << std::endl;
+          return crow::response(400);
       }
     });
+
 
     /*CROW_ROUTE(app, "/api/signupAttempt").methods(crow::HTTPMethod::POST, crow::HTTPMethod::PATCH)([](const crow::request& req)) {
         auto reqBody = crow::json::load(req.body);
