@@ -40,15 +40,11 @@ class ConnectorSingleton {
 
       int uuIDfound(int uuid) {
         pqxx::work tx(*conn);
-        pqxx::params p;
-        p.append(uuid);
-
-        // std::string query = "SELECT * FROM userlogin WHERE (userid = " + std::to_string(uuid) + ")";
         std::string query = "SELECT * FROM userlogin WHERE (userid = $1)";
 
         try
         {
-          pqxx::row r = tx.exec(query, p).one_row(); // one_row checks if only one entry found, exception otherwise
+          pqxx::row r = tx.exec(query, pqxx::params{uuid}).one_row();
         }
         catch (const std::exception &e)
         {
@@ -69,7 +65,8 @@ class ConnectorSingleton {
           }
           catch (const std::exception &e)
           {
-              std::cerr << e.what() << std::endl;
+            std::cout << "Please launch your psql service\n";
+            abort();
           }
       }
       return *instance;
@@ -80,16 +77,11 @@ class ConnectorSingleton {
      */
     int login(std::string identifier, std::string password) {
       pqxx::work tx(*conn);
-      pqxx::params p;
-      p.append(identifier);
-      p.append(password);
-
-      // std::string query = "SELECT * FROM userlogin WHERE (password = \'" + password + "\') AND (email = \'" + identifier + "\' OR username = \'" + identifier + "\')";
       std::string query = "SELECT * FROM userlogin WHERE (password = $2) AND (email = $1 OR username = $1)";
 
       try
       {
-        pqxx::row r = tx.exec(query, p).one_row(); // one_row checks if only one entry found, exception otherwise
+        pqxx::row r = tx.exec(query, pqxx::params{identifier, password}).one_row();
       }
       catch (const std::exception &e)
       {
@@ -111,16 +103,11 @@ class ConnectorSingleton {
 
       fmt::print("\nTesting email {} username {}\n", email, username);
       pqxx::work tx(*conn);
-      pqxx::params p;
-      p.append(email);
-      p.append(password);
-      p.append(username);
 
-      // Check if duplicate username
-      try
+      try // Check if duplicate username
       {
         std::string query = "SELECT * FROM userlogin WHERE (username = $1)";
-        pqxx::result r = tx.exec(query, pqxx::params{username}).no_rows(); // one_row checks if only one entry found, exception otherwise
+        pqxx::result r = tx.exec(query, pqxx::params{username}).no_rows();
       }
       catch (const std::exception &e)
       {
@@ -130,11 +117,10 @@ class ConnectorSingleton {
         return USERNAME_ALREADY_REGISTERED;
       }
 
-      // Check if duplicate email
-      try
+      try // Check if duplicate email
       {
         std::string query = "SELECT * FROM userlogin WHERE (email = $1)";
-        pqxx::result r = tx.exec(query, pqxx::params{email}).no_rows(); // one_row checks if only one entry found, exception otherwise
+        pqxx::result r = tx.exec(query, pqxx::params{email}).no_rows();
       }
       catch (const std::exception &e)
       {
@@ -144,9 +130,8 @@ class ConnectorSingleton {
 
       try // insert new credentials
       {
-        // std::string query = "INSERT INTO userlogin (username, email, password) VALUES (\'" + username + "\',\'" + email + "\',\'" + password + "\')";
         std::string query = "INSERT INTO userlogin (username, email, password) VALUES ($3, $1, $2)";
-        tx.exec(query, p);
+        tx.exec(query, pqxx::params{email, password, username});
         tx.commit();
       }
       catch (const std::exception &e)
@@ -156,10 +141,7 @@ class ConnectorSingleton {
 
       pqxx::work tx2(*conn);
 
-      fmt::print("Hi {} {}\n", email, username);
-
       // Grab the userID after insertion
-      // std::string query = "SELECT * FROM userlogin WHERE (email = \'" + email+ "\')";
       std::string query = "SELECT * FROM userlogin WHERE (email = $1)";
       pqxx::row r = tx2.exec(query, pqxx::params{email}).one_row();
 
@@ -177,14 +159,10 @@ class ConnectorSingleton {
       }
 
       pqxx::work tx(*conn);
-      pqxx::params p;
-      p.append(userID);
-      p.append(path_to_file);
 
       try {
-        // std::string query = "UPDATE userlogin SET customguicomponentlayout = \'" + path_to_file + "\' WHERE userid = " + std::to_string(userID);
         std::string query = "UPDATE userlogin SET customguicomponentlayout = $2 WHERE userid = $1";
-        tx.exec(query, p);
+        tx.exec(query, pqxx::params{userID, path_to_file});
       }
       catch (const std::exception &e)
       {
@@ -206,15 +184,11 @@ class ConnectorSingleton {
       }
 
       pqxx::work tx(*conn);
-      pqxx::params p;
-      p.append(userID);
-
       std::string result = "";
 
       try {
-        // std::string query = "SELECT * FROM userlogin WHERE userid = " + std::to_string(userID);
         std::string query = "SELECT * FROM userlogin WHERE userid = $1";
-        pqxx::row r = tx.exec(query, p).one_row();
+        pqxx::row r = tx.exec(query, pqxx::params{userID}).one_row();
         result = r[4].as<std::string>();
       }
       catch (const std::exception &e)
@@ -235,13 +209,11 @@ class ConnectorSingleton {
      */
     std::string getCustomGUILayout(int userID) {
       pqxx::work tx(*conn);
-      pqxx::params p;
-      p.append(userID);
-
       std::string result = "";
+
       try {
         std::string query = "SELECT * FROM userlogin WHERE userid = $1";
-        pqxx::row r = tx.exec(query, p).one_row();
+        pqxx::row r = tx.exec(query, pqxx::params{userID}).one_row();
         result = r[4].as<std::string>();
       }
       catch (const std::exception &e)
@@ -264,16 +236,12 @@ class ConnectorSingleton {
       }
 
       pqxx::work tx(*conn);
-      pqxx::params p;
-      p.append(uuID);
-      p.append(profit);
-      p.append(simulationTime);
 
       // Check if user already made attempt
       try
       {
         std::string query = "SELECT * FROM leaderboard WHERE (userid = $1)";
-        pqxx::result r = tx.exec(query, pqxx::params{uuID}).no_rows(); // one_row checks if only one entry found, exception otherwise
+        pqxx::result r = tx.exec(query, pqxx::params{uuID}).no_rows();
       }
       catch (const std::exception &e)
       {
@@ -282,7 +250,7 @@ class ConnectorSingleton {
 
       try {
         std::string query = "INSERT INTO leaderboard (userid, profit, simulationtime) VALUES ($1, $2, $3)";
-        tx.exec(query, p);
+        tx.exec(query, pqxx::params{uuID, profit, simulationTime});
         tx.commit();
       }
       catch (const std::exception &e)
@@ -345,11 +313,6 @@ class ConnectorSingleton {
       }
 
       pqxx::work tx(*conn);
-      pqxx::params p;
-      p.append(analytics);
-      p.append(configUsed);
-      p.append(uuID);
-      p.append(globalPresetID);
 
       try {
         std::string query = "INSERT INTO pastsimulations (analytics, configused, userid) VALUES ($1, $2, $3)";
@@ -390,18 +353,18 @@ class ConnectorSingleton {
     // createCustomGlobalPreset(...)
     int createCustomGlobalPreset(int scaling, int volatility, int liquidity, int tradingVol) {
       pqxx::work tx(*conn);
+
       pqxx::params p;
       p.append(scaling);
       p.append(volatility);
       p.append(liquidity);
       p.append(tradingVol);
 
-
       // determine if duplicate global preset exists
       try
       {
       std::string query = "SELECT * FROM globalcustompresets WHERE (scaling = $1) AND (volatility = $2) AND (liquidity = $3) AND (tradingvolume = $4)";
-        pqxx::result r = tx.exec(query, p).no_rows(); // one_row checks if only one entry found, exception otherwise
+        pqxx::result r = tx.exec(query, pqxx::params{scaling, volatility, liquidity, tradingVol}).no_rows();
       }
       catch (const std::exception &e)
       {
@@ -410,7 +373,7 @@ class ConnectorSingleton {
 
       try {
         std::string query = "INSERT INTO globalcustompresets (scaling, volatility, liquidity, tradingvolume) VALUES ($1, $2, $3, $4)";
-        tx.exec(query, p);
+        tx.exec(query, pqxx::params{scaling, volatility, liquidity, tradingVol});
       }
       catch (const std::exception &e)
       {
@@ -420,77 +383,78 @@ class ConnectorSingleton {
 
       // Grab the global preset ID after insertion
       std::string query = "SELECT * FROM globalcustompresets WHERE (scaling = $1) AND (volatility = $2) AND (liquidity = $3) AND (tradingvolume = $4)";
-      pqxx::row r = tx.exec(query, p).one_row();
+      pqxx::row r = tx.exec(query, pqxx::params{scaling, volatility, liquidity, tradingVol}).one_row();
+
       tx.commit();
+
       return r[0].as<int>();
+    }
+
+    void testingModule() {
+      fmt::print("\n---Initializing Testing---\n");
+
+      /* Leaderboard */
+      ConnectorSingleton::getInstance();
+      std::string test = ConnectorSingleton::getInstance().fetchLeaderBoard();
+      fmt::print("{}\n", test);
+      /*
+       * TESTS FOR TABLE USERLOGIN
+       */
+
+      ConnectorSingleton::getInstance().addUser("uniqueEmail@email.com", "12341234", "uniqueUser");
+      ConnectorSingleton::getInstance().addUser("uniqueEmail2@email.com", "12341234", "uniqueUser2");
+      assert(ConnectorSingleton::getInstance().addUser("different@gmail.com", "", "uniqueUser") == USERNAME_ALREADY_REGISTERED);
+      assert(ConnectorSingleton::getInstance().addUser("uniqueEmail@email.com", "", "asdf") == EMAIL_ALREADY_REGISTERED);
+      assert(ConnectorSingleton::getInstance().addUser("thisIsNotAnEmail", "", "") == INVALID_EMAIL_FORMAT);
+
+      assert(ConnectorSingleton::getInstance().login("uniqueEmail@email.com", "12341234"));
+      assert(! ConnectorSingleton::getInstance().login("hiIDontExist.com", "pleaseFail"));
+
+      // Table userlogin -- link + get customGUI tied to a user
+      assert(ConnectorSingleton::getInstance().linkCustomGUILayout(1000, "/path/to/file") == UUID_NOT_FOUND);
+      assert(ConnectorSingleton::getInstance().userHasCustomLayout(1000) == UUID_NOT_FOUND);
+      assert(ConnectorSingleton::getInstance().userHasCustomLayout(2) == CUSTOM_DASHBOARD_CONFIG_NOT_FOUND);
+
+      assert(ConnectorSingleton::getInstance().linkCustomGUILayout(1, "/path/to/file") == SUCCESS);
+      assert(ConnectorSingleton::getInstance().userHasCustomLayout(1) == SUCCESS);
+      assert(! ConnectorSingleton::getInstance().getCustomGUILayout(1).compare("/path/to/file"));
+
+      /*
+       * TESTS FOR LEADERBOARD
+       */
+
+      // CHOOSE DIFFERENT EMAIL AND USERNAME HERE EVERY TIME
+      std::string email = "asdfaasdf@gmail.com";
+      std::string username = "alsdfsdkjfa";
+      int uuid = ConnectorSingleton::getInstance().addUser(email, "helllo", username); //insert unique user
+
+      assert(ConnectorSingleton::getInstance().addLeaderboardAttempt(uuid, 100000, "12:12:12") == SUCCESS); // normal write
+      assert(ConnectorSingleton::getInstance().addLeaderboardAttempt(uuid, 200000, "14:14:14") == LEADERBOARD_ATTEMPT_MADE); // same user makes another attempt
+      assert(ConnectorSingleton::getInstance().addLeaderboardAttempt(-1, 200000, "14:14:14") == UUID_NOT_FOUND); // invalid user makes attempt
+
+      /*
+       * TESTS FOR A USER's SIMULATION
+       */
+      assert(ConnectorSingleton::getInstance().createSimulation(2, "insertSomeSmartAnalytics", "/path/to/config/used", -1) == SUCCESS);
+      assert(ConnectorSingleton::getInstance().createSimulation(2, "insertSomeSmartAnalytics", "/path/to/config/used", 100) == PRESET_ID_NOT_FOUND);
+
+      /*
+       * TESTS FOR GLOBAL PRESETS
+       */
+      assert(ConnectorSingleton::getInstance().createCustomGlobalPreset(10, 10, 10, 10) == DUPLICATE_PRESET_FOUND);
+
     }
 };
 
-void testLeaderboard() {
-  ConnectorSingleton::getInstance();
-  std::string test = ConnectorSingleton::getInstance().fetchLeaderBoard();
-  fmt::print("{}\n", test);
+/*
+int main() {
+  // “Given the database and backend is implemented correctly, when a new user is created, then I should be able to verify it exists in my database.”
+  ConnectorSingleton::getInstance().addUser("demoPurpose@gmail.com", "password1234!", "demo");
+
+  // “Given the database and backend is implemented correctly, when the login credentials of the server are incorrect, then the backend should return an error message.”
+  // ConnectorSingleton::getInstance().login("fakeUser", "password1234!");
+
+  // “Given the database is not running on the web server, when the backend sends a query, then there should be proper error handling.”
+  // ConnectorSingleton::getInstance().addUser("iDontExist@gmail.com", "password1234!", "fake");
 }
-
-void test() {
-  fmt::print("\n---Initializing Testing---\n");
-
-  ConnectorSingleton::getInstance();
-
-  /*
-   * To testers, you may need to addUser() up to 7 users for below tests to work, otherwise just change literals below
-   */
-
-  /*
-   * TESTS FOR TABLE USERLOGIN
-   */
-
-  // Table userlogin -- addUser (aka registering a user)
-  ConnectorSingleton::getInstance().addUser("uniqueEmail@email.com", "12341234", "uniqueUser"); //insert unique user
-  ConnectorSingleton::getInstance().addUser("uniqueEmail2@email.com", "12341234", "uniqueUser2"); //insert unique user
-  assert(ConnectorSingleton::getInstance().addUser("different@gmail.com", "", "uniqueUser") == USERNAME_ALREADY_REGISTERED);
-  assert(ConnectorSingleton::getInstance().addUser("uniqueEmail@email.com", "", "asdf") == EMAIL_ALREADY_REGISTERED);
-
-  assert(ConnectorSingleton::getInstance().addUser("thisIsNotAnEmail", "", "") == INVALID_EMAIL_FORMAT);
-
-  // Table userlogin -- login
-  assert(ConnectorSingleton::getInstance().login("uniqueEmail@email.com", "12341234")); // Test Case 1 (user exists): verify login successfully
-  
-  assert(! ConnectorSingleton::getInstance().login("hiIDontExist.com", "pleaseFail")); // Test Case 2 (user doesn't exist): verify login failed
-  
-  // Table userlogin -- link + get customGUI tied to a user
-  // Pre-condition: web server handles file IO (initialize and write to file)
-  assert(ConnectorSingleton::getInstance().linkCustomGUILayout(1000, "/path/to/file") == UUID_NOT_FOUND); // attempt to link file with not found uuid
-  assert(ConnectorSingleton::getInstance().userHasCustomLayout(1000) == UUID_NOT_FOUND); // attempt to look for file with not found uuid
-  assert(ConnectorSingleton::getInstance().userHasCustomLayout(2) == CUSTOM_DASHBOARD_CONFIG_NOT_FOUND); // see if it detects user without config
-
-  assert(ConnectorSingleton::getInstance().linkCustomGUILayout(1, "/path/to/file") == SUCCESS); // link file with found uuid
-  assert(ConnectorSingleton::getInstance().userHasCustomLayout(1) == SUCCESS); // see if file was written from above
-  assert(! ConnectorSingleton::getInstance().getCustomGUILayout(1).compare("/path/to/file")); // determine if written successfully
-
-  /*
-   * TESTS FOR LEADERBOARD
-   */
-  // CHOOSE DIFFERENT EMAIL AND USERNAME HERE EVERY TIME
-  std::string email = "asdfaasdf@gmail.com";
-  std::string username = "alsdfsdkjfa";
-  int uuid = ConnectorSingleton::getInstance().addUser(email, "helllo", username); //insert unique user
-
-  fmt::print("SUCCESS TEST\n");
-  assert(ConnectorSingleton::getInstance().addLeaderboardAttempt(uuid, 100000, "12:12:12") == SUCCESS); // normal write
-  fmt::print("ATTEMPT TEST\n");
-  assert(ConnectorSingleton::getInstance().addLeaderboardAttempt(uuid, 200000, "14:14:14") == LEADERBOARD_ATTEMPT_MADE); // same user makes another attempt
-  fmt::print("UUID NOT FOUND TEST\n");
-  assert(ConnectorSingleton::getInstance().addLeaderboardAttempt(-1, 200000, "14:14:14") == UUID_NOT_FOUND); // invalid user makes attempt
-
-  /*
-   * TESTS FOR A USER's SIMULATION
-   */
-  assert(ConnectorSingleton::getInstance().createSimulation(2, "insertSomeSmartAnalytics", "/path/to/config/used", -1) == SUCCESS); // normal write
-  assert(ConnectorSingleton::getInstance().createSimulation(2, "insertSomeSmartAnalytics", "/path/to/config/used", 100) == PRESET_ID_NOT_FOUND); // unknown preset ID
-
-  /*
-   * TESTS FOR GLOBAL PRESETS
-   */
-  assert(ConnectorSingleton::getInstance().createCustomGlobalPreset(10, 10, 10, 10) == DUPLICATE_PRESET_FOUND);
-}
+*/
