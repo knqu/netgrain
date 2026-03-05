@@ -38,6 +38,9 @@ class ConnectorSingleton {
         return INVALID_EMAIL_FORMAT;
       }
 
+      /*
+       * Helper function to determine if uuid is present in userlogin table
+       */
       int uuIDfound(int uuid) {
         pqxx::work tx(*conn);
         std::string query = "SELECT * FROM userlogin WHERE (userid = $1)";
@@ -354,16 +357,9 @@ class ConnectorSingleton {
     int createCustomGlobalPreset(int scaling, int volatility, int liquidity, int tradingVol) {
       pqxx::work tx(*conn);
 
-      pqxx::params p;
-      p.append(scaling);
-      p.append(volatility);
-      p.append(liquidity);
-      p.append(tradingVol);
-
-      // determine if duplicate global preset exists
-      try
+      try // determine if duplicate global preset exists
       {
-      std::string query = "SELECT * FROM globalcustompresets WHERE (scaling = $1) AND (volatility = $2) AND (liquidity = $3) AND (tradingvolume = $4)";
+        std::string query = "SELECT * FROM globalcustompresets WHERE (scaling = $1) AND (volatility = $2) AND (liquidity = $3) AND (tradingvolume = $4)";
         pqxx::result r = tx.exec(query, pqxx::params{scaling, volatility, liquidity, tradingVol}).no_rows();
       }
       catch (const std::exception &e)
