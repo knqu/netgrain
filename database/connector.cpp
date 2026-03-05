@@ -380,7 +380,6 @@ class ConnectorSingleton {
       // Grab the global preset ID after insertion
       std::string query = "SELECT * FROM globalcustompresets WHERE (scaling = $1) AND (volatility = $2) AND (liquidity = $3) AND (tradingvolume = $4)";
       pqxx::row r = tx.exec(query, pqxx::params{scaling, volatility, liquidity, tradingVol}).one_row();
-
       tx.commit();
 
       return r[0].as<int>();
