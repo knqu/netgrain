@@ -16,21 +16,21 @@ using namespace std;
 //sim config struct -- Placed this here for now as test... move later on to diff file?
 struct SimulationConfig {
     int64_t initial_capital = 0; 
-    std::vector<std::string> tickers; 
-    std::string start_date;
-    std::string end_date;
+    vector<string> tickers; 
+    string start_date;
+    string end_date;
     int64_t trade_fee = 0;
 
     // Helper to print the config struct for testing purposes
     void print() const {
-        std::cout << "\n--- SIMULATION CONFIG STRUCT --- \n";
-        std::cout << "Initial Capital (Scaled): " << initial_capital << "\n";
-        std::cout << "Trade Fee (Scaled):       " << trade_fee << "\n";
-        std::cout << "Start Date:               " << (start_date.empty() ? "None" : start_date) << "\n";
-        std::cout << "End Date:                 " << (end_date.empty() ? "None" : end_date) << "\n";
-        std::cout << "Tickers to Trade:         ";
-        for (const auto& t : tickers) std::cout << t << " ";
-        std::cout << "\n--------------------------------------\n\n";
+        cout << "\n--- SIMULATION CONFIG STRUCT --- \n";
+        cout << "Initial Capital (Scaled): " << initial_capital << "\n";
+        cout << "Trade Fee (Scaled):       " << trade_fee << "\n";
+        cout << "Start Date:               " << (start_date.empty() ? "None" : start_date) << "\n";
+        cout << "End Date:                 " << (end_date.empty() ? "None" : end_date) << "\n";
+        cout << "Tickers to Trade:         ";
+        for (const auto& t : tickers) cout << t << " ";
+        cout << "\n--------------------------------------\n\n";
     }
 };
 
@@ -48,9 +48,9 @@ int main() {
                 string file_path = entry.path().string();
                 string file_name = entry.path().filename().string();
 
-                std::string ticker = file_name.substr(0, file_name.find('.'));
-                std::transform(ticker.begin(), ticker.end(), ticker.begin(),
-                    [](unsigned char c){ return std::toupper(c); });
+                string ticker = file_name.substr(0, file_name.find('.'));
+                transform(ticker.begin(), ticker.end(), ticker.begin(),
+                    [](unsigned char c){ return toupper(c); });
                 
                 data_manager.load_ticker_data(ticker, file_path);
             }
@@ -138,11 +138,11 @@ int main() {
 
         // 4. Demo to show data from map is usable accessible, etc.
         .get("/api/run/:ticker", [](auto *res, auto *req) { 
-            std::string ticker(req->getParameter(0));
-            std::transform(ticker.begin(), ticker.end(), ticker.begin(),
-                [](unsigned char c){ return std::toupper(c); });
+            string ticker(req->getParameter(0));
+            transform(ticker.begin(), ticker.end(), ticker.begin(),
+                [](unsigned char c){ return toupper(c); });
 
-            std::string report = data_manager.run_basic_backtest(ticker);
+            string report = data_manager.run_basic_backtest(ticker);
 
             res->writeHeader("Access-Control-Allow-Origin", "*");
             res->writeHeader("Content-Type", "text/plain");
@@ -160,47 +160,47 @@ int main() {
         // 6. Simulation Settings Handler
         .post("/api/simulate", [](auto *res, auto *req) {
             res->onAborted([]() {
-                std::cout << "Simulation request aborted by client.\n";
+                cout << "Simulation request aborted by client.\n";
             });
 
-            auto buffer = std::make_shared<std::string>();
+            auto buffer = make_shared<string>();
 
             res->onData([res, buffer](string_view chunk, bool isLast) {
                 buffer->append(chunk.data(), chunk.length());
                 //possibly put these parsing functions in a different file later on, but for now this is fine for testing purposes?
                 if (isLast) {
-                    std::string json = *buffer;
+                    string json = *buffer;
                     SimulationConfig config;
-                    std::smatch match;
+                    smatch match;
 
                     // Parse Initial Capital
-                    if (std::regex_search(json, match, std::regex(R"("initial_capital":\s*([0-9.]+))"))) {
-                        double raw_cap = std::stod(match[1].str());
+                    if (regex_search(json, match, regex(R"("initial_capital":\s*([0-9.]+))"))) {
+                        double raw_cap = stod(match[1].str());
                         config.initial_capital = static_cast<int64_t>(raw_cap * 100000); 
                     }
 
                     // Parse Trade Fee
-                    if (std::regex_search(json, match, std::regex(R"("trade_fee":\s*([0-9.]+))"))) {
-                        double raw_fee = std::stod(match[1].str());
+                    if (regex_search(json, match, regex(R"("trade_fee":\s*([0-9.]+))"))) {
+                        double raw_fee = stod(match[1].str());
                         config.trade_fee = static_cast<int64_t>(raw_fee * 100000); 
                     }
 
                     // Parse Dates
-                    if (std::regex_search(json, match, std::regex(R"("start_date":\s*"([^"]*))"))) {
+                    if (regex_search(json, match, regex(R"("start_date":\s*"([^"]*))"))) {
                         config.start_date = match[1].str();
                     }
-                    if (std::regex_search(json, match, std::regex(R"("end_date":\s*"([^"]*))"))) {
+                    if (regex_search(json, match, regex(R"("end_date":\s*"([^"]*))"))) {
                         config.end_date = match[1].str();
                     }
 
                     // Parse Tickers Array
-                    if (std::regex_search(json, match, std::regex(R"("tickers":\s*\[(.*?)\])"))) {
-                        std::string tickers_str = match[1].str();
-                        std::regex ticker_regex(R"("([^"]+))");
-                        auto words_begin = std::sregex_iterator(tickers_str.begin(), tickers_str.end(), ticker_regex);
-                        auto words_end = std::sregex_iterator();
+                    if (regex_search(json, match, regex(R"("tickers":\s*\[(.*?)\])"))) {
+                        string tickers_str = match[1].str();
+                        regex ticker_regex(R"("([^"]+))");
+                        auto words_begin = sregex_iterator(tickers_str.begin(), tickers_str.end(), ticker_regex);
+                        auto words_end = sregex_iterator();
 
-                        for (std::sregex_iterator i = words_begin; i != words_end; ++i) {
+                        for (sregex_iterator i = words_begin; i != words_end; ++i) {
                             config.tickers.push_back((*i)[1].str());
                         }
                     }

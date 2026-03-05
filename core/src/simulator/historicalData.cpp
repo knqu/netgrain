@@ -38,7 +38,7 @@ std::vector<MarketDataRow> MarketDataManager::parse_csv_file(const std::string& 
     while (std::getline(file, line)) {
         if (line.empty()) continue;
 
-        std::stringstream ss(line);
+        std::stringstream ss(line); // grab the line and make a stringstream for parsing
         std::string token;
 
         std::string t_date, t_open, t_high, t_low, t_close, t_vol, t_oi; 
@@ -60,23 +60,22 @@ std::vector<MarketDataRow> MarketDataManager::parse_csv_file(const std::string& 
 
                 rows.push_back(row);
             } catch (const std::exception& e) {
-                std::cerr << " Error: Incorrect data found in row: " << line << "\n"; 
+                std::cerr << " Error: Incorrect data found in row: " << line << "\n"; //data type err
                 file.close();
-                return {}; // INSTANTLY ABORT
+                return {}; // on any parsing error, INSTANTLY ABORT and return empty vector to signal failure to load ticker data
             }
         } else {
-            std::cerr << " Error: Incorrect number of columns in row: " << line << "\n";
+            std::cerr << " Error: Incorrect number of columns in row: " << line << "\n"; //format err
             file.close();
-            return {}; // INSTANTLY ABORT
+            return {}; // on any parsing error, INSTANTLY ABORT and return empty vector to signal failure to load ticker data
         }
     }
-
     file.close();
     return rows;
 }
 
 //main function to load ticker data and ticker from file, calls parsing function and stores result in market map for later retrieval
-// --- CHANGED TO RETURN BOOL ---
+//returns true on succesful storege of map
 bool MarketDataManager::load_ticker_data(const std::string& ticker, const std::string& filepath) {
     std::cout << "Loading data for " << ticker << "...\n";
     
@@ -86,10 +85,10 @@ bool MarketDataManager::load_ticker_data(const std::string& ticker, const std::s
     if (!data.empty()) {
         market[ticker] = data; // Store it in map
         std::cout<< ticker << " loaded successfully into memory.\n";
-        return true;  // TELL MAIN.CPP IT WORKED
+        return true;
     } else {
         std::cerr << "Failed to load data for " << ticker << " due to corrupted data.\n";
-        return false; // TELL MAIN.CPP IT FAILED
+        return false;
     }
 }
 
