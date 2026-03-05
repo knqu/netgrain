@@ -5,6 +5,6 @@ out/
 pch/
 .clangd
 compile_commands.json
-core/src/simulator/server.exe
 lib/usockets/bin/debug/libuSockets.a
- core/src/simulator/temp_data
+core/src/simulator/temp_data
+./database/dbData/
