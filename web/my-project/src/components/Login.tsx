@@ -9,8 +9,6 @@ export default function Login() {
 
     const handleLogin = async (e : React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
-        console.log(email);
-        console.log(password);
         try {
             const response = await fetch(
                 "http://localhost:18080/api/loginAttempt",
@@ -21,6 +19,7 @@ export default function Login() {
                 }
 
             );
+            console.log(response);
             if (response.ok) {
                 navigate("/home");
             }

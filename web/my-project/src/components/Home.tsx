@@ -1,5 +1,4 @@
-import React from 'react';
-import { useState, useRef, useEffect } from 'react';
+import { useState } from 'react';
 
 import LeaderboardComponent from './Leaderboard';
 import '../styling/Home.css'
@@ -51,7 +50,6 @@ export default function AppHome() {
 
   function GridComponent() {
     const { width, containerRef, mounted } = useContainerWidth();
-    const [actualWidth, setActualWidth] = useState<number>(0);
 
     const layoutArray = widgets.map((id, index) => ({
       i: id.toString(),

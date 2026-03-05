@@ -37,7 +37,7 @@ int main() {
     });
 
     CROW_ROUTE(app, "/api/loginAttempt").methods(crow::HTTPMethod::POST, crow::HTTPMethod::PATCH)([&](const crow::request& req) {
-        auto& session = app.get_context<Session>(req);
+        //auto& session = app.get_context<Session>(req);
         auto reqBody = crow::json::load(req.body);
         crow::response res;
 
@@ -46,11 +46,11 @@ int main() {
 
         std::cout << "Email: " << email << std::endl << "Password: " << password << std::endl;
 
-        if (session.get<bool>(email) == true) {
+        /*if (session.get<bool>(email) == true) {
             res.set_header("Location", "/home");
             return res;
-        }
-        session.set(email, true);
+        } */
+        //session.set(email, true);
         
 
         std::cout << ConnectorSingleton::getInstance().login("user@example.com", "Password1!") << std::endl;
@@ -61,12 +61,16 @@ int main() {
 
        if (dbResponse == true) {
             res.set_header("Location", "/home");
+            res.code = 302;
             //res.write(ConnectorSingleton::getInstance().fetchLeadboard());
             std::cout << "Success" << std::endl;
+            res.write("Success");
             return res;
         }
         else {
             std::cout << "Invalid" << std::endl;
+            res.write("Fail");
+            res.code = 401;
             return res;
         }
     });

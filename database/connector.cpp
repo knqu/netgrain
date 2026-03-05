@@ -86,7 +86,6 @@ class ConnectorSingleton {
       try
       {
         pqxx::row r = tx.exec(query, pqxx::params{identifier, password}).one_row();
-        std::cout << r << std::endl;
       }
       catch (const std::exception &e)
       {
