@@ -34,8 +34,7 @@ const Simulation: React.FC = () => {
       setStocks(stocks.filter((_, i) => i !== index));
     };
 
-    const updateStock = (index: number, field: keyof StockData, value: string | number) => {
-      setStocks(currentStocks => {
+    const updateStock = (index: number, field: keyof StockParams, value: string | number) => {      setStocks(currentStocks => {
         const currStocks = [...currentStocks];
 
         currStocks[index] = { 
@@ -86,28 +85,39 @@ const Simulation: React.FC = () => {
             const response = await fetch("http://localhost:8080/api/upload", {
                 method: "POST",
                 headers: {
-                    // C++ expects this header exactly as written in your main.cpp
                     "x-file-name": uploadFile.name 
                 },
-                body: uploadFile // Send the raw binary file directly
+                body: uploadFile
             });
 
             if (response.ok) {
                 const ticker = await response.text();
                 setUploadStatus(`Success! ${ticker} loaded into the engine.`);
                 
-                // Quality of life: automatically add it to the tickers input if it's not there!
-                if (!tickersInput.includes(ticker)) {
-                    setTickersInput(prev => prev ? `${prev}, ${ticker}` : ticker);
-                }
+                // UPDATE: Add the uploaded ticker to the new 'stocks' array structure!
+                setStocks(currentStocks => {
+                    // Check if it's already in the list
+                    const alreadyExists = currentStocks.some(s => s.ticker === ticker);
+                    if (alreadyExists) return currentStocks;
+
+                    // If the first empty slot is unused, overwrite it
+                    if (currentStocks.length === 1 && currentStocks[0].ticker === "") {
+                        return [{ ...currentStocks[0], ticker: ticker }];
+                    }
+                    
+                    // Otherwise, add a new row
+                    return [...currentStocks, { ticker: ticker, base_price: 0, liquidity: 0, volatility: 0, market_cap: 0 }];
+                });
+
             } else if (response.status === 409) {
                 setUploadStatus(`File already exists in the backend.`);
             } else {
                 setUploadStatus(`Upload failed: ${response.statusText}`);
             }
         } catch (error) {
-            console.error("Upload Error:", error);
-            setUploadStatus("Network error. Is the C++ server running?");
+            // Good practice: Log the REAL error to the console so it doesn't get hidden!
+            console.error("THE REAL UPLOAD ERROR IS:", error); 
+            setUploadStatus("Network error. Check F12 Developer Console!");
         }
     };
 

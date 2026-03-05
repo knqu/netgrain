@@ -11,29 +11,6 @@
 #include <regex>
 #include <cstdint>
 
-using namespace std;
-
-//sim config struct -- Placed this here for now as test... move later on to diff file?
-struct SimulationConfig {
-    int64_t initial_capital = 0; 
-    vector<string> tickers; 
-    string start_date;
-    string end_date;
-    int64_t trade_fee = 0;
-
-    // Helper to print the config struct for testing purposes
-    void print() const {
-        cout << "\n--- SIMULATION CONFIG STRUCT --- \n";
-        cout << "Initial Capital (Scaled): " << initial_capital << "\n";
-        cout << "Trade Fee (Scaled):       " << trade_fee << "\n";
-        cout << "Start Date:               " << (start_date.empty() ? "None" : start_date) << "\n";
-        cout << "End Date:                 " << (end_date.empty() ? "None" : end_date) << "\n";
-        cout << "Tickers to Trade:         ";
-        for (const auto& t : tickers) cout << t << " ";
-        cout << "\n--------------------------------------\n\n";
-    }
-};
-
 // Global object
 MarketDataManager data_manager;
 
@@ -127,6 +104,29 @@ int main() {
                 }
             });
         })
+        .options("/api/results", [](auto *res, auto *req) {
+            res->writeHeader("Access-Control-Allow-Origin", "*");
+            res->writeHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
+            res->writeHeader("Access-Control-Allow-Headers", "Content-Type");
+            res->end();
+        })
+        // THIS WILL BE REMOVED IN THE FUTURE IT IS TO SHOW JSON WORKS
+        .get("/api/results", [](auto *res, auto *req) {
+            
+            SimulationConfig dummy_config;
+            dummy_config.initial_capital = 100000 * 100000;
+            dummy_config.trade_fee = 1.50 * 100000;
+            dummy_config.start_date = "2013-12-10";
+            dummy_config.end_date = "2017-11-10";
+            
+            dummy_config.tickers.push_back("AAPL"); 
+
+            string output_json = data_manager.run_simulation(dummy_config);
+            
+            res->writeHeader("Access-Control-Allow-Origin", "*");
+            res->writeHeader("Content-Type", "application/json");
+            res->end(output_json);
+        })
 
         // 3. Market State Endpoint
         .get("/api/market", [](auto *res, auto *req) {
@@ -135,21 +135,7 @@ int main() {
             res->writeHeader("Content-Type", "application/json");
             res->end(json);
         })
-
-        // 4. Demo to show data from map is usable accessible, etc.
-        .get("/api/run/:ticker", [](auto *res, auto *req) { 
-            string ticker(req->getParameter(0));
-            transform(ticker.begin(), ticker.end(), ticker.begin(),
-                [](unsigned char c){ return toupper(c); });
-
-            string report = data_manager.run_basic_backtest(ticker);
-
-            res->writeHeader("Access-Control-Allow-Origin", "*");
-            res->writeHeader("Content-Type", "text/plain");
-            res->end(report);
-        })
-
-        // 5. CORS Preflight for Simulation ye idk what this does
+        // 4. CORS Preflight for Simulation ye idk what this does
         .options("/api/simulate", [](auto *res, auto *req) {
             res->writeHeader("Access-Control-Allow-Origin", "*");
             res->writeHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
@@ -157,7 +143,7 @@ int main() {
             res->end();
         })
 
-        // 6. Simulation Settings Handler
+        // 5. Simulation Settings Handler
         .post("/api/simulate", [](auto *res, auto *req) {
             res->onAborted([]() {
                 cout << "Simulation request aborted by client.\n";
@@ -206,15 +192,16 @@ int main() {
                     }
 
                     // Prove the struct was populated correctly
-                    config.print();
-
+                    data_manager.print_config(config);
+                    string output_json = data_manager.run_simulation(config);
                     res->writeHeader("Access-Control-Allow-Origin", "*");
-                    res->end("Struct populated successfully! Check C++ terminal.");
+                    res->writeHeader("Content-Type", "application/json");
+                    res->end(output_json);                
                 }
             });
         })
 
-        // 7. LISTEN & RUN (Must be absolutely last in the chain)
+        // 6. LISTEN & RUN (Must be absolutely last in the chain)
         .listen(8080, [](auto *listen_socket) {
             if (listen_socket) {
                 cout << "uWebSockets Engine running on port 8080\n";

@@ -7,8 +7,10 @@
 
 #include "def.hpp"
 
+using namespace std;
 
 constexpr i64 PRICE_SCALE_FACTOR = 100000;
+
 
 struct MarketDataRow {
     u32 date;      
@@ -20,21 +22,42 @@ struct MarketDataRow {
     uint64_t open_int;  
 };
 
-using MarketDataMap = std::unordered_map<std::string, std::vector<MarketDataRow>>;
+//sim config struct -- Placed this here for now as test... move later on to diff file?
+struct SimulationConfig {
+    int64_t initial_capital = 0; 
+    vector<string> tickers; 
+    string start_date;
+    string end_date;
+    int64_t trade_fee = 0;
+};
+//this might be moved somewhere else later on.
+struct SimulationMetrics {
+    int total_trades;
+    int winning_trades;
+    int losing_trades;
+    double win_rate_percent;
+    double initial_balance;
+    double final_balance;
+    double net_profit;
+};
+
+using MarketDataMap = unordered_map<string, vector<MarketDataRow>>;
 
 class MarketDataManager {
 private:
     MarketDataMap market;
     //helpers+parsing functions
-    u32 parse_date(std::string date_str);
-    i64 parse_price(const std::string& price_str);
-    std::vector<MarketDataRow> parse_csv_file(const std::string& filepath);
+    u32 parse_date(string date_str);
+    i64 parse_price(const string& price_str);
+    vector<MarketDataRow> parse_csv_file(const string& filepath);
+    string serialize_results_to_json(const SimulationConfig& config, const SimulationMetrics& metrics);
 
 public:
     //main func + tests
-    bool load_ticker_data(const std::string& ticker, const std::string& filepath);
-    bool has_ticker(const std::string& ticker);
-    void print_first_row(const std::string& ticker);
-    std::string get_market_state_json();
-    std::string run_basic_backtest(const std::string& ticker); //basic backtest engine to demonstrate usage
+    bool load_ticker_data(const string& ticker, const string& filepath);
+    bool has_ticker(const string& ticker);
+    void print_first_row(const string& ticker);
+    string get_market_state_json();
+    string run_simulation(const SimulationConfig& config);
+    void print_config(const SimulationConfig& config);
 };

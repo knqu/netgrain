@@ -1,5 +1,5 @@
-import React from 'react';
-
+import React, { useState, useEffect } from 'react';
+//sim result payload used in the hardcoded run 
 export interface SimulationResultPayload {
     config: {
         initial_capital: number;
@@ -19,115 +19,166 @@ export interface SimulationResultPayload {
     };
 }
 
-
-//dummy data to populate for now 
-const dummyRun: SimulationResultPayload = {
-    config: {
-        initial_capital: 100000,
-        tickers: ["AAPL", "MSFT"],
-        start_date: "2018-01-01",
-        end_date: "2023-01-01",
-        trade_fee: 1.50
-    },
-    metrics: {
-        total_trades: 1240,
-        winning_trades: 682,
-        losing_trades: 558,
-        win_rate_percent: 55.0,
-        initial_balance: 100000,
-        final_balance: 108450.25,
-        net_profit: 8450.25
-    }
-};
-
-// component displays a list of past simulation runs with key metrics and allows users to download the results as JSON files. Basic for now...
 const SimulationResults: React.FC = () => {
-    
-    const pastRuns = [dummyRun];
+    const [pastRuns, setPastRuns] = useState<SimulationResultPayload[]>([]);
+    const [statusMsg, setStatusMsg] = useState<string>("Fetching data from C++ Engine...");
+
+    useEffect(() => {
+        //hardcode run will update in future when simulation is set in stone and metrics are set in stone
+        const fetchHardcodedRun = async () => {
+            try {
+                const response = await fetch("http://localhost:8080/api/results");
+                if (response.ok) {
+                    const data = await response.json();
+                    if (!data.error) {
+                        setPastRuns(prev => [...prev, data]);
+                    }
+                }
+            } catch (error) {
+                console.error("Fetch error:", error);
+            }
+        };
+        fetchHardcodedRun();
+    }, []);
+
+    const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            try {
+                const jsonContent = event.target?.result as string;
+                const uploadedResult: SimulationResultPayload = JSON.parse(jsonContent);
+                if (uploadedResult.metrics && uploadedResult.config) {
+                    setPastRuns(prev => [...prev, uploadedResult]);
+                } else {
+                    alert("Invalid JSON format.");
+                }
+            } catch (err) {
+                alert("Failed to parse JSON file.");
+            }
+        };
+        reader.readAsText(file);
+        e.target.value = "";
+    };
+
+    //remove card function
+    const removeRun = (indexToRemove: number) => {
+        // We use the original index from the pastRuns array
+        setPastRuns(prev => prev.filter((_, index) => index !== indexToRemove));
+    };
+
     const handleDownload = (result: SimulationResultPayload) => {
         const jsonString = JSON.stringify(result, null, 2);
         const blob = new Blob([jsonString], { type: "application/json" });
         const url = URL.createObjectURL(blob);
-        
         const link = document.createElement('a');
         link.href = url;
-        //names download off tickers
         link.download = `sim_${result.config.tickers.join('_')}.json`; 
-        
         document.body.appendChild(link);
         link.click();
-        
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
-    };//idk I just searched how to donwload files in react and this is what I found...added the link.download to name the file off the tickers tho.
+    };
 
     return (
-        <div style={{ marginTop: '30px' }}>
-            <h2 style={{ fontSize: '1.2rem', marginBottom: '15px', color: '#333' }}>Simulation History</h2>
+        <div style={{ padding: '20px', maxWidth: '900px', margin: '0 auto' }}>
             
-            {pastRuns.map((run, index) => (
-                <div 
-                    key={index} 
-                    style={{ 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        justifyContent: 'space-between',
-                        backgroundColor: '#fff', 
-                        border: '1px solid #ddd', 
-                        borderRadius: '8px', 
-                        padding: '15px 20px',
-                        marginBottom: '10px',
-                        boxShadow: '0 2px 4px rgba(0,0,0,0.02)'
-                    }}
-                >
-                    {/* LEFT: Configuration Info */}
-                    <div style={{ flex: '1' }}>
-                        <div style={{ fontWeight: 'bold', fontSize: '16px', color: '#007bff', marginBottom: '4px' }}>
-                            {run.config.tickers.join(', ')}
-                        </div>
-                        <div style={{ fontSize: '12px', color: '#666' }}>
-                            Cap: ${run.config.initial_capital.toLocaleString()} | Fee: ${run.config.trade_fee.toFixed(2)}
-                        </div>
-                    </div>
+            {/* UPLOAD UI SECTION */}
+            <div style={{ 
+                backgroundColor: '#f1f3f5', 
+                padding: '20px', 
+                borderRadius: '8px', 
+                marginBottom: '30px',
+                border: '2px dashed #ced4da',
+                textAlign: 'center'
+            }}>
+                <h3 style={{ marginTop: 0, fontSize: '1rem', color: '#495057' }}>Import Past Results</h3>
+                <input 
+                    type="file" 
+                    accept=".json" 
+                    onChange={handleFileUpload} 
+                    style={{ fontSize: '14px' }}
+                />
+            </div>
 
-                    {/* MIDDLE: Key Metrics */}
-                    <div style={{ display: 'flex', gap: '30px', flex: '2', justifyContent: 'center' }}>
-                        <div style={{ textAlign: 'center' }}>
-                            <div style={{ fontSize: '11px', color: '#888', textTransform: 'uppercase' }}>Net Profit</div>
-                            <div style={{ fontWeight: 'bold', color: run.metrics.net_profit >= 0 ? 'green' : 'red' }}>
-                                ${run.metrics.net_profit.toLocaleString()}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                <h2 style={{ fontSize: '1.5rem', color: '#333' }}>Simulation History</h2>
+            </div>
+            
+            {pastRuns.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '40px', backgroundColor: '#f8f9fa', borderRadius: '8px', color: '#666' }}>
+                    {statusMsg}
+                </div>
+            ) : (
+                /* We map in reverse order for display, but we keep track of the 
+                   ORIGINAL index to make sure we delete the correct item.
+                */
+                pastRuns.map((run, index) => (
+                    <div 
+                        key={index} 
+                        style={{ 
+                            display: 'flex', 
+                            flexDirection: 'column', // Stack the main row and a potential "Delete" bar
+                            backgroundColor: '#fff', 
+                            border: '1px solid #ddd', 
+                            borderRadius: '8px', 
+                            marginBottom: '10px',
+                            boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
+                            overflow: 'hidden'
+                        }}
+                    >
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '15px 20px' }}>
+                            {/* LEFT: Configuration Info */}
+                            <div style={{ flex: '1' }}>
+                                <div style={{ fontWeight: 'bold', fontSize: '16px', color: '#007bff', marginBottom: '4px' }}>
+                                    {run.config.tickers.join(', ')}
+                                </div>
+                                <div style={{ fontSize: '12px', color: '#666' }}>
+                                    Cap: ${run.config.initial_capital.toLocaleString()} | Fee: ${run.config.trade_fee.toFixed(2)}
+                                </div>
+                            </div>
+
+                            {/* MIDDLE: Key Metrics */}
+                            <div style={{ display: 'flex', gap: '30px', flex: '2', justifyContent: 'center' }}>
+                                <div style={{ textAlign: 'center' }}>
+                                    <div style={{ fontSize: '11px', color: '#888', textTransform: 'uppercase' }}>Net Profit</div>
+                                    <div style={{ fontWeight: 'bold', color: run.metrics.net_profit >= 0 ? 'green' : 'red' }}>
+                                        ${run.metrics.net_profit.toLocaleString()}
+                                    </div>
+                                </div>
+                                <div style={{ textAlign: 'center' }}>
+                                    <div style={{ fontSize: '11px', color: '#888', textTransform: 'uppercase' }}>Win Rate</div>
+                                    <div style={{ fontWeight: 'bold' }}>{run.metrics.win_rate_percent.toFixed(1)}%</div>
+                                </div>
+                                <div style={{ textAlign: 'center' }}>
+                                    <div style={{ fontSize: '11px', color: '#888', textTransform: 'uppercase' }}>Trades</div>
+                                    <div style={{ fontWeight: 'bold' }}>{run.metrics.total_trades}</div>
+                                </div>
+                            </div>
+
+                            {/* RIGHT: Actions */}
+                            <div style={{ flex: '1', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                                <button 
+                                    onClick={() => handleDownload(run)}
+                                    title="Download JSON"
+                                    style={{ padding: '8px 12px', backgroundColor: '#28a745', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '14px' }}
+                                >
+                                    ⬇️
+                                </button>
+                                <button 
+                                    onClick={() => removeRun(index)}
+                                    title="Remove Card"
+                                    style={{ padding: '8px 12px', backgroundColor: '#dc3545', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '14px' }}
+                                >
+                                    🗑️
+                                </button>
                             </div>
                         </div>
-                        <div style={{ textAlign: 'center' }}>
-                            <div style={{ fontSize: '11px', color: '#888', textTransform: 'uppercase' }}>Win Rate</div>
-                            <div style={{ fontWeight: 'bold' }}>{run.metrics.win_rate_percent.toFixed(1)}%</div>
-                        </div>
-                        <div style={{ textAlign: 'center' }}>
-                            <div style={{ fontSize: '11px', color: '#888', textTransform: 'uppercase' }}>Trades</div>
-                            <div style={{ fontWeight: 'bold' }}>{run.metrics.total_trades}</div>
-                        </div>
                     </div>
-
-                    {/* RIGHT: Download Action */}
-                    <div style={{ flex: '1', display: 'flex', justifyContent: 'flex-end' }}>
-                        <button 
-                            onClick={() => handleDownload(run)}
-                            style={{ 
-                                padding: '8px 12px', 
-                                backgroundColor: '#28a745', 
-                                color: 'white', 
-                                border: 'none', 
-                                borderRadius: '4px', 
-                                cursor: 'pointer',
-                                fontSize: '14px',
-                                fontWeight: 'bold'
-                            }}
-                        >
-                            ⬇️ JSON
-                        </button>
-                    </div>
-                </div>
-            ))}
+                )).reverse() // Show newest at the top
+            )}
         </div>
     );
 };
