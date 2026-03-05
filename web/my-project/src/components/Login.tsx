@@ -17,12 +17,13 @@ export default function Login() {
                 {
                     method: "POST",
                     headers : {"Content-Type" : "application/json"},
-                    body: JSON.stringify({login_submitted_email : email, login_submitted_password : password})
+                    body: JSON.stringify({login_submitted_email : email, login_submitted_password : password}),
+                    redirect: "manual"
                 }
-
             );
-            if (response.ok) {
-                navigate("/home");
+            console.log(response);
+            if (response.status == 200) {
+              navigate("/home");
             }
         } catch (err) {
             console.log(err);

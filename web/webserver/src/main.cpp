@@ -7,6 +7,7 @@
 #include <chrono>;
 #include <random>;
 #include <string>;
+#include <iostream>;
 
 int main() {
     typedef std::chrono::time_point<std::chrono::system_clock> Timepoint;
@@ -26,6 +27,7 @@ int main() {
     std::uniform_int_distribution<> randID(100000000, 999999999);
 
     CROW_ROUTE(app, "/")([]() {
+        std::cout << "----------------Hi\n";
         auto page = crow::mustache::load_text_unsafe("index.html");
         return page;
     });
@@ -37,38 +39,32 @@ int main() {
     });
 
     CROW_ROUTE(app, "/api/loginAttempt").methods(crow::HTTPMethod::POST, crow::HTTPMethod::PATCH)([&](const crow::request& req) {
-        auto& session = app.get_context<Session>(req);
-        auto reqBody = crow::json::load(req.body);
-        crow::response res;
+      auto& session = app.get_context<Session>(req);
+      auto reqBody = crow::json::load(req.body);
 
-        std::string email = reqBody["login_submitted_email"].s();
-        std::string password = reqBody["login_submitted_password"].s();
+      std::string email = reqBody["login_submitted_email"].s();
+      std::string password = reqBody["login_submitted_password"].s();
 
-        std::cout << "Email: " << email << std::endl << "Password: " << password << std::endl;
+      std::cout << "Email: " << email << std::endl << "Password: " << password << std::endl;
 
-        if (session.get<bool>(email) == true) {
-            res.set_header("Location", "/home");
-            return res;
-        }
+      if (session.get<bool>(email) == true) {
+        return crow::response(200);
+      }
+
+      int dbResponse = ConnectorSingleton::getInstance().login(
+          email,
+          password
+      );
+
+     if (dbResponse == true) {
+        std::cout << "success" << std::endl;
         session.set(email, true);
-        
-
-        std::cout << ConnectorSingleton::getInstance().login("user@example.com", "Password1!") << std::endl;
-        int dbResponse = ConnectorSingleton::getInstance().login(
-            email,
-            password
-        );
-
-       if (dbResponse == true) {
-            res.set_header("Location", "/home");
-            //res.write(ConnectorSingleton::getInstance().fetchLeadboard());
-            std::cout << "Success" << std::endl;
-            return res;
-        }
-        else {
-            std::cout << "Invalid" << std::endl;
-            return res;
-        }
+        return crow::response(200);
+      }
+      else {
+        std::cout << "Invalid" << std::endl;
+        return crow::response(40);
+      }
     });
 
     /*CROW_ROUTE(app, "/api/signupAttempt").methods(crow::HTTPMethod::POST, crow::HTTPMethod::PATCH)([](const crow::request& req)) {

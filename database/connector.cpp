@@ -43,8 +43,7 @@ class ConnectorSingleton {
       int uuIDfound(int uuid) {
         pqxx::work tx(*conn);
         std::string query = "SELECT * FROM userlogin WHERE (userid = $1)";
-
-        try
+try
         {
           pqxx::row r = tx.exec(query, pqxx::params{uuid}).one_row();
         }
@@ -63,8 +62,7 @@ class ConnectorSingleton {
           {
             conn = new pqxx::connection(
               "host=localhost "
-              "dbname=postgres "
-              "user=cnath "
+              "dbname=netgrain_db"
             );
           }
           catch (const std::exception &e)
@@ -86,7 +84,6 @@ class ConnectorSingleton {
       try
       {
         pqxx::row r = tx.exec(query, pqxx::params{identifier, password}).one_row();
-        std::cout << r << std::endl;
       }
       catch (const std::exception &e)
       {

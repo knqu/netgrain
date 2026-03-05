@@ -7,4 +7,5 @@ pch/
 compile_commands.json
 lib/usockets/bin/debug/libuSockets.a
 core/src/simulator/temp_data
-./database/dbData/
+./database/dbData/web/webserver/my-drogon-app
+web/webserver/my_crow_app
