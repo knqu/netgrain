@@ -77,16 +77,12 @@ class Connector {
      */
     int login(std::string identifier, std::string password) {
       pqxx::work tx(*conn);
-      pqxx::params p;
-      p.append(identifier);
-      p.append(password);
 
-      // std::string query = "SELECT * FROM userlogin WHERE (password = \'" + password + "\') AND (email = \'" + identifier + "\' OR username = \'" + identifier + "\')";
       std::string query = "SELECT * FROM userlogin WHERE (password = $2) AND (email = $1 OR username = $1)";
 
       try
       {
-        pqxx::row r = tx.exec(query, p).one_row(); // one_row checks if only one entry found, exception otherwise
+        pqxx::row r = tx.exec(query, pqxx::params{identifier, password}).one_row(); // one_row checks if only one entry found, exception otherwise
       }
       catch (const std::exception &e)
       {
