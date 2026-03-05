@@ -1,5 +1,6 @@
 import { useState } from 'react';
 
+import GridComponent from './GridComponent';
 import LeaderboardComponent from './Leaderboard';
 import '../styling/Home.css'
 
@@ -48,59 +49,6 @@ export default function AppHome() {
     );
   }
 
-  function GridComponent() {
-    const { width, containerRef, mounted } = useContainerWidth();
-
-    const layoutArray = widgets.map((id, index) => ({
-      i: id.toString(),
-      x: (index % 3) * 4,
-      y: Math.floor(index / 3) * 2,
-      w: 4,
-      h: 2,
-    }));
-
-    const responsiveLayouts = {
-      lg: layoutArray,
-      md: layoutArray,
-    };
-
-    return (
-      <div ref={containerRef} className="Grid">
-      {mounted && (
-        <Responsive
-        layouts={responsiveLayouts}
-        breakpoints={{ lg: 1100, md: 996, sm: 768, xs: 480, xxs: 0 }}
-        cols={{ lg: 12, md: 10, sm: 6, xs: 4, xxs: 2 }}
-        width={width}
-        rowHeight={100}
-        >
-        {widgets.map((id) => (
-          <div 
-          key={id.toString()} 
-          className="relative group bg-slate-600 rounded-lg shadow-xl flex items-center justify-center text-white font-bold border border-white/5"
-          >
-          <div className="drag-handle absolute top-2 left-2 cursor-grab opacity-50 group-hover:opacity-100 p-1">
-          ⠿
-          </div>
-
-          <button
-          className="absolute top-2 right-2 text-xs p-1 bg-red-500 rounded opacity-0 group-hover:opacity-100 transition-opacity z-20"
-          onMouseDown={(e) => e.stopPropagation()} 
-          onClick={() => removeWidget(id)}
-          >
-          ✕
-          </button>
-
-          WIDGET {id}
-          </div>
-
-        ))}
-        </Responsive>
-      )}
-      </div>
-    );
-  }
-
   function handleDashboardClick(desiredPage : string) {
     console.log(desiredPage);
     if (desiredPage === currentPage) {
@@ -114,7 +62,7 @@ export default function AppHome() {
     <Dashboard onAdd={addWidget}></Dashboard>
 
     <div className="Grid_and_Leaderboard">
-    <GridComponent></GridComponent>
+    <GridComponent widgets={widgets} removeWidget={removeWidget}></GridComponent>
     <LeaderboardComponent></LeaderboardComponent>
     </div>
     </div>
