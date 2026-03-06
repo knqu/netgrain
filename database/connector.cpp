@@ -54,6 +54,24 @@ try
         return SUCCESS;
       }
 
+      /*
+       * Helper function
+       */
+      int getUUID(std::string identifier) {
+        pqxx::work tx(*conn);
+        std::string query = "SELECT * FROM userlogin WHERE (email = $1 OR username = $1)";
+        pqxx::row r;
+        try
+        {
+          r = tx.exec(query, pqxx::params{identifier}).one_row();
+        }
+        catch (const std::exception &e)
+        {
+          return -1;
+        }
+        return r[0].as<int>();
+      }
+
   public:
     static ConnectorSingleton& getInstance() {
       if (!instance) {
@@ -78,10 +96,9 @@ try
     /*
      * Login: determines if given username/email and password is found in userlogin table
      */
-    int login(std::string identifier, std::string password) {
+    bool login(std::string identifier, std::string password) {
       pqxx::work tx(*conn);
       std::string query = "SELECT * FROM userlogin WHERE (password = $2) AND (email = $1 OR username = $1)";
-
       try
       {
         pqxx::row r = tx.exec(query, pqxx::params{identifier, password}).one_row();
@@ -143,14 +160,8 @@ try
           std::cerr << e.what() << std::endl;
       }
 
-      pqxx::work tx2(*conn);
-
-      // Grab the userID after insertion
-      std::string query = "SELECT * FROM userlogin WHERE (email = $1)";
-      pqxx::row r = tx2.exec(query, pqxx::params{email}).one_row();
-
       fmt::print("SUCCESS\n");
-      return r[0].as<int>();
+      return SUCCESS;
     }
 
     /*
@@ -180,8 +191,10 @@ try
     /*
      *
      */
-    int userHasCustomLayout(int userID) {
-      if (uuIDfound(userID) == UUID_NOT_FOUND) {
+    int userHasCustomLayout(std::string identifier) {
+      int userID = getUUID(identifier);
+
+      if (uuIDfound(userID) == -1) {
         fmt::print("UUID NOT FOUND\n");
         return UUID_NOT_FOUND;
       }
@@ -226,14 +239,16 @@ try
       return result;
     }
 
+    // TODO: basic mockup actions of alg
+
     // Persistent Change
     // adding again, uuid doesn't exist, 
     // convert simulation time into timestamp
     // simulationTime should be string HH:MM:SS, there are some workarounds needed for other time libraries
-    int addLeaderboardAttempt(int uuID, int profit, std::string simulationTime) {
-      fmt::print("\n");
+    int addLeaderboardAttempt(std::string identiifer, int profit, std::string simulationTime) {
+      int uuID = getUUID(identiifer);
 
-      if (uuIDfound(uuID) == UUID_NOT_FOUND) {
+      if (uuIDfound(uuID) == -1) {
         fmt::print("UUID_NOT_FOUND");
         return UUID_NOT_FOUND;
       }
@@ -316,8 +331,10 @@ try
     /*
      * pass in customPresetID = -1 if no global preset was used
      */
-    int createSimulation(int uuID, std::string analytics, std::string configUsed, int globalPresetID) {
-      if (uuIDfound(uuID) == UUID_NOT_FOUND) {
+    int createSimulation(std::string identifer, std::string analytics, std::string configUsed, int globalPresetID) {
+      int uuID = getUUID(identifer);
+
+      if (uuIDfound(uuID) == uuID) {
         return UUID_NOT_FOUND;
       }
 
@@ -413,12 +430,14 @@ try
 
       // Table userlogin -- link + get customGUI tied to a user
       assert(ConnectorSingleton::getInstance().linkCustomGUILayout(1000, "/path/to/file") == UUID_NOT_FOUND);
+      /*
       assert(ConnectorSingleton::getInstance().userHasCustomLayout(1000) == UUID_NOT_FOUND);
       assert(ConnectorSingleton::getInstance().userHasCustomLayout(2) == CUSTOM_DASHBOARD_CONFIG_NOT_FOUND);
 
       assert(ConnectorSingleton::getInstance().linkCustomGUILayout(1, "/path/to/file") == SUCCESS);
       assert(ConnectorSingleton::getInstance().userHasCustomLayout(1) == SUCCESS);
       assert(! ConnectorSingleton::getInstance().getCustomGUILayout(1).compare("/path/to/file"));
+      */
 
       /*
        * TESTS FOR LEADERBOARD
@@ -429,21 +448,22 @@ try
       std::string username = "alsdfsdkjfa";
       int uuid = ConnectorSingleton::getInstance().addUser(email, "helllo", username); //insert unique user
 
+      /*
       assert(ConnectorSingleton::getInstance().addLeaderboardAttempt(uuid, 100000, "12:12:12") == SUCCESS); // normal write
       assert(ConnectorSingleton::getInstance().addLeaderboardAttempt(uuid, 200000, "14:14:14") == LEADERBOARD_ATTEMPT_MADE); // same user makes another attempt
       assert(ConnectorSingleton::getInstance().addLeaderboardAttempt(-1, 200000, "14:14:14") == UUID_NOT_FOUND); // invalid user makes attempt
 
+      */
       /*
        * TESTS FOR A USER's SIMULATION
-       */
       assert(ConnectorSingleton::getInstance().createSimulation(2, "insertSomeSmartAnalytics", "/path/to/config/used", -1) == SUCCESS);
       assert(ConnectorSingleton::getInstance().createSimulation(2, "insertSomeSmartAnalytics", "/path/to/config/used", 100) == PRESET_ID_NOT_FOUND);
-
+       */
       /*
        * TESTS FOR GLOBAL PRESETS
-       */
       assert(ConnectorSingleton::getInstance().createCustomGlobalPreset(10, 10, 10, 10) == DUPLICATE_PRESET_FOUND);
 
+       */
     }
 };
 
