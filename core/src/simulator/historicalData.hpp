@@ -67,4 +67,5 @@ public:
     string get_market_state_json();
     string run_simulation(const SimulationConfig& config);
     void print_config(const SimulationConfig& config);
+    void initialize_generators(const std::vector<Stocks>& stocks);
 };
