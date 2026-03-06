@@ -71,7 +71,7 @@ export default function Login() {
                             <button onClick={() => {navigate("/registration")}} id='signup-button'>Sign Up</button>
                         </div>
 
-                        <p><a>Forgot Password</a></p>
+                        <p><a onClick={() => {navigate("/forgot")}}>Forgot Password</a></p>
                     </div>
                 </div>
             </div>

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Responsive, useContainerWidth } from 'react-grid-layout';
 
 interface GridProps {
@@ -11,6 +11,7 @@ export default function GridComponent({ widgets, removeWidget }: GridProps) {
   const [layouts, setLayouts] = useState<any>({});
 
   const onLayoutChange = (current: any, all: any) => {
+    current = current;
     setLayouts(all);
   };
 

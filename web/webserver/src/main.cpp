@@ -20,7 +20,6 @@ int main() {
     crow::mustache::set_global_base("../../my-project/dist");
 
     CROW_ROUTE(app, "/")([]() {
-        std::cout << "----------------Hi\n";
         auto page = crow::mustache::load_text_unsafe("index.html");
         return page;
     });
@@ -77,11 +76,11 @@ int main() {
         }
 
         session.set("registeredEmail", registeredEmail);
-        session.set("registeredPassword", registeredPassword)
+        session.set("registeredPassword", registeredPassword);
         session.set("sixDigits", sixDigits);
         try {
             mailio::mail_address sender("mailio library", "burnermonkeyeye@gmail.com");
-            mailio::mail_address recipient("mailio library", "cnathany23@gmail.com");
+            mailio::mail_address recipient("mailio library", registeredEmail);
 
             mailio::message msg;
             msg.from(sender);
@@ -102,13 +101,23 @@ int main() {
         return crow::response(200);
     });
 
-    CROW_ROUTE(app, "/api/verifyEmail").methods(crow::HTTPMethod::GET, crow::HTTPMethod::Patch)([&](const crow::request& req) {
+    CROW_ROUTE(app, "/api/verifyEmail").methods(crow::HTTPMethod::POST, crow::HTTPMethod::Patch)([&](const crow::request& req) {
         auto& session = app.get_context<Session>(req);
         auto reqBody = crow::json::load(req.body);
 
-        std::string userCodeInput = reqBody['verficationCode'].s();
+        std::string userCodeInput = reqBody["submitted_verification_code"].s();
 
         if (userCodeInput == session.get("sixDigits", "")) {
+            std::string email = session.get("registeredEmail", "");
+            std::string password = session.get("registeredPassword", "");
+
+            if (session.get<bool>("forgot") == true) {
+                session.remove("forgot");
+                // databasemethod to change details
+            }
+            else {
+                ConnectorSingleton::getInstance().addUser(email, password, email);
+            }
             session.remove("registeredEmail");
             session.remove("registeredPassword");
             session.remove("sixDigits");
@@ -123,12 +132,64 @@ int main() {
         }
     });
 
-    /*CROW_ROUTE(app, "/api/fetchLeaderboard").methods(crow::HTTTPMethod::GET, crow::HTTPMethod::Patch)([&](const crow::request& req) {
+    CROW_ROUTE(app, "/api/forgotPassword").methods(crow::HTTPMethod::POST, crow::HTTPMethod::PATCH)([&](const crow::request& req) {
+        auto& session = app.get_context<Session>(req);
+        auto reqBody = crow::json::load(req.body);
+
+        std::string registeredEmail = reqBody["submitted_email"].s();
+        std::string newPassword = reqBody["submitted_new_password"].s();
+
+        std::random_device rd;
+        std::mt19937 gen(rd());
+        std::uniform_int_distribution<int> randID(0, 9);
+        std::string sixDigits = "";
+        for (int i = 0; i < 6; i++) {
+            sixDigits += std::to_string(randID(gen));
+        }
+
+        session.set("submitted_email", registeredEmail);
+        session.set("submitted_new_password", newPassword);
+        session.set("sixDigits", sixDigits);
+        session.set("forgot", true);
+        try {
+            mailio::mail_address sender("mailio library", "burnermonkeyeye@gmail.com");
+            mailio::mail_address recipient("mailio library", registeredEmail);
+
+            mailio::message msg;
+            msg.from(sender);
+            msg.add_recipient(recipient);
+            msg.subject("NetGrain Registration");
+            msg.content(std::string("You Verifcation Code is: ") + sixDigits);
+        
+            mailio::smtps conn("smtp.gmail.com", 587);
+            conn.authenticate("burnermonkeyeye@gmail.com", "sddm nwly whin hkqr", mailio::smtps::auth_method_t::START_TLS);
+            conn.submit(msg);
+        }
+        catch (mailio::smtp_error& exc) {
+            std::cout << exc.what() << std::endl;
+        }
+        catch (mailio::dialog_error& exc) {
+            std::cout << exc.what() << std::endl;
+        }
+        return crow::response(200);
+    });
+
+    CROW_ROUTE(app, "/api/attemptDaily").methods(crow::HTTPMethod::GET, crow::HTTPMethod::Patch)([&](const crow::request& req) {
+        auto reqBody = crow::json::load(req.body);
+        try {
+            ConnectorSingleton::getInstance().addLeaderboardAttempt(0, reqBody["profit"].i(), reqBody["time"].s());
+        } catch (...) {
+            return crow::response(400);
+        }
+        return crow::response(200);
+    });
+
+    CROW_ROUTE(app, "/api/fetchLeaderboard").methods(crow::HTTPMethod::GET, crow::HTTPMethod::Patch)([&](const crow::request& req) {
         std::string leaderboardJSON = ConnectorSingleton::getInstance().fetchLeaderBoard();
         crow::response res;
         res.write(leaderboardJSON);
         return res;
-    }); */
+    });
 
     CROW_CATCHALL_ROUTE(app)([](){
         crow::response res;

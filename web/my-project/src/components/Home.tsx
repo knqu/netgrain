@@ -1,9 +1,9 @@
 import { useState } from 'react';
 
-import GridComponent from './GridComponent';
 import LeaderboardComponent from './Leaderboard';
 import HistoryComponent from './History';
 import Simulation from './Simulation';
+import Generation from './Generation';
 
 import '../styling/Home.css'
 
@@ -14,11 +14,6 @@ import '/node_modules/react-resizable/css/styles.css';
 export default function AppHome() {
   const [currentPage, setPage] = useState<string>("Dashboard");
   const [widgets, setWidgets] = useState<number[]>([1,2,3]); // initial set of widgets
-
-  function playDailyMarket() {
-    setPage("Simulation");
-    // send config file and special reqeust to play daily market with the file
-  }
 
   const addWidget = () => { // add another widget
     setWidgets(prev => [...prev, prev.length > 0 ? Math.max(...prev) + 1 : 1]);
@@ -35,6 +30,7 @@ export default function AppHome() {
       <DashboardButton button="Dashboard"></DashboardButton>
       <DashboardButton button="History"></DashboardButton>
       <DashboardButton button="Simulation"></DashboardButton>
+      <DashboardButton button="Generation"></DashboardButton>
       <DashboardButton button="Add Widget" onClickOverride={onAdd}></DashboardButton>
       </div>
       </div>
@@ -57,6 +53,18 @@ export default function AppHome() {
     );
   }
 
+  async function playDailyMarket() {
+    setPage("Simulation");
+    /*const response = fetch(
+      "http://localhost:18080/api/attemptDaily",
+      {
+        method: "POST",
+        headers : {"Content-Type" : "application/json"},
+        body : JSON.stringify({})
+      }
+    )*/
+  }
+
   function DailyMarketComponenet() {
     return (
         <div className='dailyMarketContainer'>
@@ -64,7 +72,7 @@ export default function AppHome() {
             
             <div className='dailyMarketButtonsContainer'>
                 <input className="dailyMarketButtons" id="dailyMarketFileUploadButton" type="file" accept=".py, .tar, .yml" name="dailyMarketFiles" multiple/>
-                <button className="dailyMarketButtons" id="dailyMarketPlayButton" onClick={() => {setPage("Simulation")}}>Play</button>
+                <button className="dailyMarketButtons" id="dailyMarketPlayButton" onClick={() => {playDailyMarket()}}>Play</button>
             </div>
         </div>
     );
@@ -72,7 +80,6 @@ export default function AppHome() {
 
   function GridComponent() {
     const { width, containerRef, mounted } = useContainerWidth();
-      const [widgets, setWidgets] = useState<number[]>([1,2,3]); // initial set of widgets
 
     const layoutArray = widgets.map((id, index) => ({
       i: id.toString(),
@@ -151,6 +158,10 @@ export default function AppHome() {
       case "Simulation" :
         return (
           <Simulation />
+        );
+      case "Generation" :
+        return (
+          <Generation />
         );
     }
   }

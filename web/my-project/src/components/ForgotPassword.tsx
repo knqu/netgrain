@@ -1,23 +1,24 @@
-import '../styling/Verification.css';
+import '../styling/ForgotPassword.css';
 import { useState } from 'react';
 import { useNavigate } from "react-router-dom";
 
-export default function Verification() {
+export default function ForgotPassword() {
     const navigate = useNavigate();
-    const [code, setCode] = useState<string>("");
+    const [email, setEmail] = useState<string>("");
+    const [password, setPassword] = useState<string>("");
     const verify = async (e : React.FormEvent<HTMLFormElement>) => {
         e.preventDefault()
         try {
             const response = await fetch(
-                "http://localhost:18080/api/verifyEmail",
+                "http://localhost:18080/api/forgotPassword",
                 {
                     method : "POST",
                     headers : {"Content-Type" : "application/json"},
-                    body : JSON.stringify({submitted_verification_code : code})
+                    body : JSON.stringify({submitted_email : email, submitted_new_password : password})
                 }
             )
             if (response.status == 200) {
-                navigate("/home");
+                navigate("/verification");
             }
             else {
                 navigate("/")
@@ -29,13 +30,18 @@ export default function Verification() {
     return (
         <div className="registration-parent">
             <div className='registration-container'>
-                <h1 className="inter-font">Verify Email</h1>
+                <h1 className="inter-font">Reset Password</h1>
 
                 <div className="registration-form inter-font">
                     <form onSubmit={verify} id="verification-form">
                         <div className='input-field'>
-                            <h3 className='align-left'>Verification Code</h3>
-                            <input type="text" onChange={e => setCode(e.target.value)} className="inter-font"></input>
+                            <h3 className='align-left'>Email</h3>
+                            <input type="text" onChange={e => setEmail(e.target.value)} className="inter-font"></input>
+                        </div>
+
+                        <div className='input-field'>
+                            <h3 className='align-left'>New Password</h3>
+                            <input type="password" onChange={e => setPassword(e.target.value)} className="inter-font"></input>
                         </div>
                     </form>
                     <div className="send-email-button">

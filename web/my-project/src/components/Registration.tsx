@@ -20,7 +20,7 @@ export default function Registration() {
                 }
             )
             if (response.status == 200) {
-                navigate("/");
+                navigate("/verification");
             }
         } catch (err) {
             console.log(err);
