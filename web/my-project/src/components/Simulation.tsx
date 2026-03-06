@@ -52,7 +52,7 @@ const Simulation: React.FC = () => {
     
     const [isRunning, setIsRunning] = useState<boolean>(false);
     const [engineStatus, setEngineStatus] = useState<string>("");
-
+    const [runResult, setRunResult] = useState<any>(null);
     // --- UPLOAD STATE ---
     const [uploadFile, setUploadFile] = useState<File | null>(null);
     const [uploadStatus, setUploadStatus] = useState<string>("");
@@ -75,7 +75,7 @@ const Simulation: React.FC = () => {
 
     const handleUpload = async () => {
         if (!uploadFile) {
-            setUploadStatus("⚠️ Please select a file first.");
+            setUploadStatus("Please select a file first.");
             return;
         }
 
@@ -150,8 +150,18 @@ const Simulation: React.FC = () => {
             });
 
             if (response.ok) {
-                const result = await response.text(); 
-                setEngineStatus(`Simulation Complete!\n\n${result}`);
+                const resultText = await response.text(); 
+                try {
+                    const cleanJSON = resultText.replace(/,\s*}/g, '}').replace(/,\s*\]/g, ']');
+                    
+                    const parsedData = JSON.parse(cleanJSON);
+                    
+                    setRunResult(parsedData);
+                    setEngineStatus("Simulation Complete!");
+                } catch (e) {
+                    console.error("JSON Parse Error:", e);
+                    setEngineStatus(`Simulation Complete! (Raw Output):\n\n${resultText}`);
+                }
             } else {
                 setEngineStatus(`Engine Error: ${response.statusText}`);
             }
@@ -322,15 +332,77 @@ const Simulation: React.FC = () => {
                         </button>
                     </div>
                 </>
-            ) : (
+           ) : ( //ADDED THIS PART IN ORDER TO BE ABLE TO SEE METRICS AND DOWNLOAD UPON SIMULATION COMPLETION -> SHOWS THE DUMMY VAL I GENERATED FOR NOW
                 <div className="sim-panel">
                     <h2>Engine Status</h2>
-                    <pre className="sim-status-box">
-                        {engineStatus}
-                    </pre>
+                    
+                    {runResult ? (
+                        <div style={{ backgroundColor: '#fff', border: '1px solid #ddd', borderRadius: '8px', padding: '15px 20px', marginBottom: '20px', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                
+                                {/* LEFT: Config */}
+                                <div style={{ flex: '1' }}>
+                                    <div style={{ fontWeight: 'bold', fontSize: '16px', color: '#007bff', marginBottom: '4px' }}>
+                                        {runResult.config.stocks.map((s: any) => s.ticker || s.name).join(', ')}
+                                    </div>
+                                    <div style={{ fontSize: '12px', color: '#666' }}>
+                                        Cap: ${runResult.config.initial_capital?.toLocaleString()} | Fee: ${runResult.config.trade_fee?.toFixed(2)}
+                                    </div>
+                                </div>
+
+                                {/* MIDDLE: Metrics */}
+                                <div style={{ display: 'flex', gap: '30px', flex: '2', justifyContent: 'center' }}>
+                                    <div style={{ textAlign: 'center' }}>
+                                        <div style={{ fontSize: '11px', color: '#888', textTransform: 'uppercase' }}>Net Profit</div>
+                                        <div style={{ fontWeight: 'bold', color: runResult.metrics.net_profit >= 0 ? 'green' : 'red' }}>
+                                            ${runResult.metrics.net_profit?.toLocaleString()}
+                                        </div>
+                                    </div>
+                                    <div style={{ textAlign: 'center' }}>
+                                        <div style={{ fontSize: '11px', color: '#888', textTransform: 'uppercase' }}>Win Rate</div>
+                                        <div style={{ fontWeight: 'bold' }}>{runResult.metrics.win_rate_percent?.toFixed(1)}%</div>
+                                    </div>
+                                    <div style={{ textAlign: 'center' }}>
+                                        <div style={{ fontSize: '11px', color: '#888', textTransform: 'uppercase' }}>Trades</div>
+                                        <div style={{ fontWeight: 'bold' }}>{runResult.metrics.total_trades}</div>
+                                    </div>
+                                </div>
+
+                                {/* RIGHT: Actions */}
+                                <div style={{ flex: '1', display: 'flex', justifyContent: 'flex-end' }}>
+                                    <button 
+                                        onClick={() => {
+                                            const jsonString = JSON.stringify(runResult, null, 2);
+                                            const blob = new Blob([jsonString], { type: "application/json" });
+                                            const url = URL.createObjectURL(blob);
+                                            const link = document.createElement('a');
+                                            link.href = url;
+                                            const tickerNames = runResult.config.stocks.map((s: any) => s.ticker || s.name).join('_');
+                                            link.download = `sim_${tickerNames}.json`;
+                                            document.body.appendChild(link);
+                                            link.click();
+                                            document.body.removeChild(link);
+                                            URL.revokeObjectURL(url);
+                                        }}
+                                        style={{ padding: '8px 12px', backgroundColor: '#28a745', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '14px', fontWeight: 'bold' }}
+                                    >
+                                        ⬇️ JSON
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    ) : (
+                        <pre className="sim-status-box">
+                            {engineStatus}
+                        </pre>
+                    )}
+
                     <button 
                         className="sim-btn-secondary"
-                        onClick={() => setIsRunning(false)}
+                        onClick={() => {
+                            setIsRunning(false);
+                            setRunResult(null); 
+                        }}
                     >
                         ← Back to Settings
                     </button>

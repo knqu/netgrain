@@ -5,11 +5,13 @@
 #include <iostream>
 #include <memory>
 #include <string>
+#include <string_view>
 #include <algorithm>
 #include <cstdio>
 #include <filesystem>
 #include <regex>
 #include <cstdint>
+
 
 // Global object
 MarketDataManager data_manager;
@@ -85,18 +87,26 @@ int main() {
                             res->writeStatus("409 Conflict")->end("Error: " + ticker + " already exists.");
                             return;
                         }
-
-                        data_manager.load_ticker_data(ticker, save_path);
-                        data_manager.print_first_row(ticker); 
+                        //CHANGED TO BOOLEAN TO PROPOGATE CHANGES TO SIMULATION.TSX
+                        bool load_success = data_manager.load_ticker_data(ticker, save_path);
+                        
+                        if (load_success) {
+                            data_manager.print_first_row(ticker); 
+                        }
 
                         if (remove(save_path.c_str()) == 0) {
                             cout << "Removed File after loading (save it in temp, read, delete): " << save_path << "\n";
                         } else {
                             cout << "Error in removing file: " << save_path << "\n";
                         }
-
+                        //message based on load_success
                         res->writeHeader("Access-Control-Allow-Origin", "*");
-                        res->end(ticker);
+                        if (load_success) {
+                            res->end(ticker); // Sends standard 200 OK
+                        } else {
+                            res->writeStatus("400 Bad Request")->end("Invalid or corrupted CSV data");
+                        }
+
                     } else {
                         res->writeHeader("Access-Control-Allow-Origin", "*");
                         res->writeStatus("500 Internal Server Error")->end("Failed to save to disk.");

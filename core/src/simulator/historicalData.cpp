@@ -6,6 +6,8 @@
 #include <iostream>
 #include <stdexcept>
 
+using namespace std;
+
 //helper function to parse date string in format "YYYY-MM-DD" and convert to u32 in format YYYYMMDD for easier storage and comparison
 u32 MarketDataManager::parse_date(string date_str) {
     string out = "";
