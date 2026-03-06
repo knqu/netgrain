@@ -1,5 +1,5 @@
-prefix=C:/Program Files (x86)/webserver
-exec_prefix=C:/Program Files (x86)/webserver
+prefix=C:/Program Files/webserver
+exec_prefix=C:/Program Files/webserver
 libdir=${exec_prefix}/lib
 includedir=${prefix}/include
 

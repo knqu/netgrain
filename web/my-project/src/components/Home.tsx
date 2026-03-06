@@ -1,6 +1,9 @@
 import { useState } from 'react';
 
 import LeaderboardComponent from './Leaderboard';
+import HistoryComponent from './History';
+import Simulation from './Simulation';
+
 import '../styling/Home.css'
 
 import { Responsive, useContainerWidth } from 'react-grid-layout';
@@ -10,6 +13,11 @@ import '/node_modules/react-resizable/css/styles.css';
 export default function AppHome() {
   const [currentPage, setPage] = useState<string>("Dashboard");
   const [widgets, setWidgets] = useState<number[]>([1,2,3]); // initial set of widgets
+
+  function playDailyMarket() {
+    setPage("Simulation");
+    // send config file and special reqeust to play daily market with the file
+  }
 
   const addWidget = () => { // add another widget
     setWidgets(prev => [...prev, prev.length > 0 ? Math.max(...prev) + 1 : 1]);
@@ -47,6 +55,19 @@ export default function AppHome() {
       </button>
     );
   }
+
+  function DailyMarketComponenet() {
+    return (
+        <div className='dailyMarketContainer'>
+            <h1 className='dailyMarketTitle'>Daily Market</h1>
+            
+            <div className='dailyMarketButtonsContainer'>
+                <input className="dailyMarketButtons" id="dailyMarketFileUploadButton" type="file" accept=".py, .tar, .yml" name="dailyMarketFiles" multiple/>
+                <button className="dailyMarketButtons" id="dailyMarketPlayButton" onClick={() => {setPage("Simulation")}}>Play</button>
+            </div>
+        </div>
+    );
+}
 
   function GridComponent() {
     const { width, containerRef, mounted } = useContainerWidth();
@@ -109,15 +130,35 @@ export default function AppHome() {
     setPage(desiredPage);
   }
 
+  function renderPage() {
+    switch (currentPage) {
+      case "Dashboard":
+        return (
+          <div className="Grid_and_Leaderboard">
+            <GridComponent></GridComponent>
+            
+            <div className="Leaderboard_and_DailyMarket">
+              <DailyMarketComponenet></DailyMarketComponenet>
+              <LeaderboardComponent></LeaderboardComponent>
+            </div>
+          </div>
+        );
+      case "History" :
+        return (
+          <HistoryComponent />
+        );
+      case "Simulation" :
+        return (
+          <Simulation />
+        );
+    }
+  }
+
   return (
     <div className="homepageContainer">
-    <Dashboard onAdd={addWidget}></Dashboard>
+      <Dashboard onAdd={addWidget}></Dashboard>
 
-    <div className="Grid_and_Leaderboard">
-    <GridComponent></GridComponent>
-    <LeaderboardComponent></LeaderboardComponent>
+      {renderPage()}
     </div>
-    </div>
-    
   );
 };

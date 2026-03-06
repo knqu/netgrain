@@ -1,0 +1,48 @@
+.ChartContainer {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 1.5em;
+}
+
+.Chart_header_container {
+    width: 44vw;
+    background-color: #252628;
+    padding: 0.76em;
+    border-radius: 0.5em;
+}
+
+.Chart_header {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-around;
+    align-items: center;
+}
+
+.Selector_container {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+    gap: 0.5em;
+}
+
+.Chart_outer_container {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+
+    width: 44vw;
+    background-color: #252628;
+    padding: 0.76em;
+    border-radius: 0.5em;
+}
+
+.Chart_inner_container {
+    width: 38vw;
+    background-color: #484B4E;
+    padding: 0.76em;
+    border-radius: 0.5em;
+}

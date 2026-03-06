@@ -1,21 +1,47 @@
 import '../styling/Registration.css';
+import { useState } from 'react';
+import { useNavigate } from "react-router-dom";
 
-function Registration() {
+
+export default function Registration() {
+    const navigate = useNavigate();
+    const [email, setEmail] = useState<string>("");
+    const [password, setPassword] = useState<string>("");
+
+    const handleRegistration = async (e : React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault()
+        try {
+            const response = await fetch(
+                "http://localhost:18080/api/registration",
+                {
+                    method : "POST",
+                    headers : {"Content-Type" : "application/json"},
+                    body : JSON.stringify({registration_submitted_email : email, registration_submitted_password : password})
+                }
+            )
+            if (response.status == 200) {
+                navigate("/");
+            }
+        } catch (err) {
+            console.log(err);
+        }
+    }
+
     return (
         <div className="registration-parent">
             <div className='registration-container'>
                 <h1 className="inter-font">Sign Up</h1>
 
                 <div className="registration-form inter-font">
-                    <form action="/signupAttempt" method="get" id="registration-form">
+                    <form onSubmit={handleRegistration} id="registration-form">
                         <div className='input-field'>
                             <h3 className='align-left'>Email</h3>
-                            <input type="text" name="registration_submitted_email" className="inter-font"></input>
+                            <input type="text" onChange={e => {setEmail(e.target.value)}} className="inter-font"></input>
                         </div>
                         
                         <div className='input-field'>
                             <h3 className='align-left'>Password</h3>
-                            <input type="password" name="registration_submitted_password" className="inter-font"></input>
+                            <input type="password" onChange={e => setPassword(e.target.value)} className="inter-font"></input>
                         </div>
                     </form>
 
@@ -26,6 +52,4 @@ function Registration() {
             </div>
         </div>
     );
-}
-
-export default Registration;
+};
