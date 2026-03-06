@@ -37,3 +37,9 @@ struct Portfolio {
     int balance;
     std::unordered_map<std::string, Position> positions;
 };
+
+struct TickerConfig {
+    double volatility;  // basis points
+    double max_volume;  // liquidity as a percentage of total bar volume
+    double trade_fee;
+};

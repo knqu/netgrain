@@ -3,6 +3,8 @@
 
 int main() {
     Engine engine(10000000);
+    
+    engine.set_config("AAPL", {0.0005, 0.20, 2.0});
 
     int order1 = engine.process_order("AAPL", Side::BUY, 10, OrderType::MARKET);
     int order2 = engine.process_order("AAPL", Side::BUY, 5, OrderType::LIMIT, 14800000);
