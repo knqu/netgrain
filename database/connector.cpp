@@ -72,6 +72,25 @@ try
         return r[0].as<int>();
       }
 
+      /*
+       * Helper function
+       */
+      std::string getUsername(int uuID) {
+        pqxx::work tx(*conn);
+        std::string query = "SELECT * FROM userlogin WHERE (userid = $1)";
+        pqxx::row r;
+        try
+        {
+          r = tx.exec(query, pqxx::params{uuID}).one_row();
+        }
+        catch (const std::exception &e)
+        {
+          std::cerr << e.what();
+          return "";
+        }
+        return r[1].c_str();
+      }
+
   public:
     static ConnectorSingleton& getInstance() {
       if (!instance) {
@@ -80,8 +99,7 @@ try
           {
             conn = new pqxx::connection(
               "host=localhost "
-              "dbname=postgres "
-              "user=cnath"
+              "dbname=netgrain_db"
             );
           }
           catch (const std::exception &e)
@@ -240,6 +258,45 @@ try
     }
 
     // TODO: basic mockup actions of alg
+    std::string fetchSimulation(int simID, std::string identifier) {
+      int uuid = getUUID(identifier);
+      pqxx::work tx(*conn);
+      pqxx::row r;
+      try
+      {
+        std::string query = "SELECT * FROM pastSimulations WHERE (userid = $1 AND simid = $2)";
+        r = tx.exec(query, pqxx::params{uuid, simID}).one_row();
+      }
+      catch (const std::exception &e)
+      {
+        std::cerr << e.what() << "\n";
+        return "";
+      }
+      return r[2].c_str();
+    }
+    
+    int changePassword(std::string identifier, std::string newPassword) {
+      int uuID = getUUID(identifier);
+
+      if (uuIDfound(uuID) == -1) {
+        fmt::print("UUID_NOT_FOUND");
+        return UUID_NOT_FOUND;
+      }
+      pqxx::work tx(*conn);
+
+      try
+      {
+        std::string query = "UPDATE userlogin SET password = $1 WHERE (userid = $2)";
+        pqxx::result r = tx.exec(query, pqxx::params{newPassword, uuID}).no_rows();
+      }
+      catch (const std::exception &e)
+      {
+        return -1;
+      }
+
+      tx.commit();
+      return SUCCESS;
+    }
 
     // Persistent Change
     // adding again, uuid doesn't exist, 
@@ -293,31 +350,39 @@ try
         result.append("[]");
         return result;
       }
+      tx.abort();
+
+      result.append("[");
+
+      int entry = 1;
 
       for (auto row = std::begin(r); row != std::end(r); row++) {
-        std::string tmp = "[{";
+        std::string tmp = "{";
         int i = 0;
         for (auto field = std::begin(row); field != std::end(row); field++) {
           if (i == 0) {
-            tmp.append("rank : ");
+            std::stringstream ss;
+            ss << entry;
+            tmp.append("\"rank\" : " + ss.str());
+            tmp.append(", ");
+            tmp.append("\"username\" : \"" + getUsername(field.as<int>()) + "\"");
+            tmp.append(", ");
           }
           else if (i == 1) {
-            tmp.append("username : ");
+            tmp.append("\"profit\" : ");
+            tmp.append(field->c_str());
+            tmp.append(", ");
           }
           else if (i == 2) {
-            tmp.append("profit : \"");
-          }
-          tmp.append(field->c_str());
-          if (i == 2) {
+            tmp.append("\"time\" : \"");
+            tmp.append(field->c_str());
             tmp.append("\"");
-          }
-          else {
-            tmp.append(",");
           }
           i++;
         }
         tmp.append("},");
         result.append(tmp);
+        entry++;
       }
 
       if (result.length() > 0) {
@@ -446,7 +511,7 @@ try
       // CHOOSE DIFFERENT EMAIL AND USERNAME HERE EVERY TIME
       std::string email = "asdfaasdf@gmail.com";
       std::string username = "alsdfsdkjfa";
-      int uuid = ConnectorSingleton::getInstance().addUser(email, "helllo", username); //insert unique user
+      //int uuid = ConnectorSingleton::getInstance().addUser(email, "helllo", username); //insert unique user
 
       /*
       assert(ConnectorSingleton::getInstance().addLeaderboardAttempt(uuid, 100000, "12:12:12") == SUCCESS); // normal write
@@ -468,8 +533,7 @@ try
 };
 
 
-//int main() {
-  //fmt::print("{}\n", ConnectorSingleton::getInstance().fetchLeaderBoard());
+int main() {
   // “Given the database and backend is implemented correctly, when a new user is created, then I should be able to verify it exists in my database.”
   //ConnectorSingleton::getInstance().addUser("demoPurpose@gmail.com", "password1234!", "demo");
 
@@ -478,4 +542,4 @@ try
 
   // “Given the database is not running on the web server, when the backend sends a query, then there should be proper error handling.”
   // ConnectorSingleton::getInstance().addUser("iDontExist@gmail.com", "password1234!", "fake");
-//}
+}
