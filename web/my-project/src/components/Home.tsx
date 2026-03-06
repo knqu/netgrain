@@ -1,5 +1,6 @@
 import { useState } from 'react';
 
+import GridComponent from './GridComponent';
 import LeaderboardComponent from './Leaderboard';
 import HistoryComponent from './History';
 import Simulation from './Simulation';
@@ -71,6 +72,7 @@ export default function AppHome() {
 
   function GridComponent() {
     const { width, containerRef, mounted } = useContainerWidth();
+      const [widgets, setWidgets] = useState<number[]>([1,2,3]); // initial set of widgets
 
     const layoutArray = widgets.map((id, index) => ({
       i: id.toString(),
@@ -135,8 +137,7 @@ export default function AppHome() {
       case "Dashboard":
         return (
           <div className="Grid_and_Leaderboard">
-            <GridComponent></GridComponent>
-            
+            <GridComponent></GridComponent>            
             <div className="Leaderboard_and_DailyMarket">
               <DailyMarketComponenet></DailyMarketComponenet>
               <LeaderboardComponent></LeaderboardComponent>
