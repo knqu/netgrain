@@ -54,6 +54,24 @@ try
         return SUCCESS;
       }
 
+      /*
+       * Helper function
+       */
+      int getUUID(std::string identifier) {
+        pqxx::work tx(*conn);
+        std::string query = "SELECT * FROM userlogin WHERE (email = $1 OR username = $1)";
+        pqxx::row r;
+        try
+        {
+          r = tx.exec(query, pqxx::params{identifier}).one_row();
+        }
+        catch (const std::exception &e)
+        {
+          return -1;
+        }
+        return r[0].as<int>();
+      }
+
   public:
     static ConnectorSingleton& getInstance() {
       if (!instance) {
@@ -77,10 +95,9 @@ try
     /*
      * Login: determines if given username/email and password is found in userlogin table
      */
-    int login(std::string identifier, std::string password) {
+    bool login(std::string identifier, std::string password) {
       pqxx::work tx(*conn);
       std::string query = "SELECT * FROM userlogin WHERE (password = $2) AND (email = $1 OR username = $1)";
-
       try
       {
         pqxx::row r = tx.exec(query, pqxx::params{identifier, password}).one_row();
@@ -142,14 +159,8 @@ try
           std::cerr << e.what() << std::endl;
       }
 
-      pqxx::work tx2(*conn);
-
-      // Grab the userID after insertion
-      std::string query = "SELECT * FROM userlogin WHERE (email = $1)";
-      pqxx::row r = tx2.exec(query, pqxx::params{email}).one_row();
-
       fmt::print("SUCCESS\n");
-      return r[0].as<int>();
+      return SUCCESS;
     }
 
     /*
@@ -179,8 +190,10 @@ try
     /*
      *
      */
-    int userHasCustomLayout(int userID) {
-      if (uuIDfound(userID) == UUID_NOT_FOUND) {
+    int userHasCustomLayout(std::string identifier) {
+      int userID = getUUID(identifier);
+
+      if (uuIDfound(userID) == -1) {
         fmt::print("UUID NOT FOUND\n");
         return UUID_NOT_FOUND;
       }
@@ -225,14 +238,17 @@ try
       return result;
     }
 
+    // TODO: take in email instead of uuID
+    // TODO: basic mockup actions of alg
+
     // Persistent Change
     // adding again, uuid doesn't exist, 
     // convert simulation time into timestamp
     // simulationTime should be string HH:MM:SS, there are some workarounds needed for other time libraries
-    int addLeaderboardAttempt(int uuID, int profit, std::string simulationTime) {
-      fmt::print("\n");
+    int addLeaderboardAttempt(std::string identiifer, int profit, std::string simulationTime) {
+      int uuID = getUUID(identiifer);
 
-      if (uuIDfound(uuID) == UUID_NOT_FOUND) {
+      if (uuIDfound(uuID) == -1) {
         fmt::print("UUID_NOT_FOUND");
         return UUID_NOT_FOUND;
       }
