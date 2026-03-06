@@ -11,7 +11,6 @@ using namespace std;
 
 constexpr i64 PRICE_SCALE_FACTOR = 100000;
 
-
 struct MarketDataRow {
     u32 date;      
     i64 open;      
@@ -22,14 +21,22 @@ struct MarketDataRow {
     uint64_t open_int;  
 };
 
-//sim config struct -- Placed this here for now as test... move later on to diff file?
+struct Stocks {
+  std::string name;
+  int base_price;
+  int liquidity;
+  int volatility;
+  int market_cap;
+};
+
 struct SimulationConfig {
     int64_t initial_capital = 0; 
-    vector<string> tickers; 
+    vector<Stocks> stocks; 
     string start_date;
     string end_date;
     int64_t trade_fee = 0;
 };
+
 //this might be moved somewhere else later on.
 struct SimulationMetrics {
     int total_trades;
@@ -60,4 +67,5 @@ public:
     string get_market_state_json();
     string run_simulation(const SimulationConfig& config);
     void print_config(const SimulationConfig& config);
+    void initialize_generators(const std::vector<Stocks>& stocks);
 };

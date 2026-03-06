@@ -114,13 +114,13 @@ int main() {
         .get("/api/results", [](auto *res, auto *req) {
             
             SimulationConfig dummy_config;
-            dummy_config.initial_capital = 100000 * 100000;
+            dummy_config.initial_capital = 100000;
             dummy_config.trade_fee = 1.50 * 100000;
             dummy_config.start_date = "2013-12-10";
             dummy_config.end_date = "2017-11-10";
+            dummy_config.stocks.push_back(Stocks());
+            dummy_config.stocks[0].name = "AAPL";
             
-            dummy_config.tickers.push_back("AAPL"); 
-
             string output_json = data_manager.run_simulation(dummy_config);
             
             res->writeHeader("Access-Control-Allow-Origin", "*");
@@ -180,15 +180,32 @@ int main() {
                     }
 
                     // Parse Tickers Array
-                    if (regex_search(json, match, regex(R"("tickers":\s*\[(.*?)\])"))) {
-                        string tickers_str = match[1].str();
-                        regex ticker_regex(R"("([^"]+))");
-                        auto words_begin = sregex_iterator(tickers_str.begin(), tickers_str.end(), ticker_regex);
-                        auto words_end = sregex_iterator();
-
-                        for (sregex_iterator i = words_begin; i != words_end; ++i) {
-                            config.tickers.push_back((*i)[1].str());
-                        }
+                    if (regex_search(json, match, regex(R"("ticker":\s*"([^"]*))"))) {
+                      for (int i = 0; i < match.size(); i++) {
+                      std::cout << match[1].str() << "\n";
+                        config.stocks.push_back(Stocks());
+                        config.stocks[i].name = match[1].str();
+                      }
+                    }
+                    if (regex_search(json, match, regex(R"("base_price":\s*"([^"]*))"))) {
+                      for (int i = 0; i < match.size(); i++) {
+                        config.stocks[i].base_price = atoi(match[1].str().c_str());
+                      }
+                    }
+                    if (regex_search(json, match, regex(R"("liquidity":\s*"([^"]*))"))) {
+                      for (int i = 0; i < match.size(); i++) {
+                        config.stocks[i].liquidity = atoi(match[1].str().c_str());
+                      }
+                    }
+                    if (regex_search(json, match, regex(R"("volatility":\s*"([^"]*))"))) {
+                      for (int i = 0; i < match.size(); i++) {
+                        config.stocks[i].volatility = atoi(match[1].str().c_str());
+                      }
+                    }
+                    if (regex_search(json, match, regex(R"("market_cap":\s*"([^"]*))"))) {
+                      for (int i = 0; i < match.size(); i++) {
+                        config.stocks[i].market_cap = atoi(match[1].str().c_str());
+                      }
                     }
 
                     // Prove the struct was populated correctly

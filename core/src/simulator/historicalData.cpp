@@ -1,4 +1,5 @@
 #include "historicalData.hpp"
+#include "../generator/generator.cpp"
 
 #include <fstream>
 #include <sstream>
@@ -135,10 +136,16 @@ string MarketDataManager::serialize_results_to_json(const SimulationConfig& conf
     json << "  \"config\": {\n";
     json << "    \"initial_capital\": " << metrics.initial_balance << ",\n";
     
-    json << "    \"tickers\": [";
-    for (size_t i = 0; i < config.tickers.size(); ++i) {
-        json << "\"" << config.tickers[i] << "\"";
-        if (i < config.tickers.size() - 1) json << ", ";
+    json << "    \"stocks\": [";
+    for (size_t i = 0; i < config.stocks.size(); ++i) {
+        json << "{";
+        json << "\"ticker\":\"" << config.stocks[i].name << "\",";
+        json << "\"base_price\":\"" << to_string(config.stocks[i].base_price) << "\",";
+        json << "\"liquidity\":\"" << to_string(config.stocks[i].liquidity) << "\",";
+        json << "\"volatility\":\"" << to_string(config.stocks[i].volatility) << "\",";
+        json << "\"market_cap\":\"" << to_string(config.stocks[i].market_cap) << "\",";
+        json << "}";
+        if (i < config.stocks.size() - 1) json << ", ";
     }
     json << "],\n";
     
@@ -164,15 +171,25 @@ string MarketDataManager::serialize_results_to_json(const SimulationConfig& conf
     return json.str();
 }
 
+
+void MarketDataManager::initialize_generators(const std::vector<Stocks>& stocks) {
+  for (const auto& stock : stocks)
+  {
+    // Waiting for generator class to work
+
+  }
+
+}
+
 //added very basic testing function to show a basic execution on the stored data -> change made to accept simulation config struct to handle output of simulation
 // as well as sending packet to frontend with output for user to download metrics.
 string MarketDataManager::run_simulation(const SimulationConfig& config) {
     //check if empty
-    if (config.tickers.empty()) {
+    if (config.stocks.empty()) {
         return "{\"error\": \"No tickers provided in config\"}";
     }
 
-    string ticker = config.tickers[0]; //for now grab first ticker in list for functional demonstration.
+    string ticker = config.stocks[0].name; //for now grab first ticker in list for functional demonstration.
 
     if (market.find(ticker) == market.end() || market[ticker].empty()) {
         return "{\"error\": \"Ticker data not found: " + ticker + "\"}";
@@ -219,6 +236,6 @@ void MarketDataManager::print_config(const SimulationConfig& config) {
         cout << "Start Date:               " << (config.start_date.empty() ? "None" : config.start_date) << "\n";
         cout << "End Date:                 " << (config.end_date.empty() ? "None" : config.end_date) << "\n";
         cout << "Tickers to Trade:         ";
-        for (const auto& t : config.tickers) cout << t << " ";
+        for (const auto& t : config.stocks) cout << t.name << " ";
         cout << "\n--------------------------------------\n\n";
 }
