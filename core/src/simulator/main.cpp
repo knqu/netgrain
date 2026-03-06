@@ -159,6 +159,16 @@ int main() {
                     SimulationConfig config;
                     smatch match;
 
+                    /* Acceptance Critera - HX */
+                    std::ofstream outfile("initial_market.json");
+                    if (outfile.is_open()) {
+                        outfile << json;
+                        outfile.close();
+                        std::cout << "successfully written\n";
+                    } else {
+                        std::cerr << "failed to write\n";
+                    }
+
                     // Parse Initial Capital
                     if (regex_search(json, match, regex(R"("initial_capital":\s*([0-9.]+))"))) {
                         double raw_cap = stod(match[1].str());
@@ -180,32 +190,22 @@ int main() {
                     }
 
                     // Parse Tickers Array
-                    if (regex_search(json, match, regex(R"("ticker":\s*"([^"]*))"))) {
-                      for (int i = 0; i < match.size(); i++) {
-                      std::cout << match[1].str() << "\n";
-                        config.stocks.push_back(Stocks());
-                        config.stocks[i].name = match[1].str();
-                      }
-                    }
-                    if (regex_search(json, match, regex(R"("base_price":\s*"([^"]*))"))) {
-                      for (int i = 0; i < match.size(); i++) {
-                        config.stocks[i].base_price = atoi(match[1].str().c_str());
-                      }
-                    }
-                    if (regex_search(json, match, regex(R"("liquidity":\s*"([^"]*))"))) {
-                      for (int i = 0; i < match.size(); i++) {
-                        config.stocks[i].liquidity = atoi(match[1].str().c_str());
-                      }
-                    }
-                    if (regex_search(json, match, regex(R"("volatility":\s*"([^"]*))"))) {
-                      for (int i = 0; i < match.size(); i++) {
-                        config.stocks[i].volatility = atoi(match[1].str().c_str());
-                      }
-                    }
-                    if (regex_search(json, match, regex(R"("market_cap":\s*"([^"]*))"))) {
-                      for (int i = 0; i < match.size(); i++) {
-                        config.stocks[i].market_cap = atoi(match[1].str().c_str());
-                      }
+                     std::regex stock_regex(R"-("ticker":\s*"([^"]*)",\s*"base_price":\s*([^,]*),\s*"liquidity":\s*([^,]*),\s*"volatility":\s*([^,]*),\s*"market_cap":\s*([^}]*))-");
+
+                    int i = 0;
+
+                    while (std::regex_search(json, match, stock_regex)) {
+                      config.stocks.push_back(Stocks());
+                      
+                      config.stocks[i].name = match[1].str(); 
+                      config.stocks[i].base_price = std::stod(match[2].str()); 
+                      config.stocks[i].liquidity  = std::stod(match[3].str());
+                      config.stocks[i].volatility = std::stod(match[4].str());
+                      config.stocks[i].market_cap = std::stod(match[5].str());
+                      
+                      i++;
+                      
+                      json = match.suffix().str(); 
                     }
 
                     // Prove the struct was populated correctly
