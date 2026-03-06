@@ -1,5 +1,5 @@
 import '../styling/Leaderboard.css';
-import { type ReactElement } from 'react';
+import { type ReactElement, useState, useEffect } from 'react';
 
 type Leaderboard_row_entry = {
   username : string;
@@ -63,13 +63,38 @@ function Leaderboard({entries} : {entries : Leaderboard_row_entry[]}) {
 }
 
 export default function LeaderboardComponent() {
+  /*const [entries, setEntries] = useState<Record<string, any>[]>([
+    {username : "daniel_luo", profit: 1000000, rank : 1},
+    {username : "Haiyan", profit: 900000, rank : 2},
+    {username : "Kevin", profit: 800000, rank : 3},
+    {username : "Colin", profit: 700000, rank : 4},
+    {username : "James", profit: 600000, rank : 5},
+  ]);
+  const fetchLeaderboard = async () => {
+    try {
+      const response = await fetch(
+        "http://localhost:18080/api/fetchLeaderboard",
+        {
+          method: "GET",
+        }
+      );
+
+      if (response.status == 200) {
+        let entries : Record<string, any>[] = [];
+
+        
+      }
+    } catch (err) {
+      console.log(err);
+    }
+  }; */
   return <Leaderboard entries={testData}/>
 };
 
 const testData = [
-  {username : "daniel_luo", profit: 1000000, rank : 1},
-  {username : "Haiyan", profit: 900000, rank : 2},
-  {username : "Kevin", profit: 800000, rank : 3},
-  {username : "Colin", profit: 700000, rank : 4},
-  {username : "James", profit: 600000, rank : 5},
-];
+    {username : "daniel_luo", profit: 1000000, rank : 1},
+    {username : "Haiyan", profit: 900000, rank : 2},
+    {username : "Kevin", profit: 800000, rank : 3},
+    {username : "Colin", profit: 700000, rank : 4},
+    {username : "James", profit: 600000, rank : 5},
+  ];

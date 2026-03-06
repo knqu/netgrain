@@ -1,11 +1,30 @@
 import '../styling/Login.css';
-import { useState} from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from "react-router-dom";
 
 export default function Login() {
     const navigate = useNavigate();
     const [email, setEmail] = useState<string>("");
     const [password, setPassword] = useState<string>("");
+
+    useEffect(() => {
+        const checkSession = async () => {
+            try {
+                const response = await fetch(
+                    "http://localhost:18080/api/cookieCheck",
+                    {
+                        method: "GET",
+                    }
+                );
+                if (response.status == 200) {
+                    navigate("/home");
+                }
+            } catch (err) {
+                console.log(err);
+            }
+        };
+        checkSession()
+    }, []);
 
     const handleLogin = async (e : React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -49,7 +68,7 @@ export default function Login() {
                     <div className="buttons-and-links">
                         <div className='login-signup-button'>
                             <input type='submit' value='Login' form='login-form' id='login-button'></input>
-                            <input type="button" value='Sign Up' id='signup-button'></input>
+                            <button onClick={() => {navigate("/registration")}} id='signup-button'>Sign Up</button>
                         </div>
 
                         <p><a>Forgot Password</a></p>

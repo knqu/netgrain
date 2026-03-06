@@ -33,7 +33,14 @@
     text-align: left;
 }
 
-input {
+input{
+    background-color: black;
+    padding: 0.4em;
+    border-radius: 0.3em;
+    margin-bottom: 0.1em;
+}
+
+button {
     background-color: black;
     padding: 0.4em;
     border-radius: 0.3em;
