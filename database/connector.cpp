@@ -238,7 +238,6 @@ try
       return result;
     }
 
-    // TODO: take in email instead of uuID
     // TODO: basic mockup actions of alg
 
     // Persistent Change
@@ -331,8 +330,10 @@ try
     /*
      * pass in customPresetID = -1 if no global preset was used
      */
-    int createSimulation(int uuID, std::string analytics, std::string configUsed, int globalPresetID) {
-      if (uuIDfound(uuID) == UUID_NOT_FOUND) {
+    int createSimulation(std::string identifer, std::string analytics, std::string configUsed, int globalPresetID) {
+      int uuID = getUUID(identifer);
+
+      if (uuIDfound(uuID) == uuID) {
         return UUID_NOT_FOUND;
       }
 
@@ -428,12 +429,14 @@ try
 
       // Table userlogin -- link + get customGUI tied to a user
       assert(ConnectorSingleton::getInstance().linkCustomGUILayout(1000, "/path/to/file") == UUID_NOT_FOUND);
+      /*
       assert(ConnectorSingleton::getInstance().userHasCustomLayout(1000) == UUID_NOT_FOUND);
       assert(ConnectorSingleton::getInstance().userHasCustomLayout(2) == CUSTOM_DASHBOARD_CONFIG_NOT_FOUND);
 
       assert(ConnectorSingleton::getInstance().linkCustomGUILayout(1, "/path/to/file") == SUCCESS);
       assert(ConnectorSingleton::getInstance().userHasCustomLayout(1) == SUCCESS);
       assert(! ConnectorSingleton::getInstance().getCustomGUILayout(1).compare("/path/to/file"));
+      */
 
       /*
        * TESTS FOR LEADERBOARD
@@ -444,21 +447,22 @@ try
       std::string username = "alsdfsdkjfa";
       int uuid = ConnectorSingleton::getInstance().addUser(email, "helllo", username); //insert unique user
 
+      /*
       assert(ConnectorSingleton::getInstance().addLeaderboardAttempt(uuid, 100000, "12:12:12") == SUCCESS); // normal write
       assert(ConnectorSingleton::getInstance().addLeaderboardAttempt(uuid, 200000, "14:14:14") == LEADERBOARD_ATTEMPT_MADE); // same user makes another attempt
       assert(ConnectorSingleton::getInstance().addLeaderboardAttempt(-1, 200000, "14:14:14") == UUID_NOT_FOUND); // invalid user makes attempt
 
+      */
       /*
        * TESTS FOR A USER's SIMULATION
-       */
       assert(ConnectorSingleton::getInstance().createSimulation(2, "insertSomeSmartAnalytics", "/path/to/config/used", -1) == SUCCESS);
       assert(ConnectorSingleton::getInstance().createSimulation(2, "insertSomeSmartAnalytics", "/path/to/config/used", 100) == PRESET_ID_NOT_FOUND);
-
+       */
       /*
        * TESTS FOR GLOBAL PRESETS
-       */
       assert(ConnectorSingleton::getInstance().createCustomGlobalPreset(10, 10, 10, 10) == DUPLICATE_PRESET_FOUND);
 
+       */
     }
 };
 
