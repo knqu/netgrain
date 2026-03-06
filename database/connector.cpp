@@ -239,6 +239,29 @@ try
     }
 
     // TODO: basic mockup actions of alg
+    
+    int changePassword(std::string identifier, std::string newPassword) {
+      int uuID = getUUID(identifier);
+
+      if (uuIDfound(uuID) == -1) {
+        fmt::print("UUID_NOT_FOUND");
+        return UUID_NOT_FOUND;
+      }
+      pqxx::work tx(*conn);
+
+      try
+      {
+        std::string query = "UPDATE userlogin SET password = $1 WHERE (userid = $2)";
+        pqxx::result r = tx.exec(query, pqxx::params{newPassword, uuID}).no_rows();
+      }
+      catch (const std::exception &e)
+      {
+        return -1;
+      }
+
+      tx.commit();
+      return SUCCESS;
+    }
 
     // Persistent Change
     // adding again, uuid doesn't exist, 
@@ -445,7 +468,7 @@ try
       // CHOOSE DIFFERENT EMAIL AND USERNAME HERE EVERY TIME
       std::string email = "asdfaasdf@gmail.com";
       std::string username = "alsdfsdkjfa";
-      int uuid = ConnectorSingleton::getInstance().addUser(email, "helllo", username); //insert unique user
+      //int uuid = ConnectorSingleton::getInstance().addUser(email, "helllo", username); //insert unique user
 
       /*
       assert(ConnectorSingleton::getInstance().addLeaderboardAttempt(uuid, 100000, "12:12:12") == SUCCESS); // normal write
@@ -468,7 +491,7 @@ try
 
 
 int main() {
-  fmt::print("{}\n", ConnectorSingleton::getInstance().fetchLeaderBoard());
+  ConnectorSingleton::getInstance().changePassword("@.com", "helloichanged");
   // “Given the database and backend is implemented correctly, when a new user is created, then I should be able to verify it exists in my database.”
   //ConnectorSingleton::getInstance().addUser("demoPurpose@gmail.com", "password1234!", "demo");
 
