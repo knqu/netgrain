@@ -11,7 +11,6 @@ export default function GridComponent({ widgets, removeWidget }: GridProps) {
   const [layouts, setLayouts] = useState<any>({});
 
   const onLayoutChange = (current: any, all: any) => {
-    current = current;
     setLayouts(all);
   };
 
