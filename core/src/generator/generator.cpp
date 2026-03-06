@@ -18,7 +18,6 @@
 #include <string>
 #include <stdlib.h>
 
-
 class generator {
 private:
   double percent_drift;
@@ -32,6 +31,11 @@ private:
   std::mt19937 *gen;
   std::normal_distribution<> *dist;
 
+  std::string ticker;
+  int base_price;
+  int volatility;
+  int liquidity;
+  int market_cap;
 
 public:
     // constructor and destructor
@@ -41,6 +45,14 @@ public:
     dataBuffer = new Queue<double>();
     (*dataBuffer).enqueue(price);
     dt = 0.01;
+  }
+
+  generator(std::string ticker, int base_price, int volatility, int liquidity, int market_cap) {
+    this->ticker = ticker;
+    this->base_price = base_price;
+    this->volatility = volatility;
+    this->liquidity = liquidity;
+    this->market_cap = market_cap;
   }
 
   ~generator() {
@@ -81,8 +93,6 @@ public:
     new_data = new_data + multiplier * (rand() % (u32) (percent_drift * 100));
     dataBuffer->enqueue(new_data);
   }
-
-    
 
   /*
    * This function returns the brownian motion at increment t, given the Weiner process at time t

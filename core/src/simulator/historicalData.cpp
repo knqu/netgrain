@@ -1,4 +1,5 @@
 #include "historicalData.hpp"
+#include "../generator/generator.cpp"
 
 #include <fstream>
 #include <sstream>
@@ -168,6 +169,16 @@ string MarketDataManager::serialize_results_to_json(const SimulationConfig& conf
     json << "}";
 
     return json.str();
+}
+
+
+void MarketDataManager::initialize_generators(const std::vector<Stocks>& stocks) {
+  for (const auto& stock : stocks)
+  {
+    // Waiting for generator class to work
+
+  }
+
 }
 
 //added very basic testing function to show a basic execution on the stored data -> change made to accept simulation config struct to handle output of simulation
