@@ -57,3 +57,12 @@
     width: 800px;
     height: 440px;
 }
+
+#stockSelector {
+    color: white;
+}
+
+option {
+    color: black;
+    background-color: white;
+}

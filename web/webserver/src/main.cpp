@@ -115,7 +115,7 @@ int main() {
 
             if (session.get<bool>("forgot") == true) {
                 session.remove("forgot");
-                // databasemethod to change details
+                ConnectorSingleton::getInstance().changePassword(email, password);
             }
             else {
                 ConnectorSingleton::getInstance().addUser(email, password, email);
@@ -179,7 +179,7 @@ int main() {
         return crow::response(200);
     });
 
-    CROW_ROUTE(app, "/api/attemptDaily").methods(crow::HTTPMethod::GET, crow::HTTPMethod::Patch)([&](const crow::request& req) {
+    CROW_ROUTE(app, "/api/attemptDaily").methods(crow::HTTPMethod::POST, crow::HTTPMethod::Patch)([&](const crow::request& req) {
         auto reqBody = crow::json::load(req.body);
         try {
             auto& cookie = app.get_context<crow::CookieParser>(req);            
@@ -191,12 +191,37 @@ int main() {
     });
 
     CROW_ROUTE(app, "/api/fetchLeaderboard").methods(crow::HTTPMethod::GET, crow::HTTPMethod::Patch)([&](const crow::request& req) {
-        std::string leaderboardJSON = ConnectorSingleton::getInstance().fetchLeaderBoard();
-        std::cout << leaderboardJSON << std::endl;
-        crow::response res;
-        res.write(leaderboardJSON);
-        res.code = 200;
-        return res;
+        try {
+            std::string leaderboardJSON = ConnectorSingleton::getInstance().fetchLeaderBoard();
+            std::cout << leaderboardJSON << std::endl;
+            crow::response res;
+            res.write(leaderboardJSON);
+            res.code = 200;
+            return res;
+        } catch (...) {
+            return crow::response(400);
+        }
+    });
+
+    CROW_ROUTE(app, "/api/saveSim").methods(crow::HTTPMethod::GET, crow::HTTPMethod::Patch)([&](const crow::request& req) {
+        // save to database
+        return crow::response(200);
+    });
+
+    CROW_ROUTE(app, "/api/fetchSim").methods(crow::HTTPMethod::POST, crow::HTTPMethod::Patch)([&](const crow::request& req) {
+        auto& cookie = app.get_context<crow::CookieParser>(req);
+        auto reqBody = crow::json::load(req.body);
+        
+        try {
+            return crow::response(200);
+            std::string filePath = ConnectorSingleton::getInstance().fetchSimulation(reqBody["submitted_simID"].i(), cookie.get_cookie("email"));
+            crow::response res;
+            res.write("{filePath : " + filePath + "}");
+            res.code = 200;
+            return res;
+        } catch (...) {
+            return crow::response(400);
+        }
     });
 
     CROW_CATCHALL_ROUTE(app)([](){

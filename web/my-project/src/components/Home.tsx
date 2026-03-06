@@ -54,15 +54,22 @@ export default function AppHome() {
   }
 
   async function playDailyMarket() {
+    const timeStr = String(Math.floor(Math.random() * 24) + 1) + ":" + String(Math.floor(Math.random() * 24) + 1) + ":" + String(Math.floor(Math.random() * 24) + 1);
+    try {
+      const response = await fetch(
+        "http://localhost:18080/api/attemptDaily",
+        {
+          method: "POST",
+          headers : {"Content-Type" : "application/json"},
+          body : JSON.stringify({profit : Math.floor(Math.random() * 100000) + 1, time : timeStr})
+        }
+      );
+      console.log(response);
+    } catch (err) {
+      console.log(err);
+    }
+
     setPage("Simulation");
-    /*const response = fetch(
-      "http://localhost:18080/api/attemptDaily",
-      {
-        method: "POST",
-        headers : {"Content-Type" : "application/json"},
-        body : JSON.stringify({})
-      }
-    )*/
   }
 
   function DailyMarketComponenet() {

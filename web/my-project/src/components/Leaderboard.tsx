@@ -2,7 +2,7 @@ import '../styling/Leaderboard.css';
 import { useState, type ReactElement, useEffect } from 'react';
 
 export default function LeaderboardComponent() {
-  const [up, setDirection] = useState<boolean>(true);
+  const [up, setDirection] = useState<boolean>(false);
   const [entries, setEntries] = useState<Leaderboard_row_entry[]>([
     {"username" : "daniel_luo", profit: 1000000, "rank" : 1, "time" : "00:00:03"},
     {"username" : "Haiyan", profit: 900000, "rank" : 2, "time" : "01:50:45"},
@@ -68,7 +68,6 @@ export default function LeaderboardComponent() {
   }
 
   function convertTime(timeStr : string) {
-    console.log(timeStr);
     return (Number(timeStr.substring(0,2)) * 3600) + (Number(timeStr.substring(3,5)) * 60) + (Number(timeStr.substring(6)));
   }
 
