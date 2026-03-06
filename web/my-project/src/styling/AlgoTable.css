@@ -7,10 +7,10 @@
 }
 
 .SimResult_table_head_row_container {
-    width: 44vw;
+    width: 900px;
     background-color: #252628;
     border-radius: 0.3em;
-    padding: 0.5em;
+    padding: 0.76em;
 }
 
 .SimResult_row_container {
@@ -28,7 +28,7 @@
     flex-direction: row;
     align-items: center;
 
-    width: 42.7vw;
+    width: 900px;
     background-color: #3D3F42;
     border-radius: 0.3em;
     padding: 0.5em;
@@ -46,9 +46,11 @@
 }
 
 .button_header {
+    font-weight: 400;
     border : none;
     background-color: transparent;
     color: white;
+    padding: 0 0;
 }
 
 .button_header:enabled {

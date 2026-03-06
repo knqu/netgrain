@@ -1,5 +1,5 @@
 import '../styling/Leaderboard.css';
-import { useState, type ReactElement } from 'react';
+import { useState, type ReactElement, useEffect } from 'react';
 
 export default function LeaderboardComponent() {
   const [up, setDirection] = useState<boolean>(true);
@@ -10,24 +10,28 @@ export default function LeaderboardComponent() {
     {"username" : "Colin", profit: 700000, "rank" : 4, "time" : "10:42:43"},
     {"username" : "James", profit: 600000, "rank" : 5, "time": "15:35:10"},
   ]);
-  /*const fetchLeaderboard = async () => {
-    try {
-      const response = await fetch(
-        "http://localhost:18080/api/fetchLeaderboard",
-        {
-          method: "GET",
+
+  useEffect(() => {
+    const fetchLeaderboard = async () => {
+      try {
+        const response = await fetch(
+          "http://localhost:18080/api/fetchLeaderboard",
+          {
+            method: "GET",
+          }
+        );
+        if (response.status == 200 && response.body != null) {
+          const responseStr = await response.text();
+          console.log(responseStr)
+          const leaderboardJSON = JSON.parse(responseStr);
+          setEntries(leaderboardJSON)
         }
-      );
-
-      if (response.status == 200) {
-        let entries : Record<string, any>[] = [];
-
-        
+      } catch (err) {
+        console.log(err);
       }
-    } catch (err) {
-      console.log(err);
-    }
-  }; */
+    };
+    fetchLeaderboard(); 
+  }, []);
 
   type Leaderboard_row_entry = {
     "username" : string;
@@ -64,6 +68,7 @@ export default function LeaderboardComponent() {
   }
 
   function convertTime(timeStr : string) {
+    console.log(timeStr);
     return (Number(timeStr.substring(0,2)) * 3600) + (Number(timeStr.substring(3,5)) * 60) + (Number(timeStr.substring(6)));
   }
 
@@ -97,7 +102,6 @@ export default function LeaderboardComponent() {
       }
     }
 
-    setEntries(entries);
     player_entry_list.forEach((row) => {
       tableRows.push(
         <Leaderboard_Row player_entry={row} key={row.rank}/>

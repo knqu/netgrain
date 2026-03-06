@@ -49,6 +49,8 @@ int main() {
         int dbResponse = ConnectorSingleton::getInstance().login(email, password) ;
 
        if (dbResponse == true) {
+            auto& cookie = app.get_context<crow::CookieParser>(req);
+            cookie.set_cookie("email", email).max_age(129600).path("/");
             session.set("loggedIn", true);
             crow::response res;
             res.code = 200;
@@ -118,6 +120,9 @@ int main() {
             else {
                 ConnectorSingleton::getInstance().addUser(email, password, email);
             }
+            auto& cookie = app.get_context<crow::CookieParser>(req);
+            cookie.set_cookie("email", email).max_age(129600).path("/");
+
             session.remove("registeredEmail");
             session.remove("registeredPassword");
             session.remove("sixDigits");
@@ -177,7 +182,8 @@ int main() {
     CROW_ROUTE(app, "/api/attemptDaily").methods(crow::HTTPMethod::GET, crow::HTTPMethod::Patch)([&](const crow::request& req) {
         auto reqBody = crow::json::load(req.body);
         try {
-            ConnectorSingleton::getInstance().addLeaderboardAttempt(0, reqBody["profit"].i(), reqBody["time"].s());
+            auto& cookie = app.get_context<crow::CookieParser>(req);            
+            ConnectorSingleton::getInstance().addLeaderboardAttempt(cookie.get_cookie("email"), reqBody["profit"].i(), reqBody["time"].s());
         } catch (...) {
             return crow::response(400);
         }
@@ -186,8 +192,10 @@ int main() {
 
     CROW_ROUTE(app, "/api/fetchLeaderboard").methods(crow::HTTPMethod::GET, crow::HTTPMethod::Patch)([&](const crow::request& req) {
         std::string leaderboardJSON = ConnectorSingleton::getInstance().fetchLeaderBoard();
+        std::cout << leaderboardJSON << std::endl;
         crow::response res;
         res.write(leaderboardJSON);
+        res.code = 200;
         return res;
     });
 
