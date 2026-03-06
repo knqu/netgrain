@@ -535,7 +535,7 @@ try
 
 int main() {
   // “Given the database and backend is implemented correctly, when a new user is created, then I should be able to verify it exists in my database.”
-  // ConnectorSingleton::getInstance().addUser("demoRunTwo@gmail.com", "password1234!", "demoRunTwo");
+  //ConnectorSingleton::getInstance().addUser("demoRunThree@gmail.com", "password1234!", "demoRunThree");
 
   // “Given the database and backend is implemented correctly, when the login credentials of the server are incorrect, then the backend should return an error message.”
   // std::cout << ConnectorSingleton::getInstance().login("danielLuo@proton.com", "delirious") << std::endl;
