@@ -65,6 +65,10 @@ int main()
           parameters.threshold.store(threshold);
           fmt::print("bubble! {}\n", threshold);
         }
+        else if (parameters.new_event.load() == 2)
+        {
+          fmt::print("bubble is ignored: called consecutively when another is active!\n");
+        }
       }
     });
 
