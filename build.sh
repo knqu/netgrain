@@ -7,7 +7,7 @@ source .env
 # FLAGS="$FLAGS ./src/*.cpp"
 # FLAGS="$FLAGS ./generated/*.cpp"
 # FLAGS="$FLAGS -I./generated"
-FLAGS="$FLAGS -std=c++2c"
+FLAGS="$FLAGS -std=c++20"
 FLAGS="$FLAGS -L./lib/usockets/bin/debug"
 FLAGS="$FLAGS -luSockets"
 FLAGS="$FLAGS -L./lib/fmtlib/bin"
@@ -24,7 +24,8 @@ FLAGS="$FLAGS -DUWS_NO_ZLIB"
 FLAGS="$FLAGS -DASIO_NO_DEPRECATED"
 FLAGS="$FLAGS -DASIO_STANDALONE"
 
-SIM_FLAGS="$FLAGS ./core/src/simulator/*.cpp"
+SIM_FLAGS="$FLAGS ./core/src/simulator/main.cpp"
+SIM_FLAGS="$SIM_FLAGS ./core/src/simulator/historicalData.cpp"
 SIM_FLAGS="$SIM_FLAGS -I./core/src/simulator/"
 
 SIM_SERVER_FLAGS="$FLAGS ./core/src/simulator/server/*.cpp"
