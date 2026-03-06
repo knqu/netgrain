@@ -123,7 +123,7 @@ try
       }
       catch (const std::exception &e)
       {
-        std::cout << e.what() << std::endl;
+        std::cout << "User not found\n";
         return false;
       }
       return true;
@@ -535,11 +535,11 @@ try
 
 int main() {
   // “Given the database and backend is implemented correctly, when a new user is created, then I should be able to verify it exists in my database.”
-  //ConnectorSingleton::getInstance().addUser("demoPurpose@gmail.com", "password1234!", "demo");
+  // ConnectorSingleton::getInstance().addUser("demoRunTwo@gmail.com", "password1234!", "demoRunTwo");
 
   // “Given the database and backend is implemented correctly, when the login credentials of the server are incorrect, then the backend should return an error message.”
-   //std::cout << ConnectorSingleton::getInstance().login("user@example.com", "Password1!") << std::endl;
+  // std::cout << ConnectorSingleton::getInstance().login("danielLuo@proton.com", "delirious") << std::endl;
 
   // “Given the database is not running on the web server, when the backend sends a query, then there should be proper error handling.”
-  // ConnectorSingleton::getInstance().addUser("iDontExist@gmail.com", "password1234!", "fake");
+  ConnectorSingleton::getInstance().addUser("iDontExist@gmail.com", "password1234!", "fake");
 }
