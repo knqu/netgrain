@@ -1,8 +1,8 @@
 import '../styling/Leaderboard.css';
-import { useState, type ReactElement } from 'react';
+import { useState, type ReactElement, useEffect } from 'react';
 
 export default function LeaderboardComponent() {
-  const [up, setDirection] = useState<boolean>(true);
+  const [up, setDirection] = useState<boolean>(false);
   const [entries, setEntries] = useState<Leaderboard_row_entry[]>([
     {"username" : "daniel_luo", profit: 1000000, "rank" : 1, "time" : "00:00:03"},
     {"username" : "Haiyan", profit: 900000, "rank" : 2, "time" : "01:50:45"},
@@ -10,24 +10,28 @@ export default function LeaderboardComponent() {
     {"username" : "Colin", profit: 700000, "rank" : 4, "time" : "10:42:43"},
     {"username" : "James", profit: 600000, "rank" : 5, "time": "15:35:10"},
   ]);
-  /*const fetchLeaderboard = async () => {
-    try {
-      const response = await fetch(
-        "http://localhost:18080/api/fetchLeaderboard",
-        {
-          method: "GET",
+
+  useEffect(() => {
+    const fetchLeaderboard = async () => {
+      try {
+        const response = await fetch(
+          "http://localhost:18080/api/fetchLeaderboard",
+          {
+            method: "GET",
+          }
+        );
+        if (response.status == 200 && response.body != null) {
+          const responseStr = await response.text();
+          console.log(responseStr)
+          const leaderboardJSON = JSON.parse(responseStr);
+          setEntries(leaderboardJSON)
         }
-      );
-
-      if (response.status == 200) {
-        let entries : Record<string, any>[] = [];
-
-        
+      } catch (err) {
+        console.log(err);
       }
-    } catch (err) {
-      console.log(err);
-    }
-  }; */
+    };
+    fetchLeaderboard(); 
+  }, []);
 
   type Leaderboard_row_entry = {
     "username" : string;
@@ -97,7 +101,6 @@ export default function LeaderboardComponent() {
       }
     }
 
-    setEntries(entries);
     player_entry_list.forEach((row) => {
       tableRows.push(
         <Leaderboard_Row player_entry={row} key={row.rank}/>
