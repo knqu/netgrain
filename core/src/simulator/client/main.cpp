@@ -22,7 +22,7 @@ int main()
   std::mutex mtx;
 
   py::scoped_interpreter guard{};
-  py::module_ algorithm = py::module_::import("algorithm");
+  py::gil_scoped_release release;
 
   Blocking_Queue<uint64_t> *stock_points =
     new Blocking_Queue<uint64_t>(1ull << 20);
@@ -48,13 +48,29 @@ int main()
   ws.start();
 
   std::thread([&] {
+    py::gil_scoped_acquire acquire;
+    py::module_ algorithm = py::module_::import("algorithm");
+
+    py::object speed = algorithm.attr("SPEED");
+    int speed_ms = speed.cast<int>();
+
     while (true)
     {
-      std::this_thread::sleep_for(std::chrono::milliseconds(300));
+      int count = 0;
+
+      std::this_thread::sleep_for(std::chrono::milliseconds(speed_ms));
       std::lock_guard<std::mutex> _(mtx);
       if (!stock_points->empty())
       {
-        fmt::print("data: {}\n", stock_points->dequeue());
+        int point = stock_points->dequeue();
+        py::object result = algorithm.attr("calc_point")(point);
+        fmt::print("data: {} -> {}\n", point, result.cast<int>());
+        count++;
+
+        if (count >= 100)
+        {
+          break;
+        }
       }
     }
   }).detach();
@@ -64,8 +80,11 @@ int main()
   {
     if (text == "exit")
     {
-      return 0;
+      ws.stop();
+      exit(0);
     }
   }
+
+  return 0;
 }
 
