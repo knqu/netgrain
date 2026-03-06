@@ -10,6 +10,8 @@ import Login from './components/Login';
 import Registration from './components/Registration';
 import ChartComponent from './components/Chart';
 import SimResults from './components/SimResults';
+import Verification from './components/Verification';
+import ForgotPassword from './components/ForgotPassword';
 
 function App() {
   return (
@@ -24,6 +26,8 @@ function App() {
         <Route path="/simResults" element={<SimResults />} />
         <Route path="/chart" element={<ChartComponent />} />
         <Route path="/algoTable" element={<AlgoTable />} />
+        <Route path="/verification" element={<Verification />} />
+        <Route path="/forgot" element={<ForgotPassword />} />
       </Routes>
     </Router>
   );

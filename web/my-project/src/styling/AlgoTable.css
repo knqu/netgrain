@@ -34,7 +34,7 @@
     padding: 0.5em;
 }
 
-.SimResult_table_head_row h5, .SimResult_row_content h5 {
+.SimResult_table_head_row .button_header, .SimResult_row_content h5, .SimResult_table_head_row h5 {
     flex: 1;
     text-align: center;
 }
@@ -43,4 +43,14 @@
     background-color: #252628;
     padding: 0.76em;
     border-radius: 0.5em;
+}
+
+.button_header {
+    border : none;
+    background-color: transparent;
+    color: white;
+}
+
+.button_header:enabled {
+    outline: none;
 }

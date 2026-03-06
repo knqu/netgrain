@@ -80,7 +80,8 @@ try
           {
             conn = new pqxx::connection(
               "host=localhost "
-              "dbname=netgrain_db"
+              "dbname=postgres "
+              "user=cnath"
             );
           }
           catch (const std::exception &e)
@@ -490,8 +491,8 @@ try
 };
 
 
-int main() {
-  ConnectorSingleton::getInstance().changePassword("@.com", "helloichanged");
+//int main() {
+  //fmt::print("{}\n", ConnectorSingleton::getInstance().fetchLeaderBoard());
   // “Given the database and backend is implemented correctly, when a new user is created, then I should be able to verify it exists in my database.”
   //ConnectorSingleton::getInstance().addUser("demoPurpose@gmail.com", "password1234!", "demo");
 
@@ -500,4 +501,4 @@ int main() {
 
   // “Given the database is not running on the web server, when the backend sends a query, then there should be proper error handling.”
   // ConnectorSingleton::getInstance().addUser("iDontExist@gmail.com", "password1234!", "fake");
-}
+//}
