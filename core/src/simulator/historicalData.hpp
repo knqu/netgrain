@@ -5,23 +5,59 @@
 #include <cstdint>
 #include <unordered_map>
 
+#include "def.hpp"
 
-# include "def.hpp"
+using namespace std;
 
-constexpr i64 PRICE_SCALE_FACTOR = 100000; // mult prices to avoid floating point issues
+constexpr i64 PRICE_SCALE_FACTOR = 100000;
 
-// The struct representing a single row of historical market data
+
 struct MarketDataRow {
-    u32 date;
-    i64  open;
-    i64  high;
-    i64  low; 
-    i64  close;
-    u64 volume;
-    u64 open_int;
+    u32 date;      
+    i64 open;      
+    i64 high;      
+    i64 low;       
+    i64 close;     
+    uint64_t volume;    
+    uint64_t open_int;  
 };
 
-using MarketDataMap = std::unordered_map<std::string, std::vector<MarketDataRow>>; // Ticker Historical Data Map
+//sim config struct -- Placed this here for now as test... move later on to diff file?
+struct SimulationConfig {
+    int64_t initial_capital = 0; 
+    vector<string> tickers; 
+    string start_date;
+    string end_date;
+    int64_t trade_fee = 0;
+};
+//this might be moved somewhere else later on.
+struct SimulationMetrics {
+    int total_trades;
+    int winning_trades;
+    int losing_trades;
+    double win_rate_percent;
+    double initial_balance;
+    double final_balance;
+    double net_profit;
+};
 
-std::vector<MarketDataRow> parse_csv_file(const std::string& filepath);
-void load_ticker_data(MarketDataMap& market_map, const std::string& ticker, const std::string& filepath);
+using MarketDataMap = unordered_map<string, vector<MarketDataRow>>;
+
+class MarketDataManager {
+private:
+    MarketDataMap market;
+    //helpers+parsing functions
+    u32 parse_date(string date_str);
+    i64 parse_price(const string& price_str);
+    vector<MarketDataRow> parse_csv_file(const string& filepath);
+    string serialize_results_to_json(const SimulationConfig& config, const SimulationMetrics& metrics);
+
+public:
+    //main func + tests
+    bool load_ticker_data(const string& ticker, const string& filepath);
+    bool has_ticker(const string& ticker);
+    void print_first_row(const string& ticker);
+    string get_market_state_json();
+    string run_simulation(const SimulationConfig& config);
+    void print_config(const SimulationConfig& config);
+};

@@ -1,0 +1,42 @@
+.homepageContainer {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 1em;
+}
+
+.Grid_and_Leaderboard {
+    display: grid;
+    grid-template-rows: 1fr;
+    grid-template-columns: 90fr 10fr;
+    gap: 2em;
+    width: 95vw;
+}
+
+.DashboardContainter {
+    background-color: #3D3F42;
+    width: 95vw;
+    border-radius: 0.4em;
+    padding: 0.5em;
+}
+
+.DashboardButtonContainer {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-evenly;
+    align-items: center;
+}
+
+.Grid {
+    width: 100%;
+    grid-row: 1;
+    grid-column: 1 / span 1;
+    background-color: white;
+    border-radius: 0.4em;
+}
+
+.LeaderboardContainer {
+    grid-row: 1;
+    grid-column: 2 / span 1;;
+}
