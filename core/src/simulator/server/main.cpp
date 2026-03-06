@@ -1,10 +1,10 @@
 #include <fmt/core.h>
+#include <fmt/format.h>
+
+#include <stdint.h>
+#include <unordered_set>
 
 #include <crow.h>
-#include <stdint.h>
-
-#include <mutex>
-#include <unordered_set>
 
 struct Socket_Data
 {
@@ -14,55 +14,47 @@ struct Socket_Data
 int main()
 {
   crow::SimpleApp app;
-
+  std::unordered_set<crow::websocket::connection *> users;
+  std::unordered_map<crow::websocket::connection *, int> counts;
   std::mutex mtx;
-  std::unordered_set<crow::websocket::connection*> users;
 
-  CROW_WEBSOCKET_ROUTE(app, "/ws")
-    .onopen([&](crow::websocket::connection& conn) {
-      CROW_LOG_INFO
-        << "new websocket connection from " << conn.get_remote_ip();
+  CROW_WEBSOCKET_ROUTE(app, "/")
+    .onopen([&](crow::websocket::connection &conn) {
+      fmt::print("new websocket connection from {}!\n", conn.get_remote_ip());
       std::lock_guard<std::mutex> _(mtx);
       users.insert(&conn);
+      counts.insert({&conn, 0});
     })
     .onclose([&](
-      crow::websocket::connection& conn,
-      const std::string& reason,
-      uint16_t
-    )
-    {
-      CROW_LOG_INFO << "websocket connection closed: " << reason;
+      crow::websocket::connection &conn,
+      const std::string &reason,
+      uint16_t) {
+
+      fmt::print("websocket connection closed: {}\n", reason);
       std::lock_guard<std::mutex> _(mtx);
+      users.erase(&conn);
+      counts.erase(&conn);
     })
-    .onmessage([&](crow::websocket::connection& conn,
-                   const std::string& data, bool is_binary)
-    {
+    .onmessage([&](
+      crow::websocket::connection &conn,
+      const std::string &data,
+      bool is_binary) {
+      
       std::lock_guard<std::mutex> _(mtx);
-      for (auto u : users)
-      {
-        if (is_binary)
-        {
-          u->send_binary(data);
-        }
-        else {
-          u->send_text(data);
-        }
-      }
     });
 
-  CROW_ROUTE(app, "/")
-  ([] {
-    char name[256];
-    gethostname(name, 256);
-    crow::mustache::context x;
-    x["servername"] = name;
+  std::thread([&] {
+    while (true)
+    {
+      std::this_thread::sleep_for(std::chrono::milliseconds(100));
+      std::lock_guard<std::mutex> _(mtx);
+      for (auto *user : users)
+      {
+        user->send_text(fmt::format("{}", ++counts[user]));
+      }
+    }
+  }).detach();
 
-    auto page = crow::mustache::load("ws.html");
-    return page.render(x);
-  });
-
-  app.port(18080)
-    .multithreaded()
-    .run();
+  app.port(1234).multithreaded().run();
 }
 

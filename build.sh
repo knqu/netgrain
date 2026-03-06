@@ -28,7 +28,30 @@ SIM_FLAGS="$FLAGS ./core/src/simulator/*.cpp"
 SIM_FLAGS="$SIM_FLAGS -I./core/src/simulator/"
 
 SIM_SERVER_FLAGS="$FLAGS ./core/src/simulator/server/*.cpp"
-SIM_SERVER_FLAGS="$SIM_SERVER_FLAGS -I./core/src/simulator/"
+SIM_SERVER_FLAGS="$SIM_SERVER_FLAGS -I./core/src/simulator/server"
+
+SIM_CLIENT_FLAGS="$FLAGS ./core/src/simulator/client/*.cpp"
+SIM_CLIENT_FLAGS="$SIM_CLIENT_FLAGS -I./core/src/simulator/client"
+SIM_CLIENT_FLAGS="$SIM_CLIENT_FLAGS -DPy_NO_LINK_LIB"
+SIM_CLIENT_FLAGS="$SIM_CLIENT_FLAGS -I./lib/pybind11/include"
+SIM_CLIENT_FLAGS="$SIM_CLIENT_FLAGS -isystem ./lib/pybind11/include/pybind11"
+SIM_CLIENT_FLAGS="$SIM_CLIENT_FLAGS -isystem ./lib/pybind11/include/python3.12"
+SIM_CLIENT_FLAGS="$SIM_CLIENT_FLAGS -mmacosx-version-min=15.7"
+SIM_CLIENT_FLAGS="$SIM_CLIENT_FLAGS -L./lib/pybind11/bin/debug"
+SIM_CLIENT_FLAGS="$SIM_CLIENT_FLAGS -lpython3.12d"
+SIM_CLIENT_FLAGS="$SIM_CLIENT_FLAGS -lintl"
+SIM_CLIENT_FLAGS="$SIM_CLIENT_FLAGS $sdk_path/usr/lib/libiconv.tbd"
+SIM_CLIENT_FLAGS="$SIM_CLIENT_FLAGS $sdk_path/usr/lib/libcharset.tbd"
+SIM_CLIENT_FLAGS="$SIM_CLIENT_FLAGS -framework CoreFoundation"
+SIM_CLIENT_FLAGS="$SIM_CLIENT_FLAGS -framework Foundation"
+SIM_CLIENT_FLAGS="$SIM_CLIENT_FLAGS -framework Security"
+SIM_CLIENT_FLAGS="$SIM_CLIENT_FLAGS -DIXWEBSOCKET_USE_SECURE_TRANSPORT"
+SIM_CLIENT_FLAGS="$SIM_CLIENT_FLAGS -DIXWEBSOCKET_USE_TLS"
+SIM_CLIENT_FLAGS="$SIM_CLIENT_FLAGS -DIXWEBSOCKET_USE_ZLIB"
+SIM_CLIENT_FLAGS="$SIM_CLIENT_FLAGS -I./lib/ixwebsocket/include"
+SIM_CLIENT_FLAGS="$SIM_CLIENT_FLAGS -L./lib/ixwebsocket/bin/debug"
+SIM_CLIENT_FLAGS="$SIM_CLIENT_FLAGS -lz"
+SIM_CLIENT_FLAGS="$SIM_CLIENT_FLAGS -lixwebsocket"
 
 GEN_FLAGS="$FLAGS ./core/src/generator/*.cpp"
 GEN_FLAGS="$GEN_FLAGS -I./core/src/generator/"
@@ -47,6 +70,10 @@ simulator_server_compile_cmd () {
     $clang_path -Wall $SIM_SERVER_FLAGS -g -o out/debug/macos/sim_server
 }
 
+simulator_client_compile_cmd () {
+    $clang_path -Wall $SIM_CLIENT_FLAGS -g -o out/debug/macos/sim_client
+}
+
 generator_compile_cmd () {
     $clang_path -Wall $GEN_FLAGS -g -o out/debug/macos/generator
 }
@@ -54,7 +81,6 @@ generator_compile_cmd () {
 db_compile_cmd () {
     $clang_path -Wall $DB_FLAGS -g -o out/debug/macos/db
 }
-
 
 root_dir="$( cd -- "$( dirname -- "${BASH_SOURCE[0]:-$0}"; )" &> /dev/null && pwd 2> /dev/null; )";
 
@@ -84,11 +110,28 @@ if [ $1 = "run" ]; then
 
     elif [ $2 = "serve" ]; then
 
+        printf "compiling...\n"
+
         mkdir -p out/debug/macos
         simulator_server_compile_cmd
 
+        printf "running...\n"
+
         if [ $? -eq 0 ]; then
             ./out/debug/macos/sim_server
+        fi
+
+    elif [ $2 = "client" ]; then
+
+        printf "compiling...\n"
+
+        mkdir -p out/debug/macos
+        simulator_client_compile_cmd
+
+        printf "running...\n"
+
+        if [ $? -eq 0 ]; then
+            ./out/debug/macos/sim_client
         fi
 
     elif [ $2 = "db" ]; then
@@ -118,6 +161,11 @@ elif [ $1 = "build" ]; then
 
         mkdir -p out/debug/macos
         simulator_server_compile_cmd
+
+    elif [ $2 = "client" ]; then
+
+        mkdir -p out/debug/macos
+        simulator_client_compile_cmd
 
     elif [ $2 = "db" ]; then
 
