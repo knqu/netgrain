@@ -159,7 +159,6 @@ int main() {
                     SimulationConfig config;
                     smatch match;
 
-
                     // Parse Initial Capital
                     if (regex_search(json, match, regex(R"("initial_capital":\s*([0-9.]+))"))) {
                         double raw_cap = stod(match[1].str());
@@ -183,6 +182,7 @@ int main() {
                     // Parse Tickers Array
                     if (regex_search(json, match, regex(R"("ticker":\s*"([^"]*))"))) {
                       for (int i = 0; i < match.size(); i++) {
+                      std::cout << match[1].str() << "\n";
                         config.stocks.push_back(Stocks());
                         config.stocks[i].name = match[1].str();
                       }
