@@ -3,9 +3,7 @@
 
 #pragma once
 
-#include <mutex>
 #include "array_list.hpp"
-
 
 template<typename T, class Allocator = void>
 struct Queue
@@ -40,14 +38,21 @@ struct Queue
   };
   Members m = Members();
 
-  size_t len() {
+  size_t len()
+  {
     return m.len;
+  }
+
+  bool empty()
+  {
+    return (m.len == 0);
   }
 
   /*
    * Queue constructors
    */
-  Queue(Allocator *a, size_t init_cap) {
+  Queue(Allocator *a, size_t init_cap)
+  {
     m = Members(a);
 
     m.cap = init_cap;
@@ -56,8 +61,8 @@ struct Queue
     m.data = (T *) m.alloc(sizeof(T) * m.cap);
   }
 
-
-  Queue(Allocator *a) {
+  Queue(Allocator *a)
+  {
     m = Members(a);
 
     m.cap = initial_arr_cap;
@@ -66,8 +71,8 @@ struct Queue
     m.data = (T *) m.alloc(sizeof(T) * m.cap);
   }
 
-
-  Queue(size_t init_cap) {
+  Queue(size_t init_cap)
+  {
     m = Members();
 
     m.cap = init_cap;
@@ -76,7 +81,8 @@ struct Queue
     m.data = (T *) m.alloc(sizeof(T) * m.cap);
   }
   
-  Queue() {
+  Queue()
+  {
     m = Members();
 
     m.cap = initial_arr_cap;
@@ -88,16 +94,20 @@ struct Queue
   /*
    * Destructor
    */
-    ~Queue() {
-      m.dealloc(m.data);
-    }
+  ~Queue()
+  {
+    m.dealloc(m.data);
+  }
 
-  void enqueue(T val) {
-    if (m.len == m.cap) {
+  void enqueue(T val)
+  {
+    if (m.len == m.cap)
+    {
       size_t new_cap = m.cap * resize_factor;
       T *new_arr = (T *) m.alloc(sizeof(T) * new_cap);
       size_t count = 0;
-      while (m.front_ptr != m.back_ptr) {
+      while (m.front_ptr != m.back_ptr)
+      {
         new_arr[count] = m.data[m.front_ptr];
         m.front_ptr += 1;
         count += 1;
@@ -114,10 +124,10 @@ struct Queue
     m.back_ptr = (m.back_ptr + 1) % m.cap;
 
     m.len += 1;
-
   }
 
-  T dequeue() {
+  T dequeue()
+  {
     assert(m.len > 0);
 
     // get front pointer, get value, move front pointer forward one place
@@ -126,10 +136,10 @@ struct Queue
     m.front_ptr = (m.front_ptr + 1) % m.cap;
     m.len -= 1;
     return ret_val;
-  
   }
 
-  T peek() {
+  T peek()
+  {
     assert(m.len > 0);
     return m.data[m.front_ptr];
   }
@@ -141,3 +151,4 @@ struct Queue
     m.back_ptr = 0;
   }
 };
+
