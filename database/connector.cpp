@@ -258,6 +258,22 @@ try
     }
 
     // TODO: basic mockup actions of alg
+    std::string fetchSimulation(int simID, std::string identifier) {
+      int uuid = getUUID(identifier);
+      pqxx::work tx(*conn);
+      pqxx::row r;
+      try
+      {
+        std::string query = "SELECT * FROM pastSimulations WHERE (userid = $1 AND simid = $2)";
+        r = tx.exec(query, pqxx::params{uuid, simID}).one_row();
+      }
+      catch (const std::exception &e)
+      {
+        std::cerr << e.what() << "\n";
+        return "";
+      }
+      return r[2].c_str();
+    }
     
     int changePassword(std::string identifier, std::string newPassword) {
       int uuID = getUUID(identifier);
@@ -518,7 +534,6 @@ try
 
 
 int main() {
-  fmt::print("{}\n", ConnectorSingleton::getInstance().fetchLeaderBoard());
   // “Given the database and backend is implemented correctly, when a new user is created, then I should be able to verify it exists in my database.”
   //ConnectorSingleton::getInstance().addUser("demoPurpose@gmail.com", "password1234!", "demo");
 
