@@ -20,6 +20,7 @@ int main() {
     crow::mustache::set_global_base("../../my-project/dist");
 
     CROW_ROUTE(app, "/")([]() {
+        std::cout << "----------------Hi\n";
         auto page = crow::mustache::load_text_unsafe("index.html");
         return page;
     });

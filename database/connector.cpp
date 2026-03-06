@@ -43,8 +43,7 @@ class ConnectorSingleton {
       int uuIDfound(int uuid) {
         pqxx::work tx(*conn);
         std::string query = "SELECT * FROM userlogin WHERE (userid = $1)";
-
-        try
+try
         {
           pqxx::row r = tx.exec(query, pqxx::params{uuid}).one_row();
         }
@@ -63,8 +62,7 @@ class ConnectorSingleton {
           {
             conn = new pqxx::connection(
               "host=localhost "
-              "dbname=postgres "
-              "user=cnath "
+              "dbname=netgrain_db"
             );
           }
           catch (const std::exception &e)
@@ -173,7 +171,6 @@ class ConnectorSingleton {
       {
           std::cerr << e.what() << std::endl;
       }
-
       tx.commit();
 
       return SUCCESS;
@@ -276,8 +273,13 @@ class ConnectorSingleton {
       pqxx::result r = tx.exec(query);
       std::string result;
 
+      if (r.affected_rows() == 0) {
+        result.append("[]");
+        return result;
+      }
+
       for (auto row = std::begin(r); row != std::end(r); row++) {
-        std::string tmp = "{";
+        std::string tmp = "[{";
         int i = 0;
         for (auto field = std::begin(row); field != std::end(row); field++) {
           if (i == 0) {
@@ -305,6 +307,7 @@ class ConnectorSingleton {
       if (result.length() > 0) {
         result.pop_back();
       }
+      result.append("]");
 
       return result;
     }
@@ -444,13 +447,14 @@ class ConnectorSingleton {
 };
 
 
-/*int main() {
+int main() {
+  fmt::print("{}\n", ConnectorSingleton::getInstance().fetchLeaderBoard());
   // “Given the database and backend is implemented correctly, when a new user is created, then I should be able to verify it exists in my database.”
   //ConnectorSingleton::getInstance().addUser("demoPurpose@gmail.com", "password1234!", "demo");
 
   // “Given the database and backend is implemented correctly, when the login credentials of the server are incorrect, then the backend should return an error message.”
-   std::cout << ConnectorSingleton::getInstance().login("user@example.com", "Password1!") << std::endl;
+   //std::cout << ConnectorSingleton::getInstance().login("user@example.com", "Password1!") << std::endl;
 
   // “Given the database is not running on the web server, when the backend sends a query, then there should be proper error handling.”
   // ConnectorSingleton::getInstance().addUser("iDontExist@gmail.com", "password1234!", "fake");
-} */
+}
