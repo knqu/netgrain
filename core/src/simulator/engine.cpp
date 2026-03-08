@@ -25,6 +25,10 @@ public:
         portfolio.balance = starting_balance;
     }
 
+    int get_balance() const {
+        return portfolio.balance;
+    }
+
     void set_config(const std::string& ticker, TickerConfig config) {
         ticker_configs[ticker] = config;
     }
