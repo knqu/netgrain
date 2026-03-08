@@ -9,9 +9,11 @@
 .Grid_and_Leaderboard {
     display: grid;
     grid-template-rows: 1fr;
-    grid-template-columns: 90fr 10fr;
+    grid-template-columns: minmax(0, 9fr) 1fr;
+    min-width: 0;
     gap: 2em;
     width: 95vw;
+    overflow: hidden;
 }
 
 .DashboardContainter {
@@ -24,8 +26,9 @@
 .DashboardButtonContainer {
     display: flex;
     flex-direction: row;
-    justify-content: space-evenly;
+    justify-content: center;
     align-items: center;
+    gap: 5em;
 }
 
 .Grid {
@@ -33,10 +36,78 @@
     grid-row: 1;
     grid-column: 1 / span 1;
     background-color: white;
-    border-radius: 0.4em;
+    min-width: 0;
+    min-height: 500px;
+    overflow: hidden;
+    background-color: rgb(30 41 59 / 20%);
+    border-radius: var(--radius-xl);
 }
 
 .LeaderboardContainer {
     grid-row: 1;
     grid-column: 2 / span 1;;
+}
+
+.navButtons {
+    font-size: 1em;
+    width: 7.5%;
+    background-color: #6B6E71;
+    color: #C9D6E0;
+}
+
+.navButtons.active {
+    background-color: #68E2EB;
+    color: #434648;
+}
+
+.Leaderboard_and_DailyMarket {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 1em;
+    width: 100%
+}
+
+.dailyMarketContainer {
+    width: 21.6vw;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 1em;
+    background-color: #3D3F42;
+    padding: 1em;
+    border-radius: 0.5em;
+    box-shadow: 0.3em 0.3em 1em rgb(16, 16, 16);
+}
+
+.dailyMarketButtonsContainer {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 0.5em
+}
+
+.dailyMarketTitle {
+    font-size: 2em;
+}
+
+.dailyMarketButtons {
+    background-color: #6B6E71;
+}
+
+.dailyMarketButtons:hover{
+    background-color: #68E2EB;
+    color: black
+}
+
+#dailyMarketFileUploadButton {
+    width: 90%;
+}
+
+#dailyMarketPlayButton {
+    width: 90%;
+    background-color: rgb(9, 215, 23);
 }

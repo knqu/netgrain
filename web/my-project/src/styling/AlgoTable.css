@@ -1,0 +1,58 @@
+.SimResult_table_container {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 1.5em;
+}
+
+.SimResult_table_head_row_container {
+    width: 900px;
+    background-color: #252628;
+    border-radius: 0.3em;
+    padding: 0.76em;
+}
+
+.SimResult_row_container {
+    padding-bottom: 0.6em;
+}
+
+.SimResult_table_head_row {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+}
+
+.SimResult_row_content {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+
+    width: 900px;
+    background-color: #3D3F42;
+    border-radius: 0.3em;
+    padding: 0.5em;
+}
+
+.SimResult_table_head_row .button_header, .SimResult_row_content h5, .SimResult_table_head_row h5 {
+    flex: 1;
+    text-align: center;
+}
+
+.SimResult_table {
+    background-color: #252628;
+    padding: 0.76em;
+    border-radius: 0.5em;
+}
+
+.button_header {
+    font-weight: 400;
+    border : none;
+    background-color: transparent;
+    color: white;
+    padding: 0 0;
+}
+
+.button_header:enabled {
+    outline: none;
+}

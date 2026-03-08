@@ -6,6 +6,7 @@ out/
 pch/
 .clangd
 compile_commands.json
-core/src/simulator/server.exe
 lib/usockets/bin/debug/libuSockets.a
- core/src/simulator/temp_data
+core/src/simulator/temp_data
+./database/dbData/web/webserver/my-drogon-app
+web/webserver/my_crow_app
