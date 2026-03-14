@@ -224,6 +224,39 @@ int main() {
         }
     });
 
+    CROW_ROUTE(app, "/api/saveLayout").methods(crow::HTTPMethod::POST, crow::HTTPMethod::Patch)([&](const crow::request& req) {
+        auto& cookie = app.get_context<crow::CookieParser>(req);
+        std::string email = cookie.get_cookie("email");
+        
+        if (email.empty()) return crow::response(401); 
+
+        try {
+            ConnectorSingleton::getInstance().linkCustomGUILayout(email, req.body);
+            return crow::response(200);
+        } catch (...) {
+            return crow::response(500);
+        }
+    });
+
+    CROW_ROUTE(app, "/api/fetchLayout").methods(crow::HTTPMethod::GET, crow::HTTPMethod::Patch)([&](const crow::request& req) {
+        auto& cookie = app.get_context<crow::CookieParser>(req);
+        std::string email = cookie.get_cookie("email");
+        
+        if (email.empty()) return crow::response(401);
+
+        try {
+            std::string layoutJSON = ConnectorSingleton::getInstance().getCustomGUILayout(email);
+            
+            crow::response res;
+            res.write(layoutJSON.empty() ? "{}" : layoutJSON);
+            res.set_header("Content-Type", "application/json");
+            res.code = 200;
+            return res;
+        } catch (...) {
+            return crow::response(500);
+        }
+    });
+
     CROW_CATCHALL_ROUTE(app)([](){
         crow::response res;
         res.set_static_file_info_unsafe("../../my-project/dist/index.html");
