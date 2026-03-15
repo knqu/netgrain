@@ -30,7 +30,7 @@ private:
   // queue for streaming data
   Queue<double> *data_buffer;
   // create a random device for normal distribution
-  
+
   // std::random_device *device;
   // std::mt19937 *gen;
   // std::normal_distribution<> *dist;
@@ -91,7 +91,7 @@ public:
     return data_buffer->dequeue();
   }
 
-  /* 
+  /*
    * Basic data generation function,
    * takes, current price
    */
@@ -133,7 +133,7 @@ public:
       // generate the next data point in the weiner process and add it onto
       // the data buffer, before dequeuing it
       data_buffer->enqueue(gbm(data_buffer->peek(), norm, gen));
-      
+
       // TODO: way to send data would go here, this could be in the format
       // of a second queue, extra fields in the Data_Transfer, etc. for now
       // printing to console will suffice
@@ -150,7 +150,7 @@ public:
           gen_settings->n_price
         );
       }
-      
+
       i += 1;
       std::this_thread::sleep_for(std::chrono::milliseconds(9));
     }
@@ -244,9 +244,11 @@ public:
 
                 gen_settings->new_event.store(0);
 
+                data_buffer->enqueue(gbm(curr * 0.3213, norm, gen));
+
                 if (gen_settings->send_data.load()) {
                   gen_settings->conn.load()
-                    ->send_text(fmt::format("{}", curr * 0.3213));
+                    ->send_text(fmt::format("{}", send_price()));
                 }
 
                 tracker = 0;
@@ -307,4 +309,3 @@ skip:
     return i;
   }
 };
-
