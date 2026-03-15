@@ -1,6 +1,7 @@
 #pragma once
 
 #include "generator.cpp"
+#include "ou.cpp"
 #include <iostream>
 #include <chrono>
 #include <thread>
@@ -55,6 +56,23 @@ class gen_benchmark {
         
         // generate while the timer is still going on
         count = new_gen.generate(&tester);
+        std::cout << count << "\n";
+        return count;
+    }
+
+    int ou_run() {
+        ouGen new_gen(0, 0, 0, 0);
+        dataTransfer tester;
+        tester.gen = 1;
+        int count = 0;
+        int seconds;
+        std::cout << "How many seconds do you want the program to run for (int)? ";
+        std::cin >> seconds;
+
+        std::thread t(timer, seconds, std::ref(tester));
+        t.detach();
+        
+        count = new_gen.gen(&tester);
         std::cout << count << "\n";
         return count;
     }
