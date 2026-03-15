@@ -12,6 +12,7 @@ import ChartComponent from './components/Chart';
 import SimResults from './components/SimResults';
 import Verification from './components/Verification';
 import ForgotPassword from './components/ForgotPassword';
+import CodeEditor from './components/CodeEditor';
 
 function App() {
   return (
@@ -28,6 +29,7 @@ function App() {
         <Route path="/algoTable" element={<AlgoTable />} />
         <Route path="/verification" element={<Verification />} />
         <Route path="/forgot" element={<ForgotPassword />} />
+        <Route path="/codeEditor" element={<CodeEditor />} />
       </Routes>
     </Router>
   );
