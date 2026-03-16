@@ -1,7 +1,11 @@
 import { useNavigate } from "react-router-dom";
 
-async function saveSim() {
+function Simulation() {
   const navigate = useNavigate();
+
+  async function saveSim() {
+  
+  
 
   try {
     const response = await fetch(
@@ -19,11 +23,10 @@ async function saveSim() {
   }
 }
 
-function Simulation() {
   return (
     <div>
       <h1>Simulation Page</h1>
-      <button onClick={async () => {await saveSim()}}>Finish Simulation</button>
+      <button onClick={async () => {saveSim()}}>Finish Simulation</button>
     </div>
   );
 }
