@@ -13,7 +13,7 @@ import React, { useEffect, useRef } from "react";
 // }
 
 
-const Test: React.FC = () => {
+const EditorContainer: React.FC = () => {
     const containerRef = useRef<HTMLDivElement | null>(null);
     const myEditor = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
 
@@ -50,7 +50,7 @@ const Test: React.FC = () => {
         };
     }, []);
 
-        return <div className="tester" ref={containerRef} style={{height: "100%"}}/>
+        return <div className="EditorContainer" ref={containerRef}/>
 };
 
 
@@ -61,8 +61,8 @@ export default function CodeEditor() {
         // </h1>
         <div className="editor_outer" >
             <div className="editor_inner">
-                <div className="editor" style={{height: "100vh", width: "100vw"}}>
-                    <Test></Test>
+                <div className="editor">
+                    <EditorContainer></EditorContainer>
                 </div>
             </div>
         </div>
