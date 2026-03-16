@@ -118,9 +118,9 @@ export default function LeaderboardComponent() {
           </div>
         </div>
 
-        <table>
-          <tbody>{tableRows}</tbody>
-        </table>
+        <div className="leaderboard_body_container">
+          {tableRows}
+        </div>
       </div>
       
     );

@@ -124,7 +124,7 @@ try
       }
       catch (const std::exception &e)
       {
-        std::cout << e.what() << std::endl;
+        std::cout << "User not found\n";
         return false;
       }
       return true;
@@ -187,7 +187,9 @@ try
      * When user modifies dashboard, changes are updated automatically to userID.file
      * let web server deal with file IO? database will just hold reference
      */
-    int linkCustomGUILayout(int userID, std::string path_to_file) {
+    int linkCustomGUILayout(std::string identifier, std::string path_to_file) {
+      int userID = getUUID(identifier);
+
       if (uuIDfound(userID) == UUID_NOT_FOUND) {
         return UUID_NOT_FOUND;
       }
@@ -242,7 +244,14 @@ try
     /*
      * Pre-condition: userHasCustomLayout() was called to confirm
      */
-    std::string getCustomGUILayout(int userID) {
+    std::string getCustomGUILayout(std::string identifier) {
+      int userID = getUUID(identifier);
+
+      if (uuIDfound(userID) == -1) {
+        fmt::print("UUID NOT FOUND\n");
+        return "";
+      }
+
       pqxx::work tx(*conn);
       std::string result = "";
 
@@ -336,6 +345,15 @@ try
 
       fmt::print("SUCCESS");
       return SUCCESS;
+    }
+
+    std::string fetchLayout(std::string identifier) {
+      pqxx::work tx(*conn);
+      std::string query = "SELECT * FROM leaderboard ORDER BY profit DESC, simulationtime DESC";
+      pqxx::result r = tx.exec(query);
+
+      tx.abort();
+
     }
 
     /*
@@ -495,7 +513,7 @@ try
       assert(! ConnectorSingleton::getInstance().login("hiIDontExist.com", "pleaseFail"));
 
       // Table userlogin -- link + get customGUI tied to a user
-      assert(ConnectorSingleton::getInstance().linkCustomGUILayout(1000, "/path/to/file") == UUID_NOT_FOUND);
+      //assert(ConnectorSingleton::getInstance().linkCustomGUILayout(1000, "/path/to/file") == UUID_NOT_FOUND);
       /*
       assert(ConnectorSingleton::getInstance().userHasCustomLayout(1000) == UUID_NOT_FOUND);
       assert(ConnectorSingleton::getInstance().userHasCustomLayout(2) == CUSTOM_DASHBOARD_CONFIG_NOT_FOUND);
@@ -534,13 +552,15 @@ try
 };
 
 
-//int main() {
+/*
+int main() {
   // “Given the database and backend is implemented correctly, when a new user is created, then I should be able to verify it exists in my database.”
-  //ConnectorSingleton::getInstance().addUser("demoPurpose@gmail.com", "password1234!", "demo");
+  //ConnectorSingleton::getInstance().addUser("demoRunThree@gmail.com", "password1234!", "demoRunThree");
 
   // “Given the database and backend is implemented correctly, when the login credentials of the server are incorrect, then the backend should return an error message.”
-   //std::cout << ConnectorSingleton::getInstance().login("user@example.com", "Password1!") << std::endl;
+  // std::cout << ConnectorSingleton::getInstance().login("danielLuo@proton.com", "delirious") << std::endl;
 
   // “Given the database is not running on the web server, when the backend sends a query, then there should be proper error handling.”
-  // ConnectorSingleton::getInstance().addUser("iDontExist@gmail.com", "password1234!", "fake");
-//}
+  ConnectorSingleton::getInstance().addUser("iDontExist@gmail.com", "password1234!", "fake");
+}
+*/

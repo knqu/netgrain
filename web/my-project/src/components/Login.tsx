@@ -11,7 +11,7 @@ export default function Login() {
         const checkSession = async () => {
             try {
                 const response = await fetch(
-                    "http://localhost:18080/api/cookieCheck",
+                    "/api/cookieCheck",
                     {
                         method: "GET",
                     }
@@ -30,7 +30,7 @@ export default function Login() {
         e.preventDefault();
         try {
             const response = await fetch(
-                "http://localhost:18080/api/loginAttempt",
+                "/api/loginAttempt",
                 {
                     method: "POST",
                     headers : {"Content-Type" : "application/json"},
