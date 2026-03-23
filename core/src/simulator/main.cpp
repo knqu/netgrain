@@ -1,4 +1,4 @@
-#include "../../../lib/uwebsockets/include/App.h"
+#include "../../../lib/uwebsockets/src/App.h"
 #include "historicalData.hpp"
 
 #include <fstream>
@@ -20,24 +20,25 @@ int main() {
     // Loading init from /data...
     string default_dir = "../../../data/";
 
-    if (filesystem::exists(default_dir) && filesystem::is_directory(default_dir)) {
-        for (const auto& entry : filesystem::directory_iterator(default_dir)) {
-            cout << entry.path() << "\n";
+    if (filesystem::exists(default_dir) && filesystem::is_directory(default_dir)) {    
+        for (const auto& entry : filesystem::recursive_directory_iterator(default_dir)) { //recursive bc I changed to have subfolders for asset classes
             if (entry.is_regular_file()) {
                 string file_path = entry.path().string();
                 string file_name = entry.path().filename().string();
+                //name of the folder is assect class
+                string asset_class = entry.path().parent_path().filename().string();
+                if (asset_class == "data") asset_class = "Stocks";
 
                 string ticker = file_name.substr(0, file_name.find('.'));
                 transform(ticker.begin(), ticker.end(), ticker.begin(),
                     [](unsigned char c){ return toupper(c); });
-                
-                data_manager.load_ticker_data(ticker, file_path);
+
+                data_manager.load_ticker_data(ticker, file_path, asset_class);
             }
         }
         cout << "Success Loading in stored data\n";
-    }
-    else {
-        cout << "No Default Data Directory Found, continuing to user inputs\n";
+    } else {
+        cout << "Data directory not found: " << default_dir << "\n";
     }
 
     // THE SERVER CHAIN BEGINS
@@ -46,16 +47,18 @@ int main() {
         .options("/api/upload", [](auto *res, auto *req) {
             res->writeHeader("Access-Control-Allow-Origin", "*");
             res->writeHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-            res->writeHeader("Access-Control-Allow-Headers", "Content-Type, X-File-Name");
+            res->writeHeader("Access-Control-Allow-Headers", "Content-Type, X-File-Name, X-Asset-Class");
             res->end();
         })
 
         // 2. File Upload Handler
         .post("/api/upload", [](auto *res, auto *req) {
             string filename(req->getHeader("x-file-name"));
+            string asset_class(req->getHeader("x-asset-class"));
             if (filename.empty()) {
                 filename = "unknown_upload.csv";
             }
+            if (asset_class.empty()) asset_class = "Custom";
 
             res->onAborted([]() {
                 cout << "Upload aborted by client.\n";
@@ -63,7 +66,7 @@ int main() {
 
             auto buffer = make_shared<string>();
 
-            res->onData([res, buffer, filename](string_view chunk, bool isLast) {
+            res->onData([res, buffer, filename, asset_class](string_view chunk, bool isLast) {
                 buffer->append(chunk.data(), chunk.length());
 
                 if (isLast) {
@@ -88,7 +91,7 @@ int main() {
                             return;
                         }
                         //CHANGED TO BOOLEAN TO PROPOGATE CHANGES TO SIMULATION.TSX
-                        bool load_success = data_manager.load_ticker_data(ticker, save_path);
+                        bool load_success = data_manager.load_ticker_data(ticker, save_path, asset_class);
                         
                         if (load_success) {
                             data_manager.print_first_row(ticker); 
