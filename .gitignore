@@ -1,5 +1,6 @@
 .env
 .cache
+*.exe
 out/
 **/.DS_Store
 pch/

@@ -9,19 +9,20 @@
 #include "queue.hpp"
 #include "dataTransfer.cpp"
 #include <cmath>
+#include <thread>
 #include <iomanip>
 #include <iostream>
+#include <ostream>
 #include <map>
 #include <random>
 #include <string>
 #include <stdlib.h>
 
-
 class generator {
 private:
   double percent_drift;
   double percent_volatility;
-
+  double dt;
   // queue for streaming data
   Queue<double> *dataBuffer;
   // create a random device for normal distribution
@@ -30,6 +31,11 @@ private:
   std::mt19937 *gen;
   std::normal_distribution<> *dist;
 
+  std::string ticker;
+  int base_price;
+  int volatility;
+  int liquidity;
+  int market_cap;
 
 public:
     // constructor and destructor
@@ -38,19 +44,38 @@ public:
     percent_volatility = volatility;
     dataBuffer = new Queue<double>();
     (*dataBuffer).enqueue(price);
-    
+    dt = 0.01;
+  }
+
+  generator(std::string ticker, int base_price, int volatility, int liquidity, int market_cap) {
+    this->ticker = ticker;
+    this->base_price = base_price;
+    this->volatility = volatility;
+    this->liquidity = liquidity;
+    this->market_cap = market_cap;
   }
 
   ~generator() {
   }
 
-  void get_event(double new_drift, double new_vol, int new_price) {
-    percent_drift = new_drift;
-    percent_volatility = new_vol;
-    dataBuffer->enqueue(0.00);
+  double get_dt() {
+    return dt;
   }
 
-  int sendPrice() {
+  double get_percent_drift() {
+    return percent_drift;
+  }
+  double get_percent_volatility() {
+    return percent_volatility;
+  }
+
+  void get_event(double n_drift, double n_vol, int n_price) {
+    percent_drift = n_drift;
+    percent_volatility = n_vol;
+    dataBuffer->enqueue(n_price);
+  }
+
+  double sendPrice() {
     return dataBuffer->dequeue();
   }
 
@@ -69,20 +94,18 @@ public:
     dataBuffer->enqueue(new_data);
   }
 
-    
-
   /*
    * This function returns the brownian motion at increment t, given the Weiner process at time t
    */
-  double gbm(double dt, double S_0, std::normal_distribution<double> &d, std::mt19937 &gen) {
+  double gbm(double S_0, std::normal_distribution<double> &d, std::mt19937 &gen) {
     double ret = (this->percent_drift - (this->percent_volatility * this->percent_volatility / 2))
                  * dt + this->percent_volatility * sqrt(dt) * d(gen);
     ret = S_0 * exp(ret);
     return ret;
   }
 
-  // return the number of datapoints generated
-  int generate(dataTransfer *gen_settings) {
+  // return the number of datapoints generated, if data is not being tested
+  int generate(dataTransfer *gen_settings, std::ostream &fout) {
     std::random_device rd{};
     std::mt19937 gen{rd()};
     std::normal_distribution<double> norm{0.0,1.0};
@@ -92,9 +115,24 @@ public:
     int i = 0;
     while (gen_settings->gen) {
       // generate the next data point in the weiner process and add it onto the data buffer, before dequeuing it
-      dataBuffer->enqueue(gbm(0.02, dataBuffer->peek(), norm, gen));
-      dataBuffer->dequeue();
+      dataBuffer->enqueue(gbm(dataBuffer->peek(), norm, gen));
+      
+      // TODO: way to send data would go here, this could be in the format of a
+      // second queue, extra fields in the dataTransfer, etc. for now
+      // printing to console will suffice
+      
+      if (gen_settings->send_data) {
+        fout << sendPrice() << "\n";
+      }
+
+      // TODO: process events, rn all I do is call the call the get_event function
+      // but this logic might need to be adjusted
+      if (gen_settings->new_event) {
+        get_event(gen_settings->n_drift, gen_settings->n_vol, gen_settings->n_price);
+      }
+      
       i += 1;
+      std::this_thread::sleep_for(std::chrono::milliseconds(9));
     }
     return i;
   }
