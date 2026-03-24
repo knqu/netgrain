@@ -8,7 +8,6 @@ import GridComponent from './GridComponent';
 
 import '../styling/Home.css'
 
-import { Responsive, useContainerWidth } from 'react-grid-layout';
 import '/node_modules/react-grid-layout/css/styles.css';
 import '/node_modules/react-resizable/css/styles.css';
 

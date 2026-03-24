@@ -126,7 +126,7 @@ CMAKE_INSTALL_MANDIR:PATH=
 CMAKE_INSTALL_OLDINCLUDEDIR:PATH=/usr/include
 
 //Install path prefix, prepended onto install directories.
-CMAKE_INSTALL_PREFIX:PATH=C:/Program Files/webserver
+CMAKE_INSTALL_PREFIX:PATH=C:/Program Files (x86)/webserver
 
 //Run-time variable data (LOCALSTATEDIR/run)
 CMAKE_INSTALL_RUNSTATEDIR:PATH=
@@ -276,7 +276,7 @@ FETCHCONTENT_UPDATES_DISCONNECTED_FMT:BOOL=OFF
 FMT_BINARY_DIR:STATIC=C:/Purdue 2nd Year/2 Semester/CS 307 Proj/netgrain/web/webserver/build/_deps/fmt-build
 
 //Installation directory for cmake files, a relative path that
-// will be joined with C:/Program Files/webserver or an absolute
+// will be joined with C:/Program Files (x86)/webserver or an absolute
 // path.
 FMT_CMAKE_DIR:STRING=lib/cmake/fmt
 
@@ -293,7 +293,7 @@ FMT_DOC:BOOL=OFF
 FMT_FUZZ:BOOL=OFF
 
 //Installation directory for include files, a relative path that
-// will be joined with C:/Program Files/webserver or an absolute
+// will be joined with C:/Program Files (x86)/webserver or an absolute
 // path.
 FMT_INC_DIR:STRING=include
 
@@ -304,7 +304,8 @@ FMT_INSTALL:BOOL=ON
 FMT_IS_TOP_LEVEL:STATIC=OFF
 
 //Installation directory for libraries, a relative path that will
-// be joined to C:/Program Files/webserver or an absolute path.
+// be joined to C:/Program Files (x86)/webserver or an absolute
+// path.
 FMT_LIB_DIR:STRING=lib
 
 //Build a module instead of a traditional library.
@@ -317,8 +318,8 @@ FMT_OS:BOOL=ON
 FMT_PEDANTIC:BOOL=OFF
 
 //Installation directory for pkgconfig (.pc) files, a relative
-// path that will be joined with C:/Program Files/webserver or
-// an absolute path.
+// path that will be joined with C:/Program Files (x86)/webserver
+// or an absolute path.
 FMT_PKGCONFIG_DIR:STRING=lib/pkgconfig
 
 //Value Computed by CMake
@@ -634,7 +635,7 @@ CMAKE_GENERATOR:INTERNAL=Visual Studio 17 2022
 //Generator instance identifier.
 CMAKE_GENERATOR_INSTANCE:INTERNAL=C:/Program Files/Microsoft Visual Studio/2022/Community
 //Name of generator platform.
-CMAKE_GENERATOR_PLATFORM:INTERNAL=x64
+CMAKE_GENERATOR_PLATFORM:INTERNAL=
 //Name of generator toolset.
 CMAKE_GENERATOR_TOOLSET:INTERNAL=
 //Test CMAKE_HAVE_LIBC_PTHREAD
@@ -778,5 +779,5 @@ Z_VCPKG_POWERSHELL_PATH:INTERNAL=C:/Windows/System32/WindowsPowerShell/v1.0/powe
 //Vcpkg root directory
 Z_VCPKG_ROOT_DIR:INTERNAL=C:/Purdue 2nd Year/2 Semester/CS 307 Proj/netgrain/web/webserver/vcpkg
 //CMAKE_INSTALL_PREFIX during last run
-_GNUInstallDirs_LAST_CMAKE_INSTALL_PREFIX:INTERNAL=C:/Program Files/webserver
+_GNUInstallDirs_LAST_CMAKE_INSTALL_PREFIX:INTERNAL=C:/Program Files (x86)/webserver
 
