@@ -1,124 +1,140 @@
-#include "order.hpp"
-#include "historicalData.hpp"
-
 #include <string>
 #include <vector>
 #include <unordered_map>
 
+#include "order.hpp"
+#include "historicalData.hpp"
+
 class Engine {
-    std::vector<Order> pending_orders;  // orders submitted but not yet filled
-    std::vector<Fill> fill_log;  // every fill recorded
-    Portfolio portfolio;
-    int next_order_id = 0; // unique id assigned to each order is more precise than relying on timestamp
+    int balance;
+    std::unordered_map<std::string, Position> positions;
 
-    // default config if left unspecified
-    TickerConfig default_config = {0.001, 0.10, 5.0};
+    int next_order_id = 0;
+    std::vector<Order> pending_orders;
+    std::vector<Fill> fill_log;
+
+    TickerConfig default_config = {0.001, 5.0};
     std::unordered_map<std::string, TickerConfig> ticker_configs;
-
-    const TickerConfig& get_config(const std::string& ticker) {
-        auto itr = ticker_configs.find(ticker);
-        return (itr != ticker_configs.end()) ? itr->second : default_config;
-    }
 
 public:
     Engine(int starting_balance) {
-        portfolio.balance = starting_balance;
+        balance = starting_balance;
     }
 
-    int get_balance() const {
-        return portfolio.balance;
+    int get_balance() {
+        return balance;
+    }
+
+    TickerConfig& get_config(const std::string& ticker) {
+        auto config = ticker_configs.find(ticker);
+        return (config != ticker_configs.end()) ? config->second : default_config;
     }
 
     void set_config(const std::string& ticker, TickerConfig config) {
         ticker_configs[ticker] = config;
     }
 
-    // currently supports market and limit orders
-    int process_order(const std::string& ticker, Side side, int quantity, OrderType type, int limit_price = 0) {
+    int place_order(const std::string& ticker, int quantity, int target_price, Side side, OrderType type) {
         int id = next_order_id++;
-        pending_orders.push_back({id, ticker, side, quantity, type, limit_price, OrderStatus::PENDING});
+        pending_orders.push_back({id, ticker, quantity, target_price, side, type, OrderStatus::PENDING});
         return id;
     }
 
-    // simulate one time step for a single ticker
-    std::vector<Fill> process_bar(const std::string& ticker, const MarketDataRow& bar) {
-        std::vector<Fill> fills;  // list of fills for only current call
-        const auto& config = get_config(ticker);
+    bool cancel_order(int order_id) {
+        for (auto order = pending_orders.begin(); order != pending_orders.end(); ++order) {
+            if (order->id == order_id) {
+                order->status = OrderStatus::CANCELLED;
+                return true;
+            }
+        }
+        return false;
+    }
 
-        // how many shares can be filled this bar (liquidity cap)
-        int volume_remaining = static_cast<int>(bar.volume * config.max_volume);
+    std::vector<Fill> process_bar(std::unordered_map<std::string, MarketDataRow> bars) {
+        std::vector<Fill> fills;
 
-        for (auto itr = pending_orders.begin(); itr != pending_orders.end(); ) {
-            if (itr->ticker != ticker) {
-                ++itr;
+        for (auto order = pending_orders.begin(); order != pending_orders.end(); ) {
+            auto bar_itr = bars.find(order->ticker);
+            if (bar_itr == bars.end()) {
+                ++order;
                 continue;
             }
 
-            int fill_price = 0;
-            bool should_fill = false;
+            auto& bar = bar_itr->second;
+            auto& config = get_config(order->ticker);
 
-            // market orders are always filled using the open price, while limit orders are conditionally filled
-            if (itr->order_type == OrderType::MARKET) {
-                fill_price = bar.open;
+            bool should_fill = false;
+            int fill_price = 0;
+
+            if (order->order_type == OrderType::MARKET) {
                 should_fill = true;
-            } else if (itr->order_type == OrderType::LIMIT) {
-                if (itr->side == Side::BUY && bar.low <= itr->limit_price) {
-                    fill_price = itr->limit_price;
+                fill_price = bar.open;
+            } else if (order->order_type == OrderType::LIMIT) {
+                if (order->side == Side::BUY && bar.low <= order->target_price) {
                     should_fill = true;
-                } else if (itr->side == Side::SELL && bar.high >= itr->limit_price) {
-                    fill_price = itr->limit_price;
+                    fill_price = order->target_price;
+                } else if (order->side == Side::SELL && bar.high >= order->target_price) {
                     should_fill = true;
+                    fill_price = order->target_price;
+                }
+            } else if (order->order_type == OrderType::STOP) {
+                if (order->side == Side::BUY && bar.high >= order->target_price) {
+                    should_fill = true;
+                    fill_price = order->target_price;
+                } else if (order->side == Side::SELL && bar.low <= order->target_price) {
+                    should_fill = true;
+                    fill_price = order->target_price;
                 }
             }
 
             if (should_fill) {
-                // determine how many shares can be filled based on remaining liquidity
-                int fill_qty = std::min(itr->quantity, volume_remaining);
-                if (fill_qty <= 0) {
-                    ++itr;
-                    continue;
-                }
-                volume_remaining -= fill_qty;
+                int fill_quantity = std::min(order->quantity, static_cast<int>(bar.volume));
+                bar.volume -= fill_quantity;
 
-                // apply price slippage based on volatility config
-                double slippage = config.volatility / 10000.0;
-                if (itr->side == Side::BUY) {
-                    fill_price += static_cast<int>(fill_price * slippage);
-                } else {
-                    fill_price -= static_cast<int>(fill_price * slippage);
-                }
+                fills.push_back({order->id, order->ticker, fill_quantity, fill_price, order->side, bar.date});
 
-                // make trade and record fill
-                fills.push_back({itr->id, ticker, itr->side, fill_price, fill_qty, bar.date});
-
-                // calculate total cost of trade and collect fee
-                int trade_value = fill_price * fill_qty;
+                int trade_value = fill_price * fill_quantity;
                 int fee = static_cast<int>(trade_value * config.trade_fee);
-                portfolio.balance -= fee;
+                balance -= fee;
 
-                auto& pos = portfolio.positions[ticker];  // get reference to position (or create if it doesn't exist)
-                pos.ticker = ticker;
+                auto& pos = positions[order->ticker];  // get reference to position (or create if it doesn't exist)
+                pos.ticker = order->ticker;  // set ticker in case new position was created
 
-                if (itr->side == Side::BUY) {
-                    portfolio.balance -= trade_value;
-                    pos.quantity += fill_qty;
-                    int total_cost = (pos.avg_cost * pos.quantity) + trade_value;
-                    pos.avg_cost = (pos.quantity > 0) ? total_cost / pos.quantity : 0;  // avoid division by zero
+                if (order->side == Side::BUY) {
+                    balance -= trade_value;
+                    pos.quantity += fill_quantity;
+                    pos.cost_basis += trade_value;
+                    pos.lots.push_back({fill_price, fill_quantity, bar.date});
                 } else {
-                    portfolio.balance += trade_value;
-                    pos.quantity -= fill_qty;
-                    if (pos.quantity == 0) pos.avg_cost = 0;
+                    balance += trade_value;
+                    pos.quantity -= fill_quantity;
+
+                    int remaining = fill_quantity;
+                    auto lot = pos.lots.begin();  // default to fifo disposal (todo: add other methods in the future)
+
+                    while (remaining > 0 && lot != pos.lots.end()) {
+                        int taken = std::min(remaining, lot->quantity);
+                        pos.cost_basis -= lot->fill_price * taken;
+                        lot->quantity -= taken;
+                        remaining -= taken;
+
+                        if (lot->quantity == 0) {
+                            lot = pos.lots.erase(lot);
+                        } else {
+                            ++lot;
+                        }
+                    }
                 }
 
                 // keep remaining quantity pending if order isn't entirely filled
-                if (fill_qty < itr->quantity) {
-                    itr->quantity -= fill_qty;
-                    ++itr;
+                if (fill_quantity < order->quantity) {
+                    order->quantity -= fill_quantity;
+                    ++order;
                 } else {
-                    itr = pending_orders.erase(itr);
+                    order = pending_orders.erase(order);
                 }
             } else {
-                ++itr;
+                ++order;
             }
         }
 

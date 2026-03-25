@@ -17,8 +17,8 @@ struct MarketDataRow {
     i64 high;      
     i64 low;       
     i64 close;     
-    uint64_t volume;    
-    uint64_t open_int;  
+    u64 volume;    
+    u64 open_int;
 };
 
 struct Stocks {
