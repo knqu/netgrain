@@ -1,6 +1,7 @@
 #pragma once
 
 #include "generator.cpp"
+#include "ou.cpp"
 #include <iostream>
 #include <fstream>
 #include <chrono>
@@ -63,12 +64,24 @@ class gen_benchmark {
       }
 
       int ou_run(double init, double speed, double vol, double mean) { // Step 2
-          ouGen new_gen(init, speed, vol, mean);
+        ouGen new_gen(0, 0, 0, 0);
+        dataTransfer tester;
+        tester.gen = 1;
+        int count = 0;
+        int seconds;
+        std::cout << "How many seconds do you want the program to run for (int)? ";
+        std::cin >> seconds;
+
+        std::thread t(timer, seconds, std::ref(tester));
+        t.detach();
+        
+        count = new_gen.gen(&tester);
+        std::cout << count << "\n";
+        return count;
       }
 
       int data_benchmark(double drift, double vol, int init_price) {
-          // create generator
-
+        // create generator
           generator new_gen(drift, vol, init_price);
           std::cout << "Generator info:\n";
           std::cout << "Volatility: " << new_gen.get_percent_volatility() << "\n";

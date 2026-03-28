@@ -9,6 +9,9 @@ project(webserver)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+set(CROW_ENABLE_SSL ON)
+
+
 include(FetchContent)
 
 # fmt via FetchContent
@@ -19,7 +22,16 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(fmt)
 
+find_package(OpenSSL REQUIRED)
+
 add_executable(my_app src/main.cpp)
+target_compile_definitions(my_app PRIVATE CROW_ENABLE_SSL)
+
+target_link_libraries(my_app 
+  PRIVATE
+    OpenSSL::SSL
+    OpenSSL::Crypto
+)
 
 # Link fmt
 target_link_libraries(my_app PRIVATE fmt::fmt)

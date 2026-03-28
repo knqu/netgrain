@@ -1,8 +1,8 @@
 import { useNavigate } from "react-router-dom";
 
-async function fetchSim() {
-  const navigate = useNavigate();
-
+function HistoryComponent() {
+  const navigate = useNavigate(); 
+  async function fetchSim() {
   try {
     const response =
       await fetch(
@@ -21,12 +21,13 @@ async function fetchSim() {
     console.log(err);
   }
 }
-
-function HistoryComponent() {
+  
   return (
     <div>
       <h1>History Page</h1>
-      <button onClick={async () => { await fetchSim() }}>Past Simulation</button>
+      <button onClick={async () => {
+          await fetchSim()
+        }}>Past Simulation</button>
     </div>
   );
 }

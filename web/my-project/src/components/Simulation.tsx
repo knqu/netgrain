@@ -1,17 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from "react-router-dom";
 import '../styling/Simulation.css';
 
-export interface StockParams {
-    ticker: string;
-    base_price: number;
-    liquidity: number;
-    volatility: number;
-    market_cap: number;
-
-import { useNavigate } from "react-router-dom";
-
-async function saveSim() {
+function Simulation() {
   const navigate = useNavigate();
+
+  async function saveSim() {
+  
+  
 
   try {
     const response = await fetch(
@@ -29,13 +25,18 @@ async function saveSim() {
   }
 }
 
-function Simulation() {
   return (
     <div>
       <h1>Simulation Page</h1>
-      <button onClick={async () => {await saveSim()}}>Finish Simulation</button>
+      <button onClick={async () => {saveSim()}}>Finish Simulation</button>
     </div>
   );
+export interface StockParams {
+    ticker: string;
+    base_price: number;
+    liquidity: number;
+    volatility: number;
+    market_cap: number;
 }
 
 export interface SimulationConfigRequest {
@@ -47,13 +48,61 @@ export interface SimulationConfigRequest {
 }
 
 const Simulation: React.FC = () => {
+    const navigate = useNavigate();
+
+    const saveSim = async () => {
+        try {
+            const response = await fetch("http://localhost:18080/api/saveSim", {
+                method: "GET",
+            });
+            if (response.status === 200) {
+                navigate("/simResults"); 
+            }
+        } catch (error) {
+            console.log(error);
+        }
+    };
+
+    // --- NEW: ASSET CLASS STATE ---
+    const [marketData, setMarketData] = useState<Record<string, string[]>>({});
+    const [activeAssetClass, setActiveAssetClass] = useState<string>("Stocks");
+
     // --- SIMULATION STATE ---
     const [initialCapital, setInitialCapital] = useState<number | string>(100000);
-
-    // (stocks list)
     const [stocks, setStocks] = useState<StockParams[]>([
       { ticker: "", base_price: 0, liquidity: 0, volatility: 0, market_cap: 0},
     ]);
+    const [startDate, setStartDate] = useState<string>("");
+    const [endDate, setEndDate] = useState<string>("");
+    const [tradeFee, setTradeFee] = useState<number | string>(1.50);
+    const [isRunning, setIsRunning] = useState<boolean>(false);
+    const [engineStatus, setEngineStatus] = useState<string>("");
+    const [runResult, setRunResult] = useState<any>(null);
+    
+    // --- UPLOAD STATE ---
+    const [uploadFile, setUploadFile] = useState<File | null>(null);
+    const [uploadStatus, setUploadStatus] = useState<string>("");
+
+    // --- NEW: FETCH AVAILABLE TICKERS ON LOAD ---
+    useEffect(() => {
+        const fetchMarketData = async () => {
+            try {
+                const response = await fetch("http://localhost:8080/api/market");
+                if (response.ok) {
+                    const data = await response.json();
+                    setMarketData(data);
+                    
+                    // Default to whatever the first available class is if "Stocks" is missing
+                    if (Object.keys(data).length > 0 && !data["Stocks"]) {
+                        setActiveAssetClass(Object.keys(data)[0]);
+                    }
+                }
+            } catch (error) {
+                console.error("Failed to fetch market data:", error);
+            }
+        };
+        fetchMarketData();
+    }, []);
 
     const addStock = () => {
       setStocks([...stocks, { ticker: "", base_price: 0, liquidity: 0, volatility: 0, market_cap: 0 }]);
@@ -63,42 +112,29 @@ const Simulation: React.FC = () => {
       setStocks(stocks.filter((_, i) => i !== index));
     };
 
-    const updateStock = (index: number, field: keyof StockParams, value: string | number) => {      setStocks(currentStocks => {
+    const updateStock = (index: number, field: keyof StockParams, value: string | number) => {      
+      setStocks(currentStocks => {
         const currStocks = [...currentStocks];
-
         currStocks[index] = { 
           ...currStocks[index], 
           [field]: field === 'ticker' ? value : Number(value) 
         };
-
         return currStocks; 
       });
     };
-
-    const [startDate, setStartDate] = useState<string>("");
-    const [endDate, setEndDate] = useState<string>("");
-    const [tradeFee, setTradeFee] = useState<number | string>(1.50);
-    
-    const [isRunning, setIsRunning] = useState<boolean>(false);
-    const [engineStatus, setEngineStatus] = useState<string>("");
-    const [runResult, setRunResult] = useState<any>(null);
-    // --- UPLOAD STATE ---
-    const [uploadFile, setUploadFile] = useState<File | null>(null);
-    const [uploadStatus, setUploadStatus] = useState<string>("");
 
     // --- FILE UPLOAD HANDLERS ---
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files.length > 0) {
             const file = e.target.files[0];
-            //only CSV/TXT
             if (!file.name.endsWith('.csv') && !file.name.endsWith('.txt')) {
                 setUploadStatus("Error: All files must be .csv or .txt.");
                 setUploadFile(null);
-                e.target.value = ""; // clear the input
+                e.target.value = ""; 
                 return;
             }
             setUploadFile(file);
-            setUploadStatus(""); // clear old status
+            setUploadStatus(""); 
         }
     };
 
@@ -114,27 +150,30 @@ const Simulation: React.FC = () => {
             const response = await fetch("http://localhost:8080/api/upload", {
                 method: "POST",
                 headers: {
-                    "x-file-name": uploadFile.name 
+                    "x-file-name": uploadFile.name,
+                    "x-asset-class": activeAssetClass // Pass the active class to C++
                 },
                 body: uploadFile
             });
 
             if (response.ok) {
                 const ticker = await response.text();
-                setUploadStatus(`Success! ${ticker} loaded into the engine.`);
+                setUploadStatus(`Success! ${ticker} loaded into ${activeAssetClass}.`);
                 
-                // UPDATE: Add the uploaded ticker to the new 'stocks' array structure!
+                // Re-fetch the market data so the new ticker instantly appears in the dropdown
+                const marketRes = await fetch("http://localhost:8080/api/market");
+                if (marketRes.ok) {
+                    setMarketData(await marketRes.json());
+                }
+
                 setStocks(currentStocks => {
-                    // Check if it's already in the list
                     const alreadyExists = currentStocks.some(s => s.ticker === ticker);
                     if (alreadyExists) return currentStocks;
 
-                    // If the first empty slot is unused, overwrite it
                     if (currentStocks.length === 1 && currentStocks[0].ticker === "") {
                         return [{ ...currentStocks[0], ticker: ticker }];
                     }
                     
-                    // Otherwise, add a new row
                     return [...currentStocks, { ticker: ticker, base_price: 0, liquidity: 0, volatility: 0, market_cap: 0 }];
                 });
 
@@ -144,7 +183,6 @@ const Simulation: React.FC = () => {
                 setUploadStatus(`Upload failed: ${response.statusText}`);
             }
         } catch (error) {
-            // Good practice: Log the REAL error to the console so it doesn't get hidden!
             console.error("THE REAL UPLOAD ERROR IS:", error); 
             setUploadStatus("Network error. Check F12 Developer Console!");
         }
@@ -165,9 +203,6 @@ const Simulation: React.FC = () => {
             trade_fee: Number(tradeFee)
         };
 
-        console.log(JSON.stringify(payload))
-
-
         setIsRunning(true);
         setEngineStatus("Sending configuration to engine...");
 
@@ -182,7 +217,6 @@ const Simulation: React.FC = () => {
                 const resultText = await response.text(); 
                 try {
                     const cleanJSON = resultText.replace(/,\s*}/g, '}').replace(/,\s*\]/g, ']');
-                    
                     const parsedData = JSON.parse(cleanJSON);
                     
                     setRunResult(parsedData);
@@ -206,7 +240,7 @@ const Simulation: React.FC = () => {
             
             {!isRunning ? (
                 <>
-                    {/* --- NEW: FILE UPLOAD PANEL --- */}
+                    {/* --- FILE UPLOAD PANEL --- */}
                     <div className="sim-panel" style={{ marginBottom: '20px' }}>
                         <h2 style={{ fontSize: '1.2rem', marginBottom: '15px' }}>Upload Historical Data</h2>
                         
@@ -228,16 +262,39 @@ const Simulation: React.FC = () => {
                         </div>
                         
                         {uploadStatus && (
-                            <div style={{ fontSize: '14px', marginTop: '10px', color: uploadStatus.includes('O') ? 'green' : (uploadStatus.includes('X') ? 'red' : '#555') }}>
+                            <div style={{ fontSize: '14px', marginTop: '10px', color: uploadStatus.includes('Success') ? 'green' : (uploadStatus.includes('failed') || uploadStatus.includes('Error') ? 'red' : '#555') }}>
                                 <strong>{uploadStatus}</strong>
                             </div>
                         )}
                     </div>
 
-                    {/* --- EXISTING: SIMULATION SETTINGS PANEL --- */}
+                    {/* --- SIMULATION SETTINGS PANEL --- */}
                     <div className="sim-panel">
                         <h2>Simulation Settings</h2>
                         
+                        {/* --- MASTER ASSET CLASS SELECTOR --- */}
+                        <div className="sim-form-group">
+                            <label className="sim-label">Asset Class</label>
+                            <select 
+                                className="sim-input"
+                                value={activeAssetClass}
+                                onChange={(e) => {
+                                    setActiveAssetClass(e.target.value);
+                                    // Reset stocks when switching classes so you don't mix them
+                                    setStocks([{ ticker: "", base_price: 0, liquidity: 0, volatility: 0, market_cap: 0 }]);
+                                }}
+                                style={{ fontWeight: 'bold', backgroundColor: '#f8f9fa' }}
+                            >
+                                {Object.keys(marketData).length > 0 ? (
+                                    Object.keys(marketData).map((className) => (
+                                        <option key={className} value={className}>{className}</option>
+                                    ))
+                                ) : (
+                                    <option value="Stocks">Stocks</option>
+                                )}
+                            </select>
+                        </div>
+
                         <div className="sim-form-group">
                             <label className="sim-label">Initial Capital ($)</label>
                             <input 
@@ -285,13 +342,17 @@ const Simulation: React.FC = () => {
                               <div className="sim-form-row">
                                   <div className="sim-form-col">
                                       <label className="sim-label">Ticker</label>
-                                      <input 
-                                          type="text" 
+                                      {/* --- FILTERED TICKER DROPDOWN --- */}
+                                      <select 
                                           className="sim-input"
                                           value={stock.ticker}
-                                          onChange={(e) => updateStock(index, 'ticker', e.target.value.toUpperCase())}
-                                          placeholder="e.g. AAPL"
-                                      />
+                                          onChange={(e) => updateStock(index, 'ticker', e.target.value)}
+                                      >
+                                          <option value="">Select a Ticker...</option>
+                                          {(marketData[activeAssetClass] || []).map((t) => (
+                                              <option key={t} value={t}>{t}</option>
+                                          ))}
+                                      </select>
                                   </div>
                                   <div className="sim-form-col">
                                       <label className="sim-label">Base Price ($)</label>
@@ -361,7 +422,7 @@ const Simulation: React.FC = () => {
                         </button>
                     </div>
                 </>
-           ) : ( //ADDED THIS PART IN ORDER TO BE ABLE TO SEE METRICS AND DOWNLOAD UPON SIMULATION COMPLETION -> SHOWS THE DUMMY VAL I GENERATED FOR NOW
+            ) : (
                 <div className="sim-panel">
                     <h2>Engine Status</h2>
                     

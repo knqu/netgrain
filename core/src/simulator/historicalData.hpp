@@ -17,8 +17,8 @@ struct MarketDataRow {
     i64 high;      
     i64 low;       
     i64 close;     
-    uint64_t volume;    
-    uint64_t open_int;  
+    u64 volume;    
+    u64 open_int;
 };
 
 struct Stocks {
@@ -54,6 +54,7 @@ class MarketDataManager {
 private:
     MarketDataMap market;
     //helpers+parsing functions
+    unordered_map<string, string> asset_classes; //asset class mapper for each ticker
     u32 parse_date(string date_str);
     i64 parse_price(const string& price_str);
     vector<MarketDataRow> parse_csv_file(const string& filepath);
@@ -61,7 +62,7 @@ private:
 
 public:
     //main func + tests
-    bool load_ticker_data(const string& ticker, const string& filepath);
+    bool load_ticker_data(const string& ticker, const string& filepath, const string& asset_class);
     bool has_ticker(const string& ticker);
     void print_first_row(const string& ticker);
     string get_market_state_json();

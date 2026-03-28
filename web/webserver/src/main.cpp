@@ -8,6 +8,8 @@
 #include <map>
 #include <random>
 #include <string>
+#include <fstream>
+#include <iostream>
 
 int main() {  
     using Session = crow::SessionMiddleware<crow::InMemoryStore>;
@@ -103,17 +105,20 @@ int main() {
         return crow::response(200);
     });
 
-    CROW_ROUTE(app, "/api/verifyEmail").methods(crow::HTTPMethod::POST, crow::HTTPMethod::Patch)([&](const crow::request& req) {
+    CROW_ROUTE(app, "/api/verifyEmail").methods(crow::HTTPMethod::POST, crow::HTTPMethod::PATCH)([&](const crow::request& req) {
         auto& session = app.get_context<Session>(req);
         auto reqBody = crow::json::load(req.body);
 
         std::string userCodeInput = reqBody["submitted_verification_code"].s();
+        std::string code = session.get("sixDigits", "");
+        std::cout << code << std::endl;
 
         if (userCodeInput == session.get("sixDigits", "")) {
             std::string email = session.get("registeredEmail", "");
             std::string password = session.get("registeredPassword", "");
-
+            std::cout << "line 115" << std::endl;
             if (session.get<bool>("forgot") == true) {
+                std::cout << "worked" << std::endl;
                 session.remove("forgot");
                 ConnectorSingleton::getInstance().changePassword(email, password);
             }
@@ -156,6 +161,7 @@ int main() {
         session.set("submitted_new_password", newPassword);
         session.set("sixDigits", sixDigits);
         session.set("forgot", true);
+        std::cout << "hi" << std::endl;
         try {
             mailio::mail_address sender("mailio library", "burnermonkeyeye@gmail.com");
             mailio::mail_address recipient("mailio library", registeredEmail);
@@ -224,11 +230,53 @@ int main() {
         }
     });
 
+    CROW_ROUTE(app, "/api/saveLayout").methods(crow::HTTPMethod::POST, crow::HTTPMethod::Patch)([&](const crow::request& req) {
+        auto& cookie = app.get_context<crow::CookieParser>(req);
+        std::string email = cookie.get_cookie("email");
+        
+        if (email.empty()) return crow::response(401); 
+
+        try {
+            ConnectorSingleton::getInstance().linkCustomGUILayout(email, req.body);
+            return crow::response(200);
+        } catch (...) {
+            return crow::response(500);
+        }
+    });
+
+    CROW_ROUTE(app, "/api/fetchLayout").methods(crow::HTTPMethod::GET, crow::HTTPMethod::Patch)([&](const crow::request& req) {
+        auto& cookie = app.get_context<crow::CookieParser>(req);
+        std::string email = cookie.get_cookie("email");
+        
+        if (email.empty()) return crow::response(401);
+
+        try {
+            std::string layoutJSON = ConnectorSingleton::getInstance().getCustomGUILayout(email);
+            
+            crow::response res;
+            res.write(layoutJSON.empty() ? "{}" : layoutJSON);
+            res.set_header("Content-Type", "application/json");
+            res.code = 200;
+            return res;
+        } catch (...) {
+            return crow::response(500);
+        }
+    });
+
     CROW_CATCHALL_ROUTE(app)([](){
         crow::response res;
         res.set_static_file_info_unsafe("../../my-project/dist/index.html");
         return res;
     });
 
-    app.port(18080).run();
+    std::ifstream cert("C:/Purdue 2nd Year/2 Semester/CS 307 Proj/netgrain/web/webserver/perms2/cert.pem");
+    std::ifstream key("C:/Purdue 2nd Year/2 Semester/CS 307 Proj/netgrain/web/webserver/perms2/key.pem");
+
+    std::cout << cert.good() << " " << key.good() << std::endl;
+
+    app.ssl_file(
+        "C:/Purdue 2nd Year/2 Semester/CS 307 Proj/netgrain/web/webserver/perms2/cert.pem",
+        "C:/Purdue 2nd Year/2 Semester/CS 307 Proj/netgrain/web/webserver/perms2/key.pem"
+    );
+    app.port(18080).multithreaded().run();
 }
