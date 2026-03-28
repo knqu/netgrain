@@ -6,6 +6,7 @@
 #include "historicalData.hpp"
 
 class Engine {
+    int init_balance;
     int balance;
     std::unordered_map<std::string, Position> positions;
 
@@ -13,16 +14,25 @@ class Engine {
     std::vector<Order> pending_orders;
     std::vector<Fill> fill_log;
 
-    TickerConfig default_config = {0.001, 5.0};
+    FeesAndTaxes default_fees_taxes = {1.0, 1.0};
+    TickerConfig default_config = {0.001, 5, 0.15, default_fees_taxes};
     std::unordered_map<std::string, TickerConfig> ticker_configs;
 
 public:
     Engine(int starting_balance) {
         balance = starting_balance;
+        init_balance = starting_balance;
     }
 
     int get_balance() {
         return balance;
+    }
+
+    int get_final_balance() { // returns post-short-term-tax 
+      if (balance > init_balance) {
+        return static_cast<int>(balance * (1 - default_config.short_term_tax));
+      }
+      return balance;
     }
 
     TickerConfig& get_config(const std::string& ticker) {
@@ -48,6 +58,13 @@ public:
             }
         }
         return false;
+    }
+
+    int calculate_fee(TickerConfig* conf, int fill_quantity, int trade_value) { // HX
+      double total_fee = 0.0;
+      total_fee += (!conf->fees_and_taxes.flat_fee_comm_per_share) ? conf->fees_and_taxes.flat_fee_comm_per_share * fill_quantity: 0.0;
+      total_fee += (!conf->fees_and_taxes.percentage_comm_per_share) ? conf->fees_and_taxes.percentage_comm_per_share * trade_value : 0.0;
+      return static_cast<int>(total_fee);
     }
 
     std::vector<Fill> process_bar(std::unordered_map<std::string, MarketDataRow> bars) {
@@ -94,8 +111,7 @@ public:
                 fills.push_back({order->id, order->ticker, fill_quantity, fill_price, order->side, bar.date});
 
                 int trade_value = fill_price * fill_quantity;
-                int fee = static_cast<int>(trade_value * config.trade_fee);
-                balance -= fee;
+                balance -= static_cast<int>(trade_value * config.trade_fee); //HX: idk what this does
 
                 auto& pos = positions[order->ticker];  // get reference to position (or create if it doesn't exist)
                 pos.ticker = order->ticker;  // set ticker in case new position was created
@@ -107,6 +123,7 @@ public:
                     pos.lots.push_back({fill_price, fill_quantity, bar.date});
                 } else {
                     balance += trade_value;
+                    balance -= calculate_fee(&config, fill_quantity, trade_value); // HX; not sure but should there be each order specific commissions
                     pos.quantity -= fill_quantity;
 
                     int remaining = fill_quantity;
