@@ -21,7 +21,7 @@ int main()
 
     while (1) {
         int option;
-        std::cout << "Please enter what benchmark you want to test:\n1. speed benchmark\n2: data benchmark\n3: data validation benchmark\n4: exit\n";
+        std::cout << "Please enter what benchmark you want to test:\n1. speed benchmark\n2: data benchmark\n3: data validation benchmark\n4: OU Run\n5: Exit\n";
         std::cin >> option;
         switch (option)
         {
@@ -55,14 +55,31 @@ int main()
             std::cout << "beginning data verification benchmark program\n";
             tester.verification_benchmark(drift, vol, init_price);
             break;
-        case 4:
+        case 4: // HX (Step 1)
+            double initial_price;
+            double speed_of_reversion;
+            double percent_vol;
+            double mean;
+
+            std::cout << "Please enter the initial price of the stock data: ";
+            std::cin >> initial_price;
+            std::cout << "Please enter the speed of reversion of the stock data: ";
+            std::cin >> speed_of_reversion;
+            std::cout << "Please enter the percent volatility of the stock data: ";
+            std::cin >> percent_vol;
+            std::cout << "Please enter the mean: ";
+            std::cin >> mean;
+            std::cout << "beginning OU Run program\n";
+            tester.ou_run(initial_price, speed_of_reversion, percent_vol, mean);
+            std::cout << "Done with run\n";
+            break;
+        case 5:
             goto end;
             break;
         default:
             std::cout << "Invalid option\n\n";
             break;
         }
-
     }
 end:
     return 0;
