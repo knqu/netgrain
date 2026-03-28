@@ -17,111 +17,112 @@
 // this is mainly to validate data generation speed, as well as show that data gen
 // can be stopped and throttled
 
-
 class gen_benchmark {
     private:
         int test;
     public:
-    gen_benchmark() {
-         this->test = 1;
-    }
-    ~gen_benchmark() {}
+      gen_benchmark() {
+           this->test = 1;
+      }
+      ~gen_benchmark() {}
 
+      /*
+       * This function works as a timer, returns 0
+       * when timer runs out
+       */
+      static int timer(int seconds, dataTransfer &test) {
+          while (seconds >= 1 ) {
+              std::this_thread::sleep_for(std::chrono::seconds(1));
+              seconds -= 1;
+          }
+          // update value in val to indicate that loop should end
+          test.gen = 0;
+          return 0;
+      }
 
-    /*
-     * This function works as a timer, returns 0
-     * when timer runs out
-     */
-    static int timer(int seconds, dataTransfer &test) {
-        while (seconds >= 1 ) {
-            std::this_thread::sleep_for(std::chrono::seconds(1));
-            seconds -= 1;
-        }
-        // update value in val to indicate that loop should end
-        test.gen = 0;
-        return 0;
-    }
+      int speed_benchmark(double drift, double vol, int init_price) {
+          // step one, create generator
 
-    int speed_benchmark(double drift, double vol, int init_price) {
-        // step one, create generator
+          generator new_gen(drift, vol, init_price);
+          dataTransfer tester;
+          tester.gen = 1;
+          tester.send_data = 0;
+          tester.new_event = 0;
+          int count = 0;
+          int seconds;
+          std::cout << "How many seconds do you want the program to run for (int)? ";
+          std::cin >> seconds;
+          // start a timer for entered seconds and have it run as a separate
+          // process
+          std::thread t(timer, seconds, std::ref(tester));
+          t.detach();
+          
+          // generate while the timer is still going on
+          count = new_gen.generate(&tester, std::cout);
+          std::cout << count << "\n";
+          return count;
+      }
 
-        generator new_gen(drift, vol, init_price);
-        dataTransfer tester;
-        tester.gen = 1;
-        tester.send_data = 0;
-        tester.new_event = 0;
-        int count = 0;
-        int seconds;
-        std::cout << "How many seconds do you want the program to run for (int)? ";
-        std::cin >> seconds;
-        // start a timer for entered seconds and have it run as a separate
-        // process
-        std::thread t(timer, seconds, std::ref(tester));
-        t.detach();
-        
-        // generate while the timer is still going on
-        count = new_gen.generate(&tester, std::cout);
-        std::cout << count << "\n";
-        return count;
-    }
+      int ou_run(double init, double speed, double vol, double mean) { // Step 2
+          ouGen new_gen(init, speed, vol, mean);
 
-    int ou_run() {
-        ouGen new_gen(0, 0, 0, 0);
-        dataTransfer tester;
-        tester.gen = 1;
-        int count = 0;
-        int seconds;
-        std::cout << "How many seconds do you want the program to run for (int)? ";
-        std::cin >> seconds;
+          dataTransfer tester;
+          tester.gen = 1;
 
-        std::thread t(timer, seconds, std::ref(tester));
-        t.detach();
-        
-        count = new_gen.gen(&tester);
-        std::cout << count << "\n";
-        return count;
-    int data_benchmark(double drift, double vol, int init_price) {
-        // create generator
+          int count = 0;
+          int seconds;
+          std::cout << "How many seconds do you want the program to run for (int)? ";
+          std::cin >> seconds;
+          std::thread t(timer, seconds, std::ref(tester));
+          t.detach();
+          
+          count = new_gen.gen(&tester);
+          std::cout << count << "\n";
+          return count;
+      }
 
-        generator new_gen(drift, vol, init_price);
-        std::cout << "Generator info:\n";
-        std::cout << "Volatility: " << new_gen.get_percent_volatility() << "\n";
-        std::cout << "Drift: " << new_gen.get_percent_drift() << "\n\n";
-        dataTransfer tester;
-        tester.gen = 1;
-        tester.new_event = 0;
-        tester.send_data = 1;
-        // generate 1 second of data, and print out all values generated
-        std::thread t(timer, 2, std::ref(tester));
-        t.detach();
+      int data_benchmark(double drift, double vol, int init_price) {
+          // create generator
 
-        new_gen.generate(&tester, std::cout);
-        return OK;
-    }
+          generator new_gen(drift, vol, init_price);
+          std::cout << "Generator info:\n";
+          std::cout << "Volatility: " << new_gen.get_percent_volatility() << "\n";
+          std::cout << "Drift: " << new_gen.get_percent_drift() << "\n\n";
+          dataTransfer tester;
+          tester.gen = 1;
+          tester.new_event = 0;
+          tester.send_data = 1;
+          // generate 1 second of data, and print out all values generated
+          std::thread t(timer, 2, std::ref(tester));
+          t.detach();
 
-    int verification_benchmark(double drift, double vol, int init_price) {
-        // create generator
+          new_gen.generate(&tester, std::cout);
+          return OK;
+      }
 
-        generator new_gen(drift, vol, init_price);
-        dataTransfer tester;
-        tester.gen = 1;
-        tester.new_event = 0;
-        tester.send_data = 1;
-        std::ofstream out("test.txt");
-        // generate 1 second of data, and print out all values generated
-        std::thread t(timer, 15, std::ref(tester));
-        t.detach();
+      int verification_benchmark(double drift, double vol, int init_price) {
+          // create generator
 
-        
-        new_gen.generate(&tester, out);
-    
-        out.close();
-        double percent_diff;
-        std::cout << "What is the max percent difference expected? ";
-        std::cin >> percent_diff;
-        tester::testSim("test.txt", new_gen, percent_diff);
+          generator new_gen(drift, vol, init_price);
+          dataTransfer tester;
+          tester.gen = 1;
+          tester.new_event = 0;
+          tester.send_data = 1;
+          std::ofstream out("test.txt");
+          // generate 1 second of data, and print out all values generated
+          std::thread t(timer, 15, std::ref(tester));
+          t.detach();
 
-        return OK;
-    }
+          
+          new_gen.generate(&tester, out);
+      
+          out.close();
+          double percent_diff;
+          std::cout << "What is the max percent difference expected? ";
+          std::cin >> percent_diff;
+          tester::testSim("test.txt", new_gen, percent_diff);
+
+          return OK;
+      }
 };
 
