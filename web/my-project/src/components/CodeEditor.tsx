@@ -133,7 +133,7 @@ export default function CodeEditor() {
         // </h1>
         <div className="editor_outer" >
             <div className="editor_inner">
-                <div className="editor">
+                <div className="code_editor">
                     <EditorContainer></EditorContainer>
                 </div>
             </div>
