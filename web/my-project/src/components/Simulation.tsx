@@ -2,8 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from "react-router-dom";
 import '../styling/Simulation.css';
 
-/*
-function Simulation() {
+function SimulationExec() {
   const navigate = useNavigate();
 
   async function saveSim() {
@@ -30,7 +29,8 @@ function Simulation() {
     </div>
   );
 }
-*/
+
+void SimulationExec;
 
 export interface StockParams {
     ticker: string; 
@@ -63,6 +63,7 @@ const Simulation: React.FC = () => {
             console.log(error);
         }
     };
+    void saveSim;
 
     // --- NEW: ASSET CLASS STATE ---
     const [marketData, setMarketData] = useState<Record<string, string[]>>({});
@@ -112,6 +113,7 @@ const Simulation: React.FC = () => {
     const removeStock = (index: number) => {
       setStocks(stocks.filter((_, i) => i !== index));
     };
+    void removeStock;
 
     const updateStock = (index: number, field: keyof StockParams, value: string | number) => {      
       setStocks(currentStocks => {
