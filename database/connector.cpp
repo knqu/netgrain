@@ -97,11 +97,18 @@ try
           instance = new ConnectorSingleton();
           try
           {
-            conn = new pqxx::connection(
-              "host=localhost "
-              "dbname=postgres "
-              "user=cnath"
-            );
+            #if _WIN64
+              conn = new pqxx::connection(
+                "host=localhost "
+                "dbname=postgres "
+                "user=cnath"
+              );
+            #elif __APPLE__
+              conn = new pqxx::connection(
+                "host=localhost "
+                "dbname=netgrain_db"
+              );
+            #endif
           }
           catch (const std::exception &e)
           {
@@ -292,6 +299,7 @@ try
         fmt::print("UUID_NOT_FOUND");
         return UUID_NOT_FOUND;
       }
+
       pqxx::work tx(*conn);
 
       try
@@ -491,76 +499,10 @@ try
 
       return r[0].as<int>();
     }
-
-    void testingModule() {
-      fmt::print("\n---Initializing Testing---\n");
-
-      /* Leaderboard */
-      ConnectorSingleton::getInstance();
-      std::string test = ConnectorSingleton::getInstance().fetchLeaderBoard();
-      fmt::print("{}\n", test);
-      /*
-       * TESTS FOR TABLE USERLOGIN
-       */
-
-      ConnectorSingleton::getInstance().addUser("uniqueEmail@email.com", "12341234", "uniqueUser");
-      ConnectorSingleton::getInstance().addUser("uniqueEmail2@email.com", "12341234", "uniqueUser2");
-      assert(ConnectorSingleton::getInstance().addUser("different@gmail.com", "", "uniqueUser") == USERNAME_ALREADY_REGISTERED);
-      assert(ConnectorSingleton::getInstance().addUser("uniqueEmail@email.com", "", "asdf") == EMAIL_ALREADY_REGISTERED);
-      assert(ConnectorSingleton::getInstance().addUser("thisIsNotAnEmail", "", "") == INVALID_EMAIL_FORMAT);
-
-      assert(ConnectorSingleton::getInstance().login("uniqueEmail@email.com", "12341234"));
-      assert(! ConnectorSingleton::getInstance().login("hiIDontExist.com", "pleaseFail"));
-
-      // Table userlogin -- link + get customGUI tied to a user
-      //assert(ConnectorSingleton::getInstance().linkCustomGUILayout(1000, "/path/to/file") == UUID_NOT_FOUND);
-      /*
-      assert(ConnectorSingleton::getInstance().userHasCustomLayout(1000) == UUID_NOT_FOUND);
-      assert(ConnectorSingleton::getInstance().userHasCustomLayout(2) == CUSTOM_DASHBOARD_CONFIG_NOT_FOUND);
-
-      assert(ConnectorSingleton::getInstance().linkCustomGUILayout(1, "/path/to/file") == SUCCESS);
-      assert(ConnectorSingleton::getInstance().userHasCustomLayout(1) == SUCCESS);
-      assert(! ConnectorSingleton::getInstance().getCustomGUILayout(1).compare("/path/to/file"));
-      */
-
-      /*
-       * TESTS FOR LEADERBOARD
-       */
-
-      // CHOOSE DIFFERENT EMAIL AND USERNAME HERE EVERY TIME
-      std::string email = "asdfaasdf@gmail.com";
-      std::string username = "alsdfsdkjfa";
-      //int uuid = ConnectorSingleton::getInstance().addUser(email, "helllo", username); //insert unique user
-
-      /*
-      assert(ConnectorSingleton::getInstance().addLeaderboardAttempt(uuid, 100000, "12:12:12") == SUCCESS); // normal write
-      assert(ConnectorSingleton::getInstance().addLeaderboardAttempt(uuid, 200000, "14:14:14") == LEADERBOARD_ATTEMPT_MADE); // same user makes another attempt
-      assert(ConnectorSingleton::getInstance().addLeaderboardAttempt(-1, 200000, "14:14:14") == UUID_NOT_FOUND); // invalid user makes attempt
-
-      */
-      /*
-       * TESTS FOR A USER's SIMULATION
-      assert(ConnectorSingleton::getInstance().createSimulation(2, "insertSomeSmartAnalytics", "/path/to/config/used", -1) == SUCCESS);
-      assert(ConnectorSingleton::getInstance().createSimulation(2, "insertSomeSmartAnalytics", "/path/to/config/used", 100) == PRESET_ID_NOT_FOUND);
-       */
-      /*
-       * TESTS FOR GLOBAL PRESETS
-      assert(ConnectorSingleton::getInstance().createCustomGlobalPreset(10, 10, 10, 10) == DUPLICATE_PRESET_FOUND);
-
-       */
-    }
 };
-
 
 /*
 int main() {
-  // “Given the database and backend is implemented correctly, when a new user is created, then I should be able to verify it exists in my database.”
-  //ConnectorSingleton::getInstance().addUser("demoRunThree@gmail.com", "password1234!", "demoRunThree");
-
-  // “Given the database and backend is implemented correctly, when the login credentials of the server are incorrect, then the backend should return an error message.”
-  // std::cout << ConnectorSingleton::getInstance().login("danielLuo@proton.com", "delirious") << std::endl;
-
-  // “Given the database is not running on the web server, when the backend sends a query, then there should be proper error handling.”
-  ConnectorSingleton::getInstance().addUser("iDontExist@gmail.com", "password1234!", "fake");
+  ConnectorSingleton::getInstance().changePassword("ok", "asdfasdf");
 }
 */

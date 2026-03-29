@@ -24,6 +24,7 @@ export interface SimulationResultPayload {
 const SimulationResults: React.FC = () => {
     const [pastRuns, setPastRuns] = useState<SimulationResultPayload[]>([]);
     const [statusMsg, setStatusMsg] = useState<string>("Fetching data from C++ Engine...");
+    void setStatusMsg;
 
     useEffect(() => {
         const fetchHardcodedRun = async () => {
