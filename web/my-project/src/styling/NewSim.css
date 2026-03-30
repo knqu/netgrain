@@ -7,11 +7,14 @@
     height: 100vh;
 
 }
-.outer-sim{
+.action-board {
+  margin-bottom: 0.25vh
+}
+.sim-grid{
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   height: 90vh;
-  gap: 1vw;
+  gap: 0.5vw;
 }
 .grid-item {
   flex-direction: column;
