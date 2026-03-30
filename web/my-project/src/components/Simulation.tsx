@@ -241,40 +241,42 @@ const Simulation: React.FC = () => {
         <div className="sim-container">
             
             {!isRunning ? (
-                <>
+                <div className="sim-setup">
                     {/* --- FILE UPLOAD PANEL --- */}
-                    <div className="sim-panel" style={{ marginBottom: '20px' }}>
-                        <h2 style={{ fontSize: '1.2rem', marginBottom: '15px' }}>Upload Historical Data</h2>
-                        
-                        <div className="sim-form-group" style={{ display: 'flex', gap: '10px' }}>
-                            <input 
-                                type="file" 
-                                className="sim-input" 
-                                accept=".csv,.txt"
-                                onChange={handleFileChange}
-                            />
-                            <button 
-                                className="sim-btn-secondary" 
-                                style={{ marginTop: '0', whiteSpace: 'nowrap' }}
-                                onClick={handleUpload}
-                                disabled={!uploadFile}
-                            >
-                                Upload
-                            </button>
-                        </div>
-                        
-                        {uploadStatus && (
-                            <div style={{ fontSize: '14px', marginTop: '10px', color: uploadStatus.includes('Success') ? 'green' : (uploadStatus.includes('failed') || uploadStatus.includes('Error') ? 'red' : '#555') }}>
-                                <strong>{uploadStatus}</strong>
+                    <div className="upload-panel">
+                        <div className="sim-panel" style={{ marginBottom: '20px' }}>
+                            <h2 style={{ fontSize: '1.2rem', marginBottom: '15px' }}>Upload Historical Data</h2>
+                            
+                            <div className="sim-form-group" style={{ display: 'flex', gap: '10px' }}>
+                                <input 
+                                    type="file" 
+                                    className="sim-input" 
+                                    accept=".csv,.txt"
+                                    onChange={handleFileChange}
+                                />
+                                <button 
+                                    className="sim-btn-secondary" 
+                                    style={{ marginTop: '0', whiteSpace: 'nowrap' }}
+                                    onClick={handleUpload}
+                                    disabled={!uploadFile}
+                                >
+                                    Upload
+                                </button>
                             </div>
-                        )}
+                            
+                            {uploadStatus && (
+                                <div style={{ fontSize: '14px', marginTop: '10px', color: uploadStatus.includes('Success') ? 'green' : (uploadStatus.includes('failed') || uploadStatus.includes('Error') ? 'red' : '#555') }}>
+                                    <strong>{uploadStatus}</strong>
+                                </div>
+                            )}
+                        </div>
                     </div>
-
                     {/* --- SIMULATION SETTINGS PANEL --- */}
-                    <div className="sim-panel">
-                        <h2>Simulation Settings</h2>
+                    {/* <div className="sim-panel"> */}
+
                         
                         {/* --- MASTER ASSET CLASS SELECTOR --- */}
+                        <div className="sim-asset-selector">
                         <div className="sim-form-group">
                             <label className="sim-label">Asset Class</label>
                             <select 
@@ -338,92 +340,95 @@ const Simulation: React.FC = () => {
                                 onChange={(e) => setTradeFee(e.target.value)}
                             />
                         </div>
+                        </div>
+                        <div className="stocks">
+                            <div className="sim-stock-cards">
+                                {stocks.map((stock, index) => (
+                                <div key={index} className="sim-stock-card">
+                                    <div className="sim-form-row">
+                                        <div className="sim-form-col">
+                                            <label className="sim-label">Ticker</label>
+                                            {/* --- FILTERED TICKER DROPDOWN --- */}
+                                            <select 
+                                                className="sim-input"
+                                                value={stock.ticker}
+                                                onChange={(e) => updateStock(index, 'ticker', e.target.value)}
+                                            >
+                                                <option value="">Select a Ticker...</option>
+                                                {(marketData[activeAssetClass] || []).map((t) => (
+                                                    <option key={t} value={t}>{t}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                        <div className="sim-form-col">
+                                            <label className="sim-label">Base Price ($)</label>
+                                            <input 
+                                                type="number" 
+                                                min="0"
+                                                className="sim-input"
+                                                value={stock.base_price}
+                                                onChange={(e) => updateStock(index, 'base_price', e.target.value)}
+                                            />
+                                        </div>
+                                    </div>
 
-                        {stocks.map((stock, index) => (
-                          <div key={index} className="sim-stock-card">
-                              <div className="sim-form-row">
-                                  <div className="sim-form-col">
-                                      <label className="sim-label">Ticker</label>
-                                      {/* --- FILTERED TICKER DROPDOWN --- */}
-                                      <select 
-                                          className="sim-input"
-                                          value={stock.ticker}
-                                          onChange={(e) => updateStock(index, 'ticker', e.target.value)}
-                                      >
-                                          <option value="">Select a Ticker...</option>
-                                          {(marketData[activeAssetClass] || []).map((t) => (
-                                              <option key={t} value={t}>{t}</option>
-                                          ))}
-                                      </select>
-                                  </div>
-                                  <div className="sim-form-col">
-                                      <label className="sim-label">Base Price ($)</label>
-                                      <input 
-                                          type="number" 
-                                          min="0"
-                                          className="sim-input"
-                                          value={stock.base_price}
-                                          onChange={(e) => updateStock(index, 'base_price', e.target.value)}
-                                      />
-                                  </div>
-                              </div>
+                                    <div className="sim-form-row" style={{ marginTop: '10px' }}>
+                                        <div className="sim-form-col">
+                                            <label className="sim-label">Volatility</label>
+                                            <input 
+                                                type="number" 
+                                                min="0"
+                                                className="sim-input"
+                                                value={stock.volatility}
+                                                onChange={(e) => updateStock(index, 'volatility', e.target.value)}
+                                            />
+                                        </div>
+                                        <div className="sim-form-col">
+                                            <label className="sim-label">Liquidity</label>
+                                            <input 
+                                                type="number" 
+                                                min="0"
+                                                className="sim-input"
+                                                value={stock.liquidity}
+                                                onChange={(e) => updateStock(index, 'liquidity', e.target.value)}
+                                            />
+                                        </div>
+                                        <div className="sim-form-col">
+                                            <label className="sim-label">Market Cap</label>
+                                            <input 
+                                                type="number" 
+                                                min="0"
+                                                className="sim-input"
+                                                value={stock.market_cap}
+                                                onChange={(e) => updateStock(index, 'market_cap', e.target.value)}
+                                            />
+                                        </div>
+                                    </div>
 
-                              <div className="sim-form-row" style={{ marginTop: '10px' }}>
-                                  <div className="sim-form-col">
-                                      <label className="sim-label">Volatility</label>
-                                      <input 
-                                          type="number" 
-                                          min="0"
-                                          className="sim-input"
-                                          value={stock.volatility}
-                                          onChange={(e) => updateStock(index, 'volatility', e.target.value)}
-                                      />
-                                  </div>
-                                  <div className="sim-form-col">
-                                      <label className="sim-label">Liquidity</label>
-                                      <input 
-                                          type="number" 
-                                          min="0"
-                                          className="sim-input"
-                                          value={stock.liquidity}
-                                          onChange={(e) => updateStock(index, 'liquidity', e.target.value)}
-                                      />
-                                  </div>
-                                  <div className="sim-form-col">
-                                      <label className="sim-label">Market Cap</label>
-                                      <input 
-                                          type="number" 
-                                          min="0"
-                                          className="sim-input"
-                                          value={stock.market_cap}
-                                          onChange={(e) => updateStock(index, 'market_cap', e.target.value)}
-                                      />
-                                  </div>
-                              </div>
-
-                              {stocks.length > 1 && (
-                                  <button 
-                                      className="sim-btn-secondary" 
-                                      onClick={() => setStocks(stocks.filter((_, i) => i !== index))}
-                                  >
-                                      Remove Stock
-                                  </button>
-                              )}
-                          </div>
-                    ))}
-
-                    <button className="sim-btn-secondary" onClick={addStock} style={{ marginBottom: '20px' }}>
-                        + Add Stock
-                    </button>
-
+                                    {stocks.length > 1 && (
+                                        <button 
+                                            className="sim-btn-secondary" 
+                                            onClick={() => setStocks(stocks.filter((_, i) => i !== index))}
+                                        >
+                                            Remove Stock
+                                        </button>
+                                    )}
+                                </div>
+                                
+                                ))}
+                            </div>
+                            <button className="sim-btn-secondary" onClick={addStock} style={{ marginBottom: '20px' }}>
+                                + Add Stock
+                            </button>
+                        </div>
                         <button 
                             className="sim-btn-primary"
                             onClick={handleStart}
                         >
                             Run Backtest
                         </button>
-                    </div>
-                </>
+                    {/* </div> */}
+                </div>
             ) : (
                 <div className="sim-panel">
                     <h2>Engine Status</h2>
