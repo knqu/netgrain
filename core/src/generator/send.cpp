@@ -10,7 +10,7 @@ int main()
   std::unordered_set<crow::websocket::connection *> users;
   std::mutex mtx;
 
-  Generator global_gen(0.2, 0.3, 100);
+  Generator global_gen(0.2, 0.3, 100, 150);
   Data_Transfer parameters;
   parameters.conn.store(nullptr);
   parameters.gen.store(true);
@@ -48,6 +48,13 @@ int main()
         {
           parameters.new_event.store(1);
           fmt::print("flash crash!\n");
+        }
+      }
+
+      if (data == "sideways") { // HX
+        if (parameters.new_event.load() == 0) {
+          parameters.new_event.store(3);
+          fmt::print("sideways!\n");
         }
       }
 

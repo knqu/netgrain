@@ -40,16 +40,18 @@ private:
   int volatility;
   int liquidity;
   int market_cap;
+  int target_price;
 
 public:
   // constructor and destructor
-  Generator(double drift, double volatility, int price) {
+  Generator(double drift, double volatility, int price, int target) {
     percent_drift = drift;
     percent_volatility = volatility;
     data_buffer = new Queue<double>();
     data_buffer->enqueue(price);
     base_price = price;
     dt = 0.01;
+    target_price = target;
   }
 
   Generator(
@@ -118,6 +120,13 @@ public:
       ) * dt + this->percent_volatility * sqrt(dt) * d(gen);
     ret = S_0 * exp(ret);
     return ret;
+  }
+
+  /*
+   * This function implements Ornstein–Uhlenbeck process for a sideways trading market.
+   */
+  double ou(double x_t, std::normal_distribution<double> &d, std::mt19937 &gen) {
+    return x_t + ((this->speed_of_reversion * (this->mean - x_t)) * dt) + (this->volatility * sqrt(dt) * d(gen));
   }
 
   // return the number of datapoints generated, if data is not being tested
@@ -271,6 +280,14 @@ public:
               }
 
               break;
+            }
+          case 3: // Ornstein–Uhlenbeck process 
+            {
+              data_buffer->enqueue(ou(data_buffer->peek(), norm, gen));
+              if (gen_settings->send_data.load()) {
+                gen_settings->conn.load()
+                  ->send_text(fmt::format("Sideways: {}", send_price()));
+              }
             }
           default:
             break;

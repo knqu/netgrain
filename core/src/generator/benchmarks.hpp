@@ -107,4 +107,3 @@ class Gen_Benchmark {
       return OK;
     }
 };
-
