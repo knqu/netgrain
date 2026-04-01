@@ -274,7 +274,28 @@ try
       return result;
     }
 
-    // TODO: basic mockup actions of alg
+    std::vector<int> fetchAllSims(std::string identifier) {
+      int uuid = getUUID(identifier);
+      pqxx::work tx(*conn);
+      pqxx::result r;
+      std::vector<int> res;
+      try
+      {
+        std::string query = "SELECT * FROM pastSimulations WHERE (userid = $1)";
+        r = tx.exec(query, pqxx::params{uuid});
+        for (auto row = std::begin(r); row != std::end(r); row++) {
+          auto field = std::begin(row);
+          res.push_back(field.as<int>());
+        }
+        return res;
+      }
+      catch (const std::exception &e)
+      {
+        std::cerr << e.what() << "\n";
+      }
+      return std::vector<int>{};
+    }
+
     std::string fetchSimulation(int simID, std::string identifier) {
       int uuid = getUUID(identifier);
       pqxx::work tx(*conn);
@@ -289,7 +310,7 @@ try
         std::cerr << e.what() << "\n";
         return "";
       }
-      return r[2].c_str();
+      return r[1].c_str();
     }
     
     int changePassword(std::string identifier, std::string newPassword) {
@@ -503,6 +524,10 @@ try
 
 /*
 int main() {
-  ConnectorSingleton::getInstance().changePassword("ok", "asdfasdf");
+  for (auto simID : ConnectorSingleton::getInstance().fetchAllSims("uniqueUser2")) {
+    fmt::print("{}\n", simID);
+  }
+
+  return 0;
 }
 */
