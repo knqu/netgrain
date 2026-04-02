@@ -4,18 +4,23 @@ source .env
 
 : ${FLAGS=}
 
+OS="`uname`"
+
+if [[ "$OS" != "Darwin" ]]; then # for HX
+  FLAGS="$FLAGS -I./lib/usockets/include"
+  FLAGS="$FLAGS -I./lib/uwebsockets/include"
+  FLAGS="$FLAGS -luSockets"
+  FLAGS="$FLAGS -L./lib/usockets/bin/debug"
+fi
+
 # FLAGS="$FLAGS ./src/*.cpp"
 # FLAGS="$FLAGS ./generated/*.cpp"
 # FLAGS="$FLAGS -I./generated"
-FLAGS="$FLAGS -std=c++2c"
-FLAGS="$FLAGS -L./lib/usockets/bin/debug"
-FLAGS="$FLAGS -luSockets"
+FLAGS="$FLAGS -std=c++20"
 FLAGS="$FLAGS -L./lib/fmtlib/bin"
 FLAGS="$FLAGS -lfmt"
 FLAGS="$FLAGS -I./lib/fmtlib/include"
 FLAGS="$FLAGS -I./common"
-FLAGS="$FLAGS -I./lib/usockets/include"
-FLAGS="$FLAGS -I./lib/uwebsockets/include"
 FLAGS="$FLAGS -I./lib/crow/include"
 FLAGS="$FLAGS -I./lib/asio/include"
 FLAGS="$FLAGS ./patch/__hashing.cpp"
@@ -24,7 +29,8 @@ FLAGS="$FLAGS -DUWS_NO_ZLIB"
 FLAGS="$FLAGS -DASIO_NO_DEPRECATED"
 FLAGS="$FLAGS -DASIO_STANDALONE"
 
-SIM_FLAGS="$FLAGS ./core/src/simulator/*.cpp"
+SIM_FLAGS="$FLAGS ./core/src/simulator/main.cpp"
+SIM_FLAGS="$SIM_FLAGS ./core/src/simulator/historicalData.cpp"
 SIM_FLAGS="$SIM_FLAGS -I./core/src/simulator/"
 
 SIM_SERVER_FLAGS="$FLAGS ./core/src/simulator/server/*.cpp"

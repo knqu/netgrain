@@ -9,6 +9,9 @@
     <CustomBuild Include="C:\Purdue 2nd Year\2 Semester\CS 307 Proj\netgrain\web\webserver\CMakeLists.txt" />
   </ItemGroup>
   <ItemGroup>
+    <Natvis Include="C:\Purdue 2nd Year\2 Semester\CS 307 Proj\netgrain\web\webserver\vcpkg\installed\x64-windows\share\boost-1.90.0\assert\boost_assert.natvis" />
+  </ItemGroup>
+  <ItemGroup>
     <Filter Include="Source Files">
       <UniqueIdentifier>{218E0FC8-B909-3760-BBBB-51F32832AF62}</UniqueIdentifier>
     </Filter>

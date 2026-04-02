@@ -1,8 +1,39 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from "react-router-dom";
 import '../styling/Simulation.css';
 
+function SimulationExec() {
+  const navigate = useNavigate();
+
+  async function saveSim() {
+    try {
+      const response = await fetch(
+        "http://localhost:18080/api/saveSim",
+        {
+          method: "GET",
+        }
+      );
+
+      if (response.status == 200) {
+        navigate("/simResults"); 
+      }
+    } catch (error) {
+      console.log(error);
+    }
+  }
+
+  return (
+    <div>
+    <h1>Simulation Page</h1>
+    <button onClick={async () => {saveSim()}}>Finish Simulation</button>
+    </div>
+  );
+}
+
+void SimulationExec;
+
 export interface StockParams {
-    ticker: string;
+    ticker: string; 
     base_price: number;
     liquidity: number;
     volatility: number;
@@ -18,13 +49,62 @@ export interface SimulationConfigRequest {
 }
 
 const Simulation: React.FC = () => {
+    const navigate = useNavigate();
+
+    const saveSim = async () => {
+        try {
+            const response = await fetch("http://localhost:18080/api/saveSim", {
+                method: "GET",
+            });
+            if (response.status === 200) {
+                navigate("/simResults"); 
+            }
+        } catch (error) {
+            console.log(error);
+        }
+    };
+    void saveSim;
+
+    // --- NEW: ASSET CLASS STATE ---
+    const [marketData, setMarketData] = useState<Record<string, string[]>>({});
+    const [activeAssetClass, setActiveAssetClass] = useState<string>("Stocks");
+
     // --- SIMULATION STATE ---
     const [initialCapital, setInitialCapital] = useState<number | string>(100000);
-
-    // (stocks list)
     const [stocks, setStocks] = useState<StockParams[]>([
       { ticker: "", base_price: 0, liquidity: 0, volatility: 0, market_cap: 0},
     ]);
+    const [startDate, setStartDate] = useState<string>("");
+    const [endDate, setEndDate] = useState<string>("");
+    const [tradeFee, setTradeFee] = useState<number | string>(1.50);
+    const [isRunning, setIsRunning] = useState<boolean>(false);
+    const [engineStatus, setEngineStatus] = useState<string>("");
+    const [runResult, setRunResult] = useState<any>(null);
+    
+    // --- UPLOAD STATE ---
+    const [uploadFile, setUploadFile] = useState<File | null>(null);
+    const [uploadStatus, setUploadStatus] = useState<string>("");
+
+    // --- NEW: FETCH AVAILABLE TICKERS ON LOAD ---
+    useEffect(() => {
+        const fetchMarketData = async () => {
+            try {
+                const response = await fetch("http://localhost:8080/api/market");
+                if (response.ok) {
+                    const data = await response.json();
+                    setMarketData(data);
+                    
+                    // Default to whatever the first available class is if "Stocks" is missing
+                    if (Object.keys(data).length > 0 && !data["Stocks"]) {
+                        setActiveAssetClass(Object.keys(data)[0]);
+                    }
+                }
+            } catch (error) {
+                console.error("Failed to fetch market data:", error);
+            }
+        };
+        fetchMarketData();
+    }, []);
 
     const addStock = () => {
       setStocks([...stocks, { ticker: "", base_price: 0, liquidity: 0, volatility: 0, market_cap: 0 }]);
@@ -33,49 +113,37 @@ const Simulation: React.FC = () => {
     const removeStock = (index: number) => {
       setStocks(stocks.filter((_, i) => i !== index));
     };
+    void removeStock;
 
-    const updateStock = (index: number, field: keyof StockParams, value: string | number) => {      setStocks(currentStocks => {
+    const updateStock = (index: number, field: keyof StockParams, value: string | number) => {      
+      setStocks(currentStocks => {
         const currStocks = [...currentStocks];
-
         currStocks[index] = { 
           ...currStocks[index], 
           [field]: field === 'ticker' ? value : Number(value) 
         };
-
         return currStocks; 
       });
     };
-
-    const [startDate, setStartDate] = useState<string>("");
-    const [endDate, setEndDate] = useState<string>("");
-    const [tradeFee, setTradeFee] = useState<number | string>(1.50);
-    
-    const [isRunning, setIsRunning] = useState<boolean>(false);
-    const [engineStatus, setEngineStatus] = useState<string>("");
-
-    // --- UPLOAD STATE ---
-    const [uploadFile, setUploadFile] = useState<File | null>(null);
-    const [uploadStatus, setUploadStatus] = useState<string>("");
 
     // --- FILE UPLOAD HANDLERS ---
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files.length > 0) {
             const file = e.target.files[0];
-            //only CSV/TXT
             if (!file.name.endsWith('.csv') && !file.name.endsWith('.txt')) {
                 setUploadStatus("Error: All files must be .csv or .txt.");
                 setUploadFile(null);
-                e.target.value = ""; // clear the input
+                e.target.value = ""; 
                 return;
             }
             setUploadFile(file);
-            setUploadStatus(""); // clear old status
+            setUploadStatus(""); 
         }
     };
 
     const handleUpload = async () => {
         if (!uploadFile) {
-            setUploadStatus("⚠️ Please select a file first.");
+            setUploadStatus("Please select a file first.");
             return;
         }
 
@@ -85,27 +153,30 @@ const Simulation: React.FC = () => {
             const response = await fetch("http://localhost:8080/api/upload", {
                 method: "POST",
                 headers: {
-                    "x-file-name": uploadFile.name 
+                    "x-file-name": uploadFile.name,
+                    "x-asset-class": activeAssetClass // Pass the active class to C++
                 },
                 body: uploadFile
             });
 
             if (response.ok) {
                 const ticker = await response.text();
-                setUploadStatus(`Success! ${ticker} loaded into the engine.`);
+                setUploadStatus(`Success! ${ticker} loaded into ${activeAssetClass}.`);
                 
-                // UPDATE: Add the uploaded ticker to the new 'stocks' array structure!
+                // Re-fetch the market data so the new ticker instantly appears in the dropdown
+                const marketRes = await fetch("http://localhost:8080/api/market");
+                if (marketRes.ok) {
+                    setMarketData(await marketRes.json());
+                }
+
                 setStocks(currentStocks => {
-                    // Check if it's already in the list
                     const alreadyExists = currentStocks.some(s => s.ticker === ticker);
                     if (alreadyExists) return currentStocks;
 
-                    // If the first empty slot is unused, overwrite it
                     if (currentStocks.length === 1 && currentStocks[0].ticker === "") {
                         return [{ ...currentStocks[0], ticker: ticker }];
                     }
                     
-                    // Otherwise, add a new row
                     return [...currentStocks, { ticker: ticker, base_price: 0, liquidity: 0, volatility: 0, market_cap: 0 }];
                 });
 
@@ -115,7 +186,6 @@ const Simulation: React.FC = () => {
                 setUploadStatus(`Upload failed: ${response.statusText}`);
             }
         } catch (error) {
-            // Good practice: Log the REAL error to the console so it doesn't get hidden!
             console.error("THE REAL UPLOAD ERROR IS:", error); 
             setUploadStatus("Network error. Check F12 Developer Console!");
         }
@@ -136,9 +206,6 @@ const Simulation: React.FC = () => {
             trade_fee: Number(tradeFee)
         };
 
-        console.log(JSON.stringify(payload))
-
-
         setIsRunning(true);
         setEngineStatus("Sending configuration to engine...");
 
@@ -150,8 +217,17 @@ const Simulation: React.FC = () => {
             });
 
             if (response.ok) {
-                const result = await response.text(); 
-                setEngineStatus(`Simulation Complete!\n\n${result}`);
+                const resultText = await response.text(); 
+                try {
+                    const cleanJSON = resultText.replace(/,\s*}/g, '}').replace(/,\s*\]/g, ']');
+                    const parsedData = JSON.parse(cleanJSON);
+                    
+                    setRunResult(parsedData);
+                    setEngineStatus("Simulation Complete!");
+                } catch (e) {
+                    console.error("JSON Parse Error:", e);
+                    setEngineStatus(`Simulation Complete! (Raw Output):\n\n${resultText}`);
+                }
             } else {
                 setEngineStatus(`Engine Error: ${response.statusText}`);
             }
@@ -167,7 +243,7 @@ const Simulation: React.FC = () => {
             
             {!isRunning ? (
                 <>
-                    {/* --- NEW: FILE UPLOAD PANEL --- */}
+                    {/* --- FILE UPLOAD PANEL --- */}
                     <div className="sim-panel" style={{ marginBottom: '20px' }}>
                         <h2 style={{ fontSize: '1.2rem', marginBottom: '15px' }}>Upload Historical Data</h2>
                         
@@ -189,16 +265,39 @@ const Simulation: React.FC = () => {
                         </div>
                         
                         {uploadStatus && (
-                            <div style={{ fontSize: '14px', marginTop: '10px', color: uploadStatus.includes('O') ? 'green' : (uploadStatus.includes('X') ? 'red' : '#555') }}>
+                            <div style={{ fontSize: '14px', marginTop: '10px', color: uploadStatus.includes('Success') ? 'green' : (uploadStatus.includes('failed') || uploadStatus.includes('Error') ? 'red' : '#555') }}>
                                 <strong>{uploadStatus}</strong>
                             </div>
                         )}
                     </div>
 
-                    {/* --- EXISTING: SIMULATION SETTINGS PANEL --- */}
+                    {/* --- SIMULATION SETTINGS PANEL --- */}
                     <div className="sim-panel">
                         <h2>Simulation Settings</h2>
                         
+                        {/* --- MASTER ASSET CLASS SELECTOR --- */}
+                        <div className="sim-form-group">
+                            <label className="sim-label">Asset Class</label>
+                            <select 
+                                className="sim-input"
+                                value={activeAssetClass}
+                                onChange={(e) => {
+                                    setActiveAssetClass(e.target.value);
+                                    // Reset stocks when switching classes so you don't mix them
+                                    setStocks([{ ticker: "", base_price: 0, liquidity: 0, volatility: 0, market_cap: 0 }]);
+                                }}
+                                style={{ fontWeight: 'bold', backgroundColor: '#f8f9fa' }}
+                            >
+                                {Object.keys(marketData).length > 0 ? (
+                                    Object.keys(marketData).map((className) => (
+                                        <option key={className} value={className}>{className}</option>
+                                    ))
+                                ) : (
+                                    <option value="Stocks">Stocks</option>
+                                )}
+                            </select>
+                        </div>
+
                         <div className="sim-form-group">
                             <label className="sim-label">Initial Capital ($)</label>
                             <input 
@@ -246,13 +345,17 @@ const Simulation: React.FC = () => {
                               <div className="sim-form-row">
                                   <div className="sim-form-col">
                                       <label className="sim-label">Ticker</label>
-                                      <input 
-                                          type="text" 
+                                      {/* --- FILTERED TICKER DROPDOWN --- */}
+                                      <select 
                                           className="sim-input"
                                           value={stock.ticker}
-                                          onChange={(e) => updateStock(index, 'ticker', e.target.value.toUpperCase())}
-                                          placeholder="e.g. AAPL"
-                                      />
+                                          onChange={(e) => updateStock(index, 'ticker', e.target.value)}
+                                      >
+                                          <option value="">Select a Ticker...</option>
+                                          {(marketData[activeAssetClass] || []).map((t) => (
+                                              <option key={t} value={t}>{t}</option>
+                                          ))}
+                                      </select>
                                   </div>
                                   <div className="sim-form-col">
                                       <label className="sim-label">Base Price ($)</label>
@@ -325,12 +428,74 @@ const Simulation: React.FC = () => {
             ) : (
                 <div className="sim-panel">
                     <h2>Engine Status</h2>
-                    <pre className="sim-status-box">
-                        {engineStatus}
-                    </pre>
+                    
+                    {runResult ? (
+                        <div style={{ backgroundColor: '#fff', border: '1px solid #ddd', borderRadius: '8px', padding: '15px 20px', marginBottom: '20px', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                
+                                {/* LEFT: Config */}
+                                <div style={{ flex: '1' }}>
+                                    <div style={{ fontWeight: 'bold', fontSize: '16px', color: '#007bff', marginBottom: '4px' }}>
+                                        {runResult.config.stocks.map((s: any) => s.ticker || s.name).join(', ')}
+                                    </div>
+                                    <div style={{ fontSize: '12px', color: '#666' }}>
+                                        Cap: ${runResult.config.initial_capital?.toLocaleString()} | Fee: ${runResult.config.trade_fee?.toFixed(2)}
+                                    </div>
+                                </div>
+
+                                {/* MIDDLE: Metrics */}
+                                <div style={{ display: 'flex', gap: '30px', flex: '2', justifyContent: 'center' }}>
+                                    <div style={{ textAlign: 'center' }}>
+                                        <div style={{ fontSize: '11px', color: '#888', textTransform: 'uppercase' }}>Net Profit</div>
+                                        <div style={{ fontWeight: 'bold', color: runResult.metrics.net_profit >= 0 ? 'green' : 'red' }}>
+                                            ${runResult.metrics.net_profit?.toLocaleString()}
+                                        </div>
+                                    </div>
+                                    <div style={{ textAlign: 'center' }}>
+                                        <div style={{ fontSize: '11px', color: '#888', textTransform: 'uppercase' }}>Win Rate</div>
+                                        <div style={{ fontWeight: 'bold' }}>{runResult.metrics.win_rate_percent?.toFixed(1)}%</div>
+                                    </div>
+                                    <div style={{ textAlign: 'center' }}>
+                                        <div style={{ fontSize: '11px', color: '#888', textTransform: 'uppercase' }}>Trades</div>
+                                        <div style={{ fontWeight: 'bold' }}>{runResult.metrics.total_trades}</div>
+                                    </div>
+                                </div>
+
+                                {/* RIGHT: Actions */}
+                                <div style={{ flex: '1', display: 'flex', justifyContent: 'flex-end' }}>
+                                    <button 
+                                        onClick={() => {
+                                            const jsonString = JSON.stringify(runResult, null, 2);
+                                            const blob = new Blob([jsonString], { type: "application/json" });
+                                            const url = URL.createObjectURL(blob);
+                                            const link = document.createElement('a');
+                                            link.href = url;
+                                            const tickerNames = runResult.config.stocks.map((s: any) => s.ticker || s.name).join('_');
+                                            link.download = `sim_${tickerNames}.json`;
+                                            document.body.appendChild(link);
+                                            link.click();
+                                            document.body.removeChild(link);
+                                            URL.revokeObjectURL(url);
+                                        }}
+                                        style={{ padding: '8px 12px', backgroundColor: '#28a745', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '14px', fontWeight: 'bold' }}
+                                    >
+                                        ⬇️ JSON
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    ) : (
+                        <pre className="sim-status-box">
+                            {engineStatus}
+                        </pre>
+                    )}
+
                     <button 
                         className="sim-btn-secondary"
-                        onClick={() => setIsRunning(false)}
+                        onClick={() => {
+                            setIsRunning(false);
+                            setRunResult(null); 
+                        }}
                     >
                         ← Back to Settings
                     </button>

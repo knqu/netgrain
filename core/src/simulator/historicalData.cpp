@@ -6,6 +6,8 @@
 #include <iostream>
 #include <stdexcept>
 
+using namespace std;
+
 //helper function to parse date string in format "YYYY-MM-DD" and convert to u32 in format YYYYMMDD for easier storage and comparison
 u32 MarketDataManager::parse_date(string date_str) {
     string out = "";
@@ -77,15 +79,15 @@ vector<MarketDataRow> MarketDataManager::parse_csv_file(const string& filepath) 
 
 //main function to load ticker data and ticker from file, calls parsing function and stores result in market map for later retrieval
 //returns true on succesful storege of map
-bool MarketDataManager::load_ticker_data(const string& ticker, const string& filepath) {
-    cout << "Loading data for " << ticker << "...\n";
+bool MarketDataManager::load_ticker_data(const string& ticker, const string& filepath, const string& asset_class) {
+    cout << "Loading data for " << ticker << " (Class: " << asset_class << ")...\n";
     
-    // Call the parser
     vector<MarketDataRow> data = parse_csv_file(filepath);
     
     if (!data.empty()) {
-        market[ticker] = data; // Store it in map
-        cout<< ticker << " loaded successfully into memory.\n";
+        market[ticker] = data; 
+        asset_classes[ticker] = asset_class; // <-- NEW: Store its category!
+        cout << ticker << " loaded successfully into memory.\n";
         return true;
     } else {
         cerr << "Failed to load data for " << ticker << " due to corrupted data.\n";
@@ -116,15 +118,33 @@ void MarketDataManager::print_first_row(const string& ticker) {
 
 //added helper function to get market state as json string for testing purposes
 string MarketDataManager::get_market_state_json() {
-    string json = "{";
-    bool first = true;
-
+    //group tickers by asset class
+    unordered_map<string, vector<string>> grouped;
     for (const auto& [ticker, data_vector] : market) {
-        if (!first) json += ", ";
-        json += "\"" + ticker + "\": " + to_string(data_vector.size());
-        first = false;
+        //fallback just in case asset class not found
+        string a_class = asset_classes.count(ticker) ? asset_classes[ticker] : "Stocks";
+        grouped[a_class].push_back(ticker);
+    }
+
+    string json = "{";
+    bool first_class = true;
+    
+    for (const auto& [a_class, tickers] : grouped) {
+        if (!first_class) json += ", ";
+        
+        json += "\"" + a_class + "\": [";
+        bool first_ticker = true;
+        for (const string& t : tickers) {
+            if (!first_ticker) json += ", ";
+            json += "\"" + t + "\"";
+            first_ticker = false;
+        }
+        json += "]";
+        
+        first_class = false;
     }
     json += "}";
+    
     return json;
 }
 

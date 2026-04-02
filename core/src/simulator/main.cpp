@@ -1,15 +1,17 @@
-#include "../../../lib/uwebsockets/include/App.h"
+#include "../../../lib/uwebsockets/src/App.h"
 #include "historicalData.hpp"
 
 #include <fstream>
 #include <iostream>
 #include <memory>
 #include <string>
+#include <string_view>
 #include <algorithm>
 #include <cstdio>
 #include <filesystem>
 #include <regex>
 #include <cstdint>
+
 
 // Global object
 MarketDataManager data_manager;
@@ -18,24 +20,25 @@ int main() {
     // Loading init from /data...
     string default_dir = "../../../data/";
 
-    if (filesystem::exists(default_dir) && filesystem::is_directory(default_dir)) {
-        for (const auto& entry : filesystem::directory_iterator(default_dir)) {
-            cout << entry.path() << "\n";
+    if (filesystem::exists(default_dir) && filesystem::is_directory(default_dir)) {    
+        for (const auto& entry : filesystem::recursive_directory_iterator(default_dir)) { //recursive bc I changed to have subfolders for asset classes
             if (entry.is_regular_file()) {
                 string file_path = entry.path().string();
                 string file_name = entry.path().filename().string();
+                //name of the folder is assect class
+                string asset_class = entry.path().parent_path().filename().string();
+                if (asset_class == "data") asset_class = "Stocks";
 
                 string ticker = file_name.substr(0, file_name.find('.'));
                 transform(ticker.begin(), ticker.end(), ticker.begin(),
                     [](unsigned char c){ return toupper(c); });
-                
-                data_manager.load_ticker_data(ticker, file_path);
+
+                data_manager.load_ticker_data(ticker, file_path, asset_class);
             }
         }
         cout << "Success Loading in stored data\n";
-    }
-    else {
-        cout << "No Default Data Directory Found, continuing to user inputs\n";
+    } else {
+        cout << "Data directory not found: " << default_dir << "\n";
     }
 
     // THE SERVER CHAIN BEGINS
@@ -44,16 +47,18 @@ int main() {
         .options("/api/upload", [](auto *res, auto *req) {
             res->writeHeader("Access-Control-Allow-Origin", "*");
             res->writeHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-            res->writeHeader("Access-Control-Allow-Headers", "Content-Type, X-File-Name");
+            res->writeHeader("Access-Control-Allow-Headers", "Content-Type, X-File-Name, X-Asset-Class");
             res->end();
         })
 
         // 2. File Upload Handler
         .post("/api/upload", [](auto *res, auto *req) {
             string filename(req->getHeader("x-file-name"));
+            string asset_class(req->getHeader("x-asset-class"));
             if (filename.empty()) {
                 filename = "unknown_upload.csv";
             }
+            if (asset_class.empty()) asset_class = "Custom";
 
             res->onAborted([]() {
                 cout << "Upload aborted by client.\n";
@@ -61,7 +66,7 @@ int main() {
 
             auto buffer = make_shared<string>();
 
-            res->onData([res, buffer, filename](string_view chunk, bool isLast) {
+            res->onData([res, buffer, filename, asset_class](string_view chunk, bool isLast) {
                 buffer->append(chunk.data(), chunk.length());
 
                 if (isLast) {
@@ -85,18 +90,26 @@ int main() {
                             res->writeStatus("409 Conflict")->end("Error: " + ticker + " already exists.");
                             return;
                         }
-
-                        data_manager.load_ticker_data(ticker, save_path);
-                        data_manager.print_first_row(ticker); 
+                        //CHANGED TO BOOLEAN TO PROPOGATE CHANGES TO SIMULATION.TSX
+                        bool load_success = data_manager.load_ticker_data(ticker, save_path, asset_class);
+                        
+                        if (load_success) {
+                            data_manager.print_first_row(ticker); 
+                        }
 
                         if (remove(save_path.c_str()) == 0) {
                             cout << "Removed File after loading (save it in temp, read, delete): " << save_path << "\n";
                         } else {
                             cout << "Error in removing file: " << save_path << "\n";
                         }
-
+                        //message based on load_success
                         res->writeHeader("Access-Control-Allow-Origin", "*");
-                        res->end(ticker);
+                        if (load_success) {
+                            res->end(ticker); // Sends standard 200 OK
+                        } else {
+                            res->writeStatus("400 Bad Request")->end("Invalid or corrupted CSV data");
+                        }
+
                     } else {
                         res->writeHeader("Access-Control-Allow-Origin", "*");
                         res->writeStatus("500 Internal Server Error")->end("Failed to save to disk.");
@@ -159,6 +172,16 @@ int main() {
                     SimulationConfig config;
                     smatch match;
 
+                    /* Acceptance Critera - HX */
+                    std::ofstream outfile("initial_market.json");
+                    if (outfile.is_open()) {
+                        outfile << json;
+                        outfile.close();
+                        std::cout << "successfully written\n";
+                    } else {
+                        std::cerr << "failed to write\n";
+                    }
+
                     // Parse Initial Capital
                     if (regex_search(json, match, regex(R"("initial_capital":\s*([0-9.]+))"))) {
                         double raw_cap = stod(match[1].str());
@@ -180,32 +203,22 @@ int main() {
                     }
 
                     // Parse Tickers Array
-                    if (regex_search(json, match, regex(R"("ticker":\s*"([^"]*))"))) {
-                      for (int i = 0; i < match.size(); i++) {
-                      std::cout << match[1].str() << "\n";
-                        config.stocks.push_back(Stocks());
-                        config.stocks[i].name = match[1].str();
-                      }
-                    }
-                    if (regex_search(json, match, regex(R"("base_price":\s*"([^"]*))"))) {
-                      for (int i = 0; i < match.size(); i++) {
-                        config.stocks[i].base_price = atoi(match[1].str().c_str());
-                      }
-                    }
-                    if (regex_search(json, match, regex(R"("liquidity":\s*"([^"]*))"))) {
-                      for (int i = 0; i < match.size(); i++) {
-                        config.stocks[i].liquidity = atoi(match[1].str().c_str());
-                      }
-                    }
-                    if (regex_search(json, match, regex(R"("volatility":\s*"([^"]*))"))) {
-                      for (int i = 0; i < match.size(); i++) {
-                        config.stocks[i].volatility = atoi(match[1].str().c_str());
-                      }
-                    }
-                    if (regex_search(json, match, regex(R"("market_cap":\s*"([^"]*))"))) {
-                      for (int i = 0; i < match.size(); i++) {
-                        config.stocks[i].market_cap = atoi(match[1].str().c_str());
-                      }
+                     std::regex stock_regex(R"-("ticker":\s*"([^"]*)",\s*"base_price":\s*([^,]*),\s*"liquidity":\s*([^,]*),\s*"volatility":\s*([^,]*),\s*"market_cap":\s*([^}]*))-");
+
+                    int i = 0;
+
+                    while (std::regex_search(json, match, stock_regex)) {
+                      config.stocks.push_back(Stocks());
+                      
+                      config.stocks[i].name = match[1].str(); 
+                      config.stocks[i].base_price = std::stod(match[2].str()); 
+                      config.stocks[i].liquidity  = std::stod(match[3].str());
+                      config.stocks[i].volatility = std::stod(match[4].str());
+                      config.stocks[i].market_cap = std::stod(match[5].str());
+                      
+                      i++;
+                      
+                      json = match.suffix().str(); 
                     }
 
                     // Prove the struct was populated correctly
