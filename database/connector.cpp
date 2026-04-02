@@ -575,8 +575,8 @@ try
 };
 
 int main() {
-  ConnectorSingleton::getInstance().addUser("user1@gmail.com", "1234", "user1");
-  ConnectorSingleton::getInstance().createSimulation("user1", "N/A", -1);
+  std::vector<std::string> s = ConnectorSingleton::getInstance().fetchSimulation(2, "user1");
+  fmt::print("{} and {}\n", s.at(0), s.at(1));
 
   return 0;
 }
