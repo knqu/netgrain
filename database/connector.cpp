@@ -379,7 +379,6 @@ try
         pqxx::row r = tx.exec(query).one_row();
         currentSeq = r[0].as<int>();
         currentSeq++;
-        fmt::print("{}\n", currentSeq);
       }
       catch (const std::exception &e)
       {
@@ -387,7 +386,6 @@ try
       }
 
       std::string path = "./sims/" + std::to_string(currentSeq) + "/";
-      fmt::print("Attempting to create {}\n", path);
       std::filesystem::create_directories(path);
 
       std::filesystem::permissions(
@@ -574,9 +572,16 @@ try
     }
 };
 
+/*
 int main() {
-  std::vector<std::string> s = ConnectorSingleton::getInstance().fetchSimulation(2, "user1");
-  fmt::print("{} and {}\n", s.at(0), s.at(1));
+  ConnectorSingleton::getInstance().createSimulation("user1", "" , -1);
+  ConnectorSingleton::getInstance().createSimulation("user1", "" , -1);
+  ConnectorSingleton::getInstance().createSimulation("user1", "" , -1);
+  ConnectorSingleton::getInstance().createSimulation("user1", "" , -1);
+  for (auto x : ConnectorSingleton::getInstance().fetchAllSims("user1")) {
+    fmt::print("Sim ID is {}\n", x);
+  }
 
   return 0;
 }
+*/
