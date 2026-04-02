@@ -2,6 +2,9 @@
 
 #include "generator.cpp"
 #include "ou.cpp"
+#include "bear.cpp"
+#include "bull.cpp"
+
 #include <iostream>
 #include <fstream>
 #include <chrono>
@@ -79,6 +82,30 @@ class gen_benchmark {
           count = new_gen.gen(&tester);
           std::cout << count << "\n";
           return count;
+      }
+
+
+      int bear_run(double drift, double vol, double j_freq, double j_mean, double j_vol, double price) {
+        bearGen new_gen(drift, vol, j_freq, j_mean, j_vol, price);
+
+        dataTransfer tester;
+        tester.gen = 1;
+
+        int count = 0;
+        int seconds;
+        std::cout << "How many seconds do you want the program to run for (int)? ";
+        std::cin >> seconds;
+        std::thread t(timer, seconds, std::ref(tester));
+        t.detach();
+
+        count = new_gen.gen(&tester);
+        std::cout << count << "\n";
+        return count;
+
+      }
+
+      int bull_run() {
+
       }
 
       int data_benchmark(double drift, double vol, int init_price) {

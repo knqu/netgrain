@@ -6,6 +6,7 @@
 #include <string>
 #include "generator.cpp"
 #include "ou.cpp"
+#include "bear.cpp"
 #include "benchmarks.cpp"
 
 int main()
