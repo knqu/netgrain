@@ -22,7 +22,11 @@ export default function ChartComponent() {
       { time: '2018-12-31', value: 22.67 },
     ];
     
-    const LiveChart: React.FC = () => {
+    interface LiveChartProps {
+      ws: WebSocket;
+    }
+
+    const LiveChart: React.FC<LiveChartProps> = ({ws}) => {
         const containerRef = useRef<HTMLDivElement | null>(null);
 
         useEffect(() => {
@@ -34,6 +38,21 @@ export default function ChartComponent() {
 
             const candleSeries = chart.addSeries(AreaSeries);
 
+            // const wsUri = "ws://localhost:5555/";
+            // const websocket = new WebSocket(wsUri);
+            var counter = 0;
+            ws.addEventListener("open", () => {
+              console.log("CONNECTED");
+                console.log(`SENT: ping: ${counter}`);
+            });
+            var Queue: number[]= [];
+            ws.addEventListener("message", (e) => {
+              console.log(`RECEIVED: ${e.data}: ${counter}`);
+              counter++;
+              Queue.push(e.data);
+            });
+
+
             candleSeries.setData(initialData);
             chart.timeScale().fitContent();
             const date = new Date(Date.UTC(2018, 12, 31, 12, 0, 0, 0));
@@ -41,8 +60,12 @@ export default function ChartComponent() {
             function* getNextRealTimeUpdate() {
               while (true) {
                 date.setUTCDate(date.getUTCDate() + 1);
-                const val = value + 1;
-                value += 1;
+                
+                var val : number | undefined= -1; 
+                do {
+                  val = Queue.shift();
+                  
+                } while (val === undefined);
                 const time = date.getTime() / 1000 as UTCTimestamp;
                 yield {time: time, value: val};
               }
@@ -82,7 +105,7 @@ export default function ChartComponent() {
             <div className="Chart_outer_container">
                 <div className="Chart_inner_container">
                     <div className="Chart" >
-                        <LiveChart />
+                        <LiveChart /* PUT PROPER WEBSOCKET HERE *//>
                     </div>
                 </div>
             </div>
@@ -91,6 +114,7 @@ export default function ChartComponent() {
 
     return (
         <div className="ChartContainer">
+            <Chart />
             <Chart />
         </div>
     );
