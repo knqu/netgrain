@@ -64,7 +64,12 @@ export default function GridComponent({ widgets, removeWidget, addWidget }: Grid
       const response = await fetch('/api/simAveraged');
 
       if (response.ok) {
-        const savedData = await response.text();
+        var savedData = await response.text();
+
+        if (!savedData) { // check if no simulations
+          savedData = "No Simulations, No Simulations, No Simulations";
+        }
+
         const metrics = savedData.split(",");
 
         if (parameter === "time") {

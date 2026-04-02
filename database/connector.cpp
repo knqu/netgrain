@@ -460,6 +460,10 @@ try
 
       std::vector<int> simIDs = fetchAllSims(identifer);
 
+      if (simIDs.size() == 0) {
+        return "";
+      }
+
       for (auto x : simIDs) {
         std::string path = "./sims/" + std::to_string(x) + "/simResults";
         std::ifstream myfile;
