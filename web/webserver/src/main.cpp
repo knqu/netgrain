@@ -10,6 +10,9 @@
 #include <string>
 #include <fstream>
 #include <iostream>
+#include <filesystem>
+#include <openssl/err.h>
+
 
 int main() {  
     using Session = crow::SessionMiddleware<crow::InMemoryStore>;
@@ -21,15 +24,16 @@ int main() {
 
     crow::mustache::set_global_base("../../my-project/dist");
 
-    CROW_ROUTE(app, "/")([]() {
-        auto page = crow::mustache::load_text_unsafe("index.html");
-        return page;
-    });
-
     CROW_ROUTE(app, "/assets/index-<string>")([](std::string file) {
         crow::response res;
         res.set_static_file_info_unsafe("../../my-project/dist/assets/index-" + file);
         return res;
+    });
+
+    CROW_ROUTE(app, "/login")([]() {
+        std::cout << "breuh" << std::endl;
+        auto page = crow::mustache::load_unsafe("index.html");
+        return page.render();
     });
 
     CROW_ROUTE(app, "/api/cookieCheck").methods(crow::HTTPMethod::GET, crow::HTTPMethod::PATCH)([&](const crow::request& req) {
@@ -263,20 +267,27 @@ int main() {
         }
     });
 
+    CROW_ROUTE(app, "/api/fetchHistory").methods(crow::HTTPMETHOD::POST, crow::HTTPMethod::Patch)([&](const crow:request& req) {
+        auto& cookie = app.get_context<crow::CookieParser>(req);
+        std::string email = cookie.get_cookie("email");
+
+        if (email.empty()) return crow::respones(401);
+
+        try {
+            std::vector<int> hist = ConnectorSingleton::getInstance().fetchAllSims(email)
+        } catch (...) {
+            return crow::response(500);
+        }
+    });
+
     CROW_CATCHALL_ROUTE(app)([](){
+        std::cout << "Catch All" << std::endl;
         crow::response res;
-        res.set_static_file_info_unsafe("../../my-project/dist/index.html");
+        res.set_static_file_info_unsafe("../../my-project/dist/catchall.html");
         return res;
     });
 
-    std::ifstream cert("C:/Purdue 2nd Year/2 Semester/CS 307 Proj/netgrain/web/webserver/perms2/cert.pem");
-    std::ifstream key("C:/Purdue 2nd Year/2 Semester/CS 307 Proj/netgrain/web/webserver/perms2/key.pem");
+    app.bindaddr("127.0.0.1").port(18080);
 
-    std::cout << cert.good() << " " << key.good() << std::endl;
-
-    app.ssl_file(
-        "C:/Purdue 2nd Year/2 Semester/CS 307 Proj/netgrain/web/webserver/perms2/cert.pem",
-        "C:/Purdue 2nd Year/2 Semester/CS 307 Proj/netgrain/web/webserver/perms2/key.pem"
-    );
-    app.port(18080).multithreaded().run();
+    app.multithreaded().run();
 }
