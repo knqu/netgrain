@@ -1,3 +1,5 @@
+#define CROW_ENABLE_SSL
+
 #include "crow.h"
 #include "crow/middlewares/cookie_parser.h"
 #include "crow/middlewares/session.h"
@@ -10,6 +12,7 @@
 #include <string>
 #include <fstream>
 #include <iostream>
+
 
 int main() {  
     using Session = crow::SessionMiddleware<crow::InMemoryStore>;
@@ -220,7 +223,7 @@ int main() {
         
         try {
             return crow::response(200);
-            std::string filePath = ConnectorSingleton::getInstance().fetchSimulation(reqBody["submitted_simID"].i(), cookie.get_cookie("email"));
+            std::string filePath = ConnectorSingleton::getInstance().fetchSimulation(reqBody["submitted_simID"].i(), cookie.get_cookie("email")).at(0);
             crow::response res;
             res.write("{filePath : " + filePath + "}");
             res.code = 200;
@@ -263,12 +266,33 @@ int main() {
         }
     });
 
+    CROW_ROUTE(app, "/api/simAveraged").methods(crow::HTTPMethod::GET, crow::HTTPMethod::Patch)([&](const crow::request& req) { // HX
+                                                                                                                        /*
+        auto& cookie = app.get_context<crow::CookieParser>(req);
+        std::string email = cookie.get_cookie("email");
+        if (email.empty()) return crow::response(401);
+        */
+
+        try {
+            std::string result = ConnectorSingleton::getInstance().average("user1@gmail.com");
+            
+            crow::response res;
+            res.write(result.empty() ? "{}" : result);
+            res.set_header("Content-Type", "text/csv");
+            res.code = 200;
+            return res;
+        } catch (...) {
+            return crow::response(500);
+        }
+    });
+
     CROW_CATCHALL_ROUTE(app)([](){
         crow::response res;
         res.set_static_file_info_unsafe("../../my-project/dist/index.html");
         return res;
     });
 
+    /* temporarily commented out cuz error compiling
     std::ifstream cert("C:/Purdue 2nd Year/2 Semester/CS 307 Proj/netgrain/web/webserver/perms2/cert.pem");
     std::ifstream key("C:/Purdue 2nd Year/2 Semester/CS 307 Proj/netgrain/web/webserver/perms2/key.pem");
 
@@ -278,5 +302,6 @@ int main() {
         "C:/Purdue 2nd Year/2 Semester/CS 307 Proj/netgrain/web/webserver/perms2/cert.pem",
         "C:/Purdue 2nd Year/2 Semester/CS 307 Proj/netgrain/web/webserver/perms2/key.pem"
     );
+    */
     app.port(18080).multithreaded().run();
 }

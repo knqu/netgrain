@@ -7,7 +7,10 @@
 #include <filesystem>
 #include <iomanip>
 #include <ctime>
+#include <iostream>
+#include <string>
 #include <fstream>
+#include <sstream>
 
 
 enum error_codes {
@@ -344,6 +347,7 @@ try
       return std::vector<int>{};
     }
 
+    // returns (path_to_data, dateofsim)
     std::vector<std::string> fetchSimulation(int simID, std::string identifier) {
       int uuid = getUUID(identifier);
       pqxx::work tx(*conn);
@@ -442,6 +446,57 @@ try
       tx.commit();
 
       return currentSeq;
+    }
+
+    // return csv
+    std::string average(std::string identifer) {
+      int uuID = getUUID(identifer);
+      std::vector<double> results = {};
+      // time profit fees_incurred
+
+      if (uuIDfound(uuID) == uuID) {
+        return "";
+      }
+
+      std::vector<int> simIDs = fetchAllSims(identifer);
+
+      for (auto x : simIDs) {
+        std::string path = "./sims/" + std::to_string(x) + "/simResults";
+        std::ifstream myfile;
+        myfile.open(path);
+        if (!myfile.is_open()) {
+          std::cerr << "Error opening the file!";
+          return "";
+        }
+        std::string fileContent;
+        std::string token;
+        std::vector<std::string> tokens;
+        while (std::getline(myfile, token, ',')) {
+          tokens.push_back(token);
+        }
+
+        if (results.size() < tokens.size()) {
+          for (int i = 1; i < token.size(); i++) {
+            results.push_back(0.0);
+          }
+        }
+
+        for (int i = 0; i < tokens.size(); i++) {
+          results.at(i) += atof(tokens.at(i).c_str());
+        }
+      }
+
+      for (int i = 0; i < results.size(); i++) {
+        results.at(i) /= simIDs.size();
+      }
+
+      std::stringstream ss("");
+
+      for (auto x : results) {
+        ss << std::fixed << std::setprecision(2) << x << ",";
+      }
+      
+      return ss.str().substr(0, ss.str().size() - 1);
     }
 
     // Persistent Change
@@ -574,14 +629,7 @@ try
 
 /*
 int main() {
-  ConnectorSingleton::getInstance().createSimulation("user1", "" , -1);
-  ConnectorSingleton::getInstance().createSimulation("user1", "" , -1);
-  ConnectorSingleton::getInstance().createSimulation("user1", "" , -1);
-  ConnectorSingleton::getInstance().createSimulation("user1", "" , -1);
-  for (auto x : ConnectorSingleton::getInstance().fetchAllSims("user1")) {
-    fmt::print("Sim ID is {}\n", x);
-  }
-
+  fmt::print("{}\n", ConnectorSingleton::getInstance().average("user1"));
   return 0;
 }
 */
