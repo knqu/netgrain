@@ -42,16 +42,16 @@ export default function ChartComponent() {
             // const websocket = new WebSocket(wsUri);
             var counter = 0;
             ws.addEventListener("open", () => {
+              ws.send("sideways"); // HERE
               console.log("CONNECTED");
-                console.log(`SENT: ping: ${counter}`);
+              console.log(`SENT: ping: ${counter}`);
             });
             var Queue: number[]= [];
             ws.addEventListener("message", (e) => {
-              console.log(`RECEIVED: ${e.data}: ${counter}`);
+              //console.log(`RECEIVED: ${e.data}: ${counter}`);
               counter++;
               Queue.push(e.data);
             });
-
 
             candleSeries.setData(initialData);
             chart.timeScale().fitContent();
@@ -79,7 +79,16 @@ export default function ChartComponent() {
               clearInterval(intervalID);
                 return;
               }
-              candleSeries.update(update.value);
+              // HERE
+              var toParse = update.value.value;
+              let result = toParse.includes("Sideways");
+              if (result) {
+                toParse = toParse.substring(10);
+              }
+              candleSeries.update({
+                time: update.value.time, 
+                value: Number(toParse)
+              });
             }, 1000);
 
             const resizeObserver = new ResizeObserver(entries => {
@@ -101,20 +110,21 @@ export default function ChartComponent() {
 
     // Chart body
     function Chart() {
-        return (
-            <div className="Chart_outer_container">
-                <div className="Chart_inner_container">
-                    <div className="Chart" >
-                        <LiveChart /* PUT PROPER WEBSOCKET HERE *//>
-                    </div>
-                </div>
-            </div>
-        );
+      const socket = new WebSocket("ws://localhost:5555");
+
+      return (
+          <div className="Chart_outer_container">
+              <div className="Chart_inner_container">
+                  <div className="Chart" >
+                      <LiveChart ws={socket} />
+                  </div>
+              </div>
+          </div>
+      );
     }
 
     return (
         <div className="ChartContainer">
-            <Chart />
             <Chart />
         </div>
     );
