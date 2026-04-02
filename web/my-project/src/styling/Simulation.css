@@ -1,8 +1,10 @@
 .sim-container {
-    max-width: 500px;
+    max-width: 45vw;
     margin: 0 auto;
     font-family: sans-serif;
     padding: 20px;
+    max-height: 100%;
+    overflow-y: auto;
 }
 
 .sim-panel {
@@ -11,6 +13,25 @@
     border-radius: 8px;
     border: 1px solid #ddd;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+}
+
+.sim-setup {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5vw;
+}
+
+.upload-panel {
+    grid-column: 1/span 2;
+}
+.sim-asset-selector {
+    background-color: #f9f9f9;
+    padding: 25px;
+    border-radius: 8px;
+    border: 1px solid #ddd;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    display: flex;
+    flex-direction: column;
 }
 
 .sim-panel h2 {
@@ -40,6 +61,20 @@
     color: #444;
 }
 
+.stocks {
+    background-color: #f9f9f9;
+    padding: 25px;
+    border-radius: 8px;
+    border: 1px solid #ddd;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    display: flex;
+    flex-direction: column;
+}
+
+.sim-stock-cards {
+    max-height: 25vh;
+    overflow-y: auto;
+}
 .sim-stock-card {
     border: 1px solid #ddd;
     padding: 15px;

@@ -1,0 +1,58 @@
+.history-parent-container {
+    background-color: #3D3F42;
+    border-radius: 0.3em;
+    height: 87.5vh;
+    width: 95vw;
+
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 1.5em;
+}
+
+.history-table-header-container {
+    background-color: #252628;
+    width: 90vw;
+    border-radius: 0.3em;
+    padding: 0.75em;
+    margin-top: 1em;
+}
+
+.history-table-header {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-evenly;
+    align-items: center;
+    gap: 2em;
+
+    font-size: 1.2em;
+    font-weight: 400;
+}
+
+.history-table-entry-container {
+    background-color: #252628;
+    border-radius: 0.3em;
+    padding: 0.5em;
+    width: 90vw;
+
+    display: flex;
+    align-items: center;
+}
+
+.history-table-contents {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-evenly;
+    align-items: center;
+    flex: 1;
+}
+
+img {
+    margin-left: auto;
+}
+
+.history-table-header h3, .history-table-contents h3 {
+    flex: 1;
+    text-align: center;
+}
