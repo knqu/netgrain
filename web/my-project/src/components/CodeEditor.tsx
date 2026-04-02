@@ -13,6 +13,7 @@ import React, { useEffect, useRef } from "react";
 // }
 monaco.languages.registerCompletionItemProvider('python', {
     provideCompletionItems: (model, position) => {
+        console.log(model);
         const suggestions = [
             {
                 label: 'get_balance',

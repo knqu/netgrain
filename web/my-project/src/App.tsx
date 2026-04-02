@@ -19,7 +19,7 @@ function App() {
   return (
     <Router>
       <Routes>
-        <Route path="/" element={<Login />} />
+        <Route path="/login" element={<Login />} />
         <Route path='/registration' element={<Registration />} />
         <Route path="/account" element={<Account />} />
         <Route path="/home" element={<Home />} />
@@ -32,6 +32,7 @@ function App() {
         <Route path="/forgot" element={<ForgotPassword />} />
         <Route path="/newSim" element={<NewSim />} />
         <Route path="/codeEditor" element={<CodeEditor />} />
+        <Route path="*" element={<Login />} />
       </Routes>
     </Router>
   );

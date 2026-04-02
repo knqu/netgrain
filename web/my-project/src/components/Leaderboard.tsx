@@ -22,7 +22,6 @@ export default function LeaderboardComponent() {
         );
         if (response.status == 200 && response.body != null) {
           const responseStr = await response.text();
-          console.log(responseStr)
           const leaderboardJSON = JSON.parse(responseStr);
           setEntries(leaderboardJSON)
         }
