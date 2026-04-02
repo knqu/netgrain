@@ -1,3 +1,12 @@
+DO $$ 
+BEGIN
+    EXECUTE (
+        SELECT string_agg('DROP TABLE IF EXISTS ' || tablename || ' CASCADE;', ' ')
+        FROM pg_tables
+        WHERE schemaname = 'public'
+    );
+END $$;
+
 CREATE TABLE userLogin (
   userID serial PRIMARY KEY,
   username text NOT NULL,
@@ -23,9 +32,10 @@ CREATE TABLE globalCustomPresets (
 
 CREATE TABLE pastSimulations (
   simID serial,
-  analytics text NOT NULL,
-  configUsed text NOT NULL,
   userID int NOT NULL,
+  path_to_data text NOT NULL,
+  configUsed text NOT NULL,
+  dateOfSim text NOT NULL,
   customPresetUsedIfApplicable int UNIQUE,
   FOREIGN KEY (userID) REFERENCES userLogin(userID),
   FOREIGN KEY (customPresetUsedIfApplicable) REFERENCES globalCustomPresets(presetID)

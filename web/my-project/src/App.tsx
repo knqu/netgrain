@@ -13,6 +13,8 @@ import SimResults from './components/SimResults';
 import Verification from './components/Verification';
 import ForgotPassword from './components/ForgotPassword';
 import CodeEditor from './components/CodeEditor';
+import NewSim from './components/newSimPage'
+import LiveChartComponent from './components/LiveChart';
 
 function App() {
   return (
@@ -29,8 +31,9 @@ function App() {
         <Route path="/algoTable" element={<AlgoTable />} />
         <Route path="/verification" element={<Verification />} />
         <Route path="/forgot" element={<ForgotPassword />} />
+        <Route path="/newSim" element={<NewSim />} />
         <Route path="/codeEditor" element={<CodeEditor />} />
-      </Routes>
+        <Route path="/liveChart" element={<LiveChartComponent />} />      </Routes>
     </Router>
   );
 }
