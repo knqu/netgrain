@@ -24,15 +24,16 @@ function SimulationExec() {
 
   return (
     <div>
-      <h1>Simulation Page</h1>
-      <button onClick={async () => {saveSim()}}>Finish Simulation</button>
+    <h1>Simulation Page</h1>
+    <button onClick={async () => {saveSim()}}>Finish Simulation</button>
     </div>
   );
 }
+
 void SimulationExec;
 
 export interface StockParams {
-    ticker: string;
+    ticker: string; 
     base_price: number;
     liquidity: number;
     volatility: number;

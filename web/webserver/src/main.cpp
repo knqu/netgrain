@@ -1,3 +1,5 @@
+#define CROW_ENABLE_SSL
+
 #include "crow.h"
 #include "crow/middlewares/cookie_parser.h"
 #include "crow/middlewares/session.h"
@@ -10,8 +12,6 @@
 #include <string>
 #include <fstream>
 #include <iostream>
-#include <filesystem>
-#include <openssl/err.h>
 
 
 int main() {  
@@ -224,7 +224,7 @@ int main() {
         
         try {
             return crow::response(200);
-            std::string filePath = ConnectorSingleton::getInstance().fetchSimulation(reqBody["submitted_simID"].i(), cookie.get_cookie("email"));
+            std::string filePath = ConnectorSingleton::getInstance().fetchSimulation(reqBody["submitted_simID"].i(), cookie.get_cookie("email")).at(0);
             crow::response res;
             res.write("{filePath : " + filePath + "}");
             res.code = 200;
@@ -267,14 +267,21 @@ int main() {
         }
     });
 
-    CROW_ROUTE(app, "/api/fetchHistory").methods(crow::HTTPMETHOD::POST, crow::HTTPMethod::Patch)([&](const crow:request& req) {
+    CROW_ROUTE(app, "/api/simAveraged").methods(crow::HTTPMethod::GET, crow::HTTPMethod::Patch)([&](const crow::request& req) { // HX
+                                                                                                                        /*
         auto& cookie = app.get_context<crow::CookieParser>(req);
         std::string email = cookie.get_cookie("email");
-
-        if (email.empty()) return crow::respones(401);
+        if (email.empty()) return crow::response(401);
+        */
 
         try {
-            std::vector<int> hist = ConnectorSingleton::getInstance().fetchAllSims(email)
+            std::string result = ConnectorSingleton::getInstance().average("user1@gmail.com");
+            
+            crow::response res;
+            res.write(result.empty() ? "{}" : result);
+            res.set_header("Content-Type", "text/csv");
+            res.code = 200;
+            return res;
         } catch (...) {
             return crow::response(500);
         }

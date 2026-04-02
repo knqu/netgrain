@@ -118,6 +118,7 @@ export default function HistoryComponent() {
       console.log(err);
     }
   }
+  */
 
   function DisplayLineChart({ chartIndex }: { chartIndex: boolean }) {
     const containerRef = useRef<HTMLDivElement | null>(null);

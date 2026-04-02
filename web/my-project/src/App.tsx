@@ -14,6 +14,8 @@ import Verification from './components/Verification';
 import ForgotPassword from './components/ForgotPassword';
 import CodeEditor from './components/CodeEditor';
 import NewSim from './components/newSimPage'
+import LiveChartComponent from './components/LiveChart';
+import SimulationRun from './components/SimulationRun';
 
 function App() {
   return (
@@ -33,6 +35,8 @@ function App() {
         <Route path="/newSim" element={<NewSim />} />
         <Route path="/codeEditor" element={<CodeEditor />} />
         <Route path="*" element={<Login />} />
+        <Route path="/liveChart" element={<LiveChartComponent />} />
+        <Route path="/simRun" element={<SimulationRun />} />
       </Routes>
     </Router>
   );

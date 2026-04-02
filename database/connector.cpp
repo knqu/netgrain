@@ -3,6 +3,15 @@
 #include <pqxx/pqxx>
 #include <fmt/core.h>
 #include <regex>
+#include <utility>
+#include <filesystem>
+#include <iomanip>
+#include <ctime>
+#include <iostream>
+#include <string>
+#include <fstream>
+#include <sstream>
+
 
 enum error_codes {
   UUID_NOT_FOUND, 
@@ -190,6 +199,30 @@ try
       return SUCCESS;
     }
 
+    int changePassword(std::string identifier, std::string newPassword) {
+      int uuID = getUUID(identifier);
+
+      if (uuIDfound(uuID) == -1) {
+        fmt::print("UUID_NOT_FOUND");
+        return UUID_NOT_FOUND;
+      }
+
+      pqxx::work tx(*conn);
+
+      try
+      {
+        std::string query = "UPDATE userlogin SET password = $1 WHERE (userid = $2)";
+        pqxx::result r = tx.exec(query, pqxx::params{newPassword, uuID}).no_rows();
+      }
+      catch (const std::exception &e)
+      {
+        return -1;
+      }
+
+      tx.commit();
+      return SUCCESS;
+    }
+
     /*
      * When user modifies dashboard, changes are updated automatically to userID.file
      * let web server deal with file IO? database will just hold reference
@@ -274,11 +307,52 @@ try
       return result;
     }
 
-    // TODO: basic mockup actions of alg
-    std::string fetchSimulation(int simID, std::string identifier) {
+    std::string fetchLayout(std::string identifier) {
+      pqxx::work tx(*conn);
+      std::string query = "SELECT * FROM leaderboard ORDER BY profit DESC, simulationtime DESC";
+      pqxx::row r;
+
+      try
+      {
+        r = tx.exec(query).one_row();
+      }
+      catch (const std::exception &e)
+      {
+        return "";
+      }
+      tx.abort();
+
+      return r[4].as<std::string>();
+    }
+
+    std::vector<int> fetchAllSims(std::string identifier) {
+      int uuid = getUUID(identifier);
+      pqxx::work tx(*conn);
+      pqxx::result r;
+      std::vector<int> res;
+      try
+      {
+        std::string query = "SELECT * FROM pastSimulations WHERE (userid = $1)";
+        r = tx.exec(query, pqxx::params{uuid});
+        for (auto row = std::begin(r); row != std::end(r); row++) {
+          auto field = std::begin(row);
+          res.push_back(field.as<int>());
+        }
+        return res;
+      }
+      catch (const std::exception &e)
+      {
+        std::cerr << e.what() << "\n";
+      }
+      return std::vector<int>{};
+    }
+
+    // returns (path_to_data, dateofsim)
+    std::vector<std::string> fetchSimulation(int simID, std::string identifier) {
       int uuid = getUUID(identifier);
       pqxx::work tx(*conn);
       pqxx::row r;
+
       try
       {
         std::string query = "SELECT * FROM pastSimulations WHERE (userid = $1 AND simid = $2)";
@@ -287,33 +361,146 @@ try
       catch (const std::exception &e)
       {
         std::cerr << e.what() << "\n";
-        return "";
+        return std::vector<std::string>();
       }
-      return r[2].c_str();
+      return std::vector<std::string> {r[2].c_str(), r[4].c_str()};
     }
-    
-    int changePassword(std::string identifier, std::string newPassword) {
-      int uuID = getUUID(identifier);
 
-      if (uuIDfound(uuID) == -1) {
-        fmt::print("UUID_NOT_FOUND");
-        return UUID_NOT_FOUND;
+    // return simID
+    int createSimulation(std::string identifer, std::string configUsed, int globalPresetID) {
+      int uuID = getUUID(identifer);
+
+      if (uuIDfound(uuID) == uuID) {
+        return -1;
       }
 
       pqxx::work tx(*conn);
 
-      try
-      {
-        std::string query = "UPDATE userlogin SET password = $1 WHERE (userid = $2)";
-        pqxx::result r = tx.exec(query, pqxx::params{newPassword, uuID}).no_rows();
+      int currentSeq = -1;
+
+      try {
+        std::string query = "SELECT last_value FROM pastsimulations_simid_seq;";
+        pqxx::row r = tx.exec(query).one_row();
+        currentSeq = r[0].as<int>();
+        currentSeq++;
       }
       catch (const std::exception &e)
       {
-        return -1;
+        std::cerr << e.what() << std::endl;
+      }
+
+      std::string path = "./sims/" + std::to_string(currentSeq) + "/";
+      std::filesystem::create_directories(path);
+
+      std::filesystem::permissions(
+        path,
+        std::filesystem::perms::others_all | std::filesystem::perms::owner_all | std::filesystem::perms::others_all,
+        std::filesystem::perm_options::add
+    );
+      // create files
+      std::ofstream MyFile(path + "simResults");
+      std::ofstream MyFile2(path + "algorithmActions");
+      std::ofstream MyFile3(path + "marketData");
+      MyFile.close();
+      MyFile2.close();
+      MyFile3.close();
+
+      auto t = std::time(nullptr);
+      auto tm = *std::localtime(&t);
+      std::ostringstream oss;
+      oss << std::put_time(&tm, "%d-%m-%Y %H-%M-%S");
+      auto str = oss.str();
+
+      try {
+        std::string query = "INSERT INTO pastsimulations (configused, userid, path_to_data, dateOfsim) VALUES ($1, $2, $3, $4)";
+        tx.exec(query, pqxx::params{configUsed, uuID, path, str});
+      }
+      catch (const std::exception &e)
+      {
+          std::cerr << e.what() << std::endl;
+      }
+
+      if (globalPresetID != -1) {
+        // determine if the globalPresetID is valid
+        std::string query = "SELECT * FROM globalcustompresets WHERE (presetid = $1)";
+
+        try
+        {
+          pqxx::row r = tx.exec(query, pqxx::params{globalPresetID}).one_row();
+        }
+        catch (const std::exception &e)
+        {
+            return PRESET_ID_NOT_FOUND;
+        }
+
+        try {
+          std::string query = "UPDATE pastsimulations SET custompresetusedifapplicable = $1 WHERE userid = $2";
+          tx.exec(query, pqxx::params{configUsed, uuID});
+        }
+        catch (const std::exception &e)
+        {
+            std::cerr << e.what() << std::endl;
+        }
       }
 
       tx.commit();
-      return SUCCESS;
+
+      return currentSeq;
+    }
+
+    // return csv
+    std::string average(std::string identifer) {
+      int uuID = getUUID(identifer);
+      std::vector<double> results = {};
+      // time profit fees_incurred
+
+      if (uuIDfound(uuID) == uuID) {
+        return "";
+      }
+
+      std::vector<int> simIDs = fetchAllSims(identifer);
+
+      if (simIDs.size() == 0) {
+        return "";
+      }
+
+      for (auto x : simIDs) {
+        std::string path = "./sims/" + std::to_string(x) + "/simResults";
+        std::ifstream myfile;
+        myfile.open(path);
+        if (!myfile.is_open()) {
+          std::cerr << "Error opening the file!";
+          return "";
+        }
+        std::string fileContent;
+        std::string token;
+        std::vector<std::string> tokens;
+        while (std::getline(myfile, token, ',')) {
+          tokens.push_back(token);
+        }
+
+        if (results.size() < tokens.size()) {
+          for (int i = 1; i < token.size(); i++) {
+            results.push_back(0.0);
+          }
+        }
+
+        for (int i = 0; i < tokens.size(); i++) {
+          results.at(i) += atof(tokens.at(i).c_str());
+        }
+      }
+
+      for (int i = 0; i < results.size(); i++) {
+        results.at(i) /= simIDs.size();
+      }
+
+      std::stringstream ss("");
+
+      for (auto x : results) {
+        ss << std::fixed << std::setprecision(2) << x << ",";
+      }
+      
+      return ss.str().substr(0, ss.str().size() - 1);
     }
 
     // Persistent Change
@@ -353,15 +540,6 @@ try
 
       fmt::print("SUCCESS");
       return SUCCESS;
-    }
-
-    std::string fetchLayout(std::string identifier) {
-      pqxx::work tx(*conn);
-      std::string query = "SELECT * FROM leaderboard ORDER BY profit DESC, simulationtime DESC";
-      pqxx::result r = tx.exec(query);
-
-      tx.abort();
-
     }
 
     /*
@@ -420,54 +598,6 @@ try
       return result;
     }
 
-    /*
-     * pass in customPresetID = -1 if no global preset was used
-     */
-    int createSimulation(std::string identifer, std::string analytics, std::string configUsed, int globalPresetID) {
-      int uuID = getUUID(identifer);
-
-      if (uuIDfound(uuID) == uuID) {
-        return UUID_NOT_FOUND;
-      }
-
-      pqxx::work tx(*conn);
-
-      try {
-        std::string query = "INSERT INTO pastsimulations (analytics, configused, userid) VALUES ($1, $2, $3)";
-        tx.exec(query, pqxx::params{analytics, configUsed, uuID});
-      }
-      catch (const std::exception &e)
-      {
-          std::cerr << e.what() << std::endl;
-      }
-
-      if (globalPresetID != -1) {
-        // determine if the globalPresetID is valid
-        std::string query = "SELECT * FROM globalcustompresets WHERE (presetid = $1)";
-
-        try
-        {
-          pqxx::row r = tx.exec(query, pqxx::params{globalPresetID}).one_row(); // one_row checks if only one entry found, exception otherwise
-        }
-        catch (const std::exception &e)
-        {
-            return PRESET_ID_NOT_FOUND;
-        }
-
-        try {
-          std::string query = "UPDATE pastsimulations SET custompresetusedifapplicable = $1 WHERE userid = $2";
-          tx.exec(query, pqxx::params{configUsed, uuID});
-        }
-        catch (const std::exception &e)
-        {
-            std::cerr << e.what() << std::endl;
-        }
-      }
-      tx.commit();
-
-      return SUCCESS;
-    }
-
     // createCustomGlobalPreset(...)
     int createCustomGlobalPreset(int scaling, int volatility, int liquidity, int tradingVol) {
       pqxx::work tx(*conn);
@@ -503,6 +633,7 @@ try
 
 /*
 int main() {
-  ConnectorSingleton::getInstance().changePassword("ok", "asdfasdf");
+  fmt::print("{}\n", ConnectorSingleton::getInstance().average("user1"));
+  return 0;
 }
 */
