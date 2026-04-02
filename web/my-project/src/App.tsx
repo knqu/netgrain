@@ -15,6 +15,7 @@ import ForgotPassword from './components/ForgotPassword';
 import CodeEditor from './components/CodeEditor';
 import NewSim from './components/newSimPage'
 import LiveChartComponent from './components/LiveChart';
+import SimulationRun from './components/SimulationRun';
 
 function App() {
   return (
@@ -33,7 +34,9 @@ function App() {
         <Route path="/forgot" element={<ForgotPassword />} />
         <Route path="/newSim" element={<NewSim />} />
         <Route path="/codeEditor" element={<CodeEditor />} />
-        <Route path="/liveChart" element={<LiveChartComponent />} />      </Routes>
+        <Route path="/liveChart" element={<LiveChartComponent />} />
+        <Route path="/simRun" element={<SimulationRun />} />
+      </Routes>
     </Router>
   );
 }
