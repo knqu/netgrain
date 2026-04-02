@@ -1,0 +1,10 @@
+.show-chart {
+  visibility: visible;
+  height: auto;
+}
+
+.hide-chart {
+  visibility: hidden;
+  height: 0;
+  overflow: hidden;
+}
