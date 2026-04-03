@@ -12,12 +12,15 @@
 
 #include "def.hpp"
 #include "queue.hpp"
+#include "blocking_queue.hpp"
 #include "data_transfer.hpp"
 #include <cmath>
 #include <thread>
 #include <iostream>
 #include <ostream>
 #include <random>
+#include <unordered_set>
+#include <map>
 #include <string>
 #include <stdlib.h>
 
@@ -313,6 +316,335 @@ public:
         if (gen_settings->send_data.load()) {
           gen_settings->conn.load()
             ->send_text(fmt::format("{}", send_price()));
+        }
+      }
+
+      // goto
+skip:
+      // goto
+
+      i += 1;
+      std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    }
+    return i;
+  }
+
+  int generate_ws(Data_Transfer *gen_settings, int id) {
+    std::random_device rd{};
+    std::mt19937 gen{rd()};
+    std::normal_distribution<double> norm{0.0, 1.0};
+
+    // Values near the mean are the most likely. Standard deviation
+    // affects the dispersion of generated values from the mean.
+    int tracker = 0;
+    int i = 0;
+    double precede = 0.0;
+    double curr = 0.0;
+    double larger = 0.0;
+    int flash_crash_points = 15;
+    while (gen_settings->gen.load()) {
+      if (gen_settings->pause.load()) {
+        continue;
+      }
+      if (gen_settings->conn.load() == nullptr)
+      {
+        goto skip;
+      }
+
+      if (gen_settings->new_event.load()) {
+        switch (gen_settings->new_event.load())
+        {
+          // flash crash
+          case 1:
+            {
+              if (tracker == 0)
+              {
+                flash_crash_points = 14 + rand() % 11;
+                precede = data_buffer->peek();
+                curr = gbm(precede, norm, gen);
+              }
+
+              if (tracker < flash_crash_points)
+              {
+                double offset = (rand() % ((int) ((double) base_price * 0.34)))
+                  + (double) base_price * 0.5436;
+
+                while (offset > curr * 0.8)
+                {
+                  offset *= 0.7891;
+                }
+
+                while (offset < curr * 0.54)
+                {
+                  offset *= 1.2142;
+                }
+
+                if (gen_settings->send_data.load()) {
+                  gen_settings->conn.load()
+                    ->send_text(fmt::format("tagged: {}",
+                                (double) (curr - offset)));
+                }
+
+                precede = curr;
+                curr = gbm(precede, norm, gen);
+              }
+              else {
+                gen_settings->new_event.store(0);
+
+                if (gen_settings->send_data.load()) {
+                  gen_settings->conn.load()
+                    ->send_text(fmt::format("{}", curr));
+                }
+
+                tracker = 0;
+                flash_crash_points = 15;
+              }
+
+              tracker += 1;
+
+              break;
+            }
+          case 2:
+            {
+              if (tracker == 0)
+              {
+                larger = data_buffer->peek();
+                curr = gbm(larger, norm, gen);
+              }
+
+              if (curr > gen_settings->threshold.load())
+              {
+                fmt::print("threshold reached\n");
+
+                gen_settings->new_event.store(0);
+
+                data_buffer->enqueue(gbm(curr * 0.3213, norm, gen));
+
+                if (gen_settings->send_data.load()) {
+                  gen_settings->conn.load()
+                    ->send_text(fmt::format("{}", send_price()));
+                }
+
+                tracker = 0;
+              }
+              else {
+                while (curr < (larger * 0.93481))
+                {
+                  curr *= 1.2435;
+                }
+
+                if (gen_settings->send_data.load()) {
+                  gen_settings->conn.load()
+                    ->send_text(fmt::format("tagged: {}", curr));
+                }
+
+                tracker += 1;
+
+                larger = curr > larger ? curr : larger;
+                curr = gbm(larger, norm, gen);
+              }
+
+              break;
+            }
+          case 3: // Ornstein–Uhlenbeck process 
+            {
+              data_buffer->enqueue(ou(data_buffer->peek(), norm, gen));
+              if (gen_settings->send_data.load()) {
+                gen_settings->conn.load()
+                  ->send_text(fmt::format("Sideways: {}", send_price()));
+              }
+            }
+          default:
+            break;
+        }
+
+        /*
+        get_event(
+          gen_settings->n_drift,
+          gen_settings->n_vol,
+          gen_settings->n_price
+        );
+        */
+      }
+      else {
+        // no event
+        // generate the next data point in the weiner process and add it onto
+        // the data buffer, before dequeuing it
+        data_buffer->enqueue(gbm(data_buffer->peek(), norm, gen));
+
+        // TODO: way to send data would go here, this could be in the format
+        // of a second queue, extra fields in the Data_Transfer, etc. for now
+        // printing to console will suffice
+        if (gen_settings->send_data.load()) {
+          double price_point = send_price();
+          gen_settings->conn.load()
+            ->send_text(fmt::format("{}:{}", id, price_point));
+        }
+      }
+
+      // goto
+skip:
+      // goto
+
+      i += 1;
+      std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    }
+    return i;
+  }
+
+  int generate_ws(Data_Transfer *gen_settings,
+                  std::unordered_set<
+                  crow::websocket::connection *> *connections) {
+    std::random_device rd{};
+    std::mt19937 gen{rd()};
+    std::normal_distribution<double> norm{0.0, 1.0};
+
+    // Values near the mean are the most likely. Standard deviation
+    // affects the dispersion of generated values from the mean.
+    int tracker = 0;
+    int i = 0;
+    double precede = 0.0;
+    double curr = 0.0;
+    double larger = 0.0;
+    int flash_crash_points = 15;
+    while (gen_settings->gen.load()) {
+      if (gen_settings->pause.load()) {
+        continue;
+      }
+      if (gen_settings->conn.load() == nullptr)
+      {
+        goto skip;
+      }
+
+      if (gen_settings->new_event.load()) {
+        switch (gen_settings->new_event.load())
+        {
+          // flash crash
+          case 1:
+            {
+              if (tracker == 0)
+              {
+                flash_crash_points = 14 + rand() % 11;
+                precede = data_buffer->peek();
+                curr = gbm(precede, norm, gen);
+              }
+
+              if (tracker < flash_crash_points)
+              {
+                double offset = (rand() % ((int) ((double) base_price * 0.34)))
+                  + (double) base_price * 0.5436;
+
+                while (offset > curr * 0.8)
+                {
+                  offset *= 0.7891;
+                }
+
+                while (offset < curr * 0.54)
+                {
+                  offset *= 1.2142;
+                }
+
+                if (gen_settings->send_data.load()) {
+                  gen_settings->conn.load()
+                    ->send_text(fmt::format("tagged: {}",
+                                (double) (curr - offset)));
+                }
+
+                precede = curr;
+                curr = gbm(precede, norm, gen);
+              }
+              else {
+                gen_settings->new_event.store(0);
+
+                if (gen_settings->send_data.load()) {
+                  gen_settings->conn.load()
+                    ->send_text(fmt::format("{}", curr));
+                }
+
+                tracker = 0;
+                flash_crash_points = 15;
+              }
+
+              tracker += 1;
+
+              break;
+            }
+          case 2:
+            {
+              if (tracker == 0)
+              {
+                larger = data_buffer->peek();
+                curr = gbm(larger, norm, gen);
+              }
+
+              if (curr > gen_settings->threshold.load())
+              {
+                fmt::print("threshold reached\n");
+
+                gen_settings->new_event.store(0);
+
+                data_buffer->enqueue(gbm(curr * 0.3213, norm, gen));
+
+                if (gen_settings->send_data.load()) {
+                  gen_settings->conn.load()
+                    ->send_text(fmt::format("{}", send_price()));
+                }
+
+                tracker = 0;
+              }
+              else {
+                while (curr < (larger * 0.93481))
+                {
+                  curr *= 1.2435;
+                }
+
+                if (gen_settings->send_data.load()) {
+                  gen_settings->conn.load()
+                    ->send_text(fmt::format("tagged: {}", curr));
+                }
+
+                tracker += 1;
+
+                larger = curr > larger ? curr : larger;
+                curr = gbm(larger, norm, gen);
+              }
+
+              break;
+            }
+          case 3: // Ornstein–Uhlenbeck process 
+            {
+              data_buffer->enqueue(ou(data_buffer->peek(), norm, gen));
+              if (gen_settings->send_data.load()) {
+                gen_settings->conn.load()
+                  ->send_text(fmt::format("Sideways: {}", send_price()));
+              }
+            }
+          default:
+            break;
+        }
+
+        /*
+        get_event(
+          gen_settings->n_drift,
+          gen_settings->n_vol,
+          gen_settings->n_price
+        );
+        */
+      }
+      else {
+        // no event
+        // generate the next data point in the weiner process and add it onto
+        // the data buffer, before dequeuing it
+        data_buffer->enqueue(gbm(data_buffer->peek(), norm, gen));
+
+        // TODO: way to send data would go here, this could be in the format
+        // of a second queue, extra fields in the Data_Transfer, etc. for now
+        // printing to console will suffice
+        if (gen_settings->send_data.load()) {
+          double price_point = send_price();
+          for (const auto &conn : *connections) {
+            conn->send_text(fmt::format("{}", price_point));
+          }
         }
       }
 
