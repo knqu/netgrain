@@ -28,24 +28,26 @@ export default function ForgotPassword() {
         }
     }
     return (
-        <div className="registration-parent">
-            <div className='registration-container'>
-                <h1 className="inter-font">Reset Password</h1>
+        <div className="parent-container">
+            <div className="registration-parent">
+                <div className='registration-container'>
+                    <h1 className="inter-font">Reset Password</h1>
 
-                <div className="registration-form inter-font">
-                    <form onSubmit={verify} id="verification-form">
-                        <div className='input-field'>
-                            <h3 className='align-left'>Email</h3>
-                            <input type="text" onChange={e => setEmail(e.target.value)} className="inter-font"></input>
-                        </div>
+                    <div className="registration-form inter-font">
+                        <form onSubmit={verify} id="verification-form">
+                            <div className='input-field'>
+                                <h3 className='align-left'>Email</h3>
+                                <input type="text" onChange={e => setEmail(e.target.value)} className="inter-font"></input>
+                            </div>
 
-                        <div className='input-field'>
-                            <h3 className='align-left'>New Password</h3>
-                            <input type="password" onChange={e => setPassword(e.target.value)} className="inter-font"></input>
+                            <div className='input-field'>
+                                <h3 className='align-left'>New Password</h3>
+                                <input type="password" onChange={e => setPassword(e.target.value)} className="inter-font"></input>
+                            </div>
+                        </form>
+                        <div className="send-email-button">
+                            <input type='submit' value='Verify' form='verification-form' id='registration-button'></input>
                         </div>
-                    </form>
-                    <div className="send-email-button">
-                        <input type='submit' value='Verify' form='verification-form' id='registration-button'></input>
                     </div>
                 </div>
             </div>

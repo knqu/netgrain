@@ -17,5 +17,6 @@ struct Data_Transfer {
   std::atomic<int> n_price; 
 
   std::atomic<int> threshold; 
+  std::atomic<bool> pause;
 };
 

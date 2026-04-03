@@ -1,20 +1,41 @@
-import '../styling/SimResults.css'
-
-import ChartComponent from './Chart';
-import SimulationResultsComponent from './AlgoTable'
+import { useState, useEffect } from 'react';
+import '../styling/SimResults.css';
 
 export default function SimResults() {
-    return (
-        <div className="Analytics_container">
-            <div className="Analytics_header_container">
-                    <h5>Simulation Name</h5>
-                    <h5>00 Month 0000</h5>
-            </div>
+  const [feeData, setFeeData] = useState("");
 
-            <div className="Chart_Table_container">
-                <ChartComponent></ChartComponent>
-                <SimulationResultsComponent></SimulationResultsComponent>
-            </div>
-        </div>
-    );
+  useEffect(() => {
+    const calculate = async () => {
+      try {
+        const response = await fetch('/api/calculateFee');
+
+        if (response.ok) {
+          const savedData = await response.text();
+
+          if (savedData && savedData.trim().length > 0) {
+            setFeeData(savedData);
+            console.log(feeData);
+          }
+          else {
+            setFeeData("Fee Data Unavailable.");
+          }
+        }
+      } catch (err) {
+        console.error("Failed to load layout from server", err);
+        setFeeData("Fee Data Unavailable.");
+      }
+    };
+
+    calculate();
+  }, []);
+
+  const [flatFee, percentageFee, shortTermTax] = (feeData === "Fee Data Unavailable.") ? ["Fee Data Unavailable", "Fee Data Unavailable", "Fee Data Unavailable"] : (feeData || "").split(",");
+
+  return (
+    <div>
+    <h5>Flat Commission Fee: {flatFee}</h5>
+    <h5>Percentage-based Fee: {percentageFee}</h5>
+    <h5>Short-term taxes: {shortTermTax}</h5>
+    </div>
+  );
 }

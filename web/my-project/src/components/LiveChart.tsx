@@ -1,30 +1,25 @@
 import '../styling/Chart.css';
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef } from "react";
 import {
     createChart,
-    type AreaData,
     AreaSeries,
     type IChartApi,
     type UTCTimestamp,
 } from "lightweight-charts";
 
-export default function ChartComponent() {
-    const initialData = [
-      { time: '2018-12-22', value: 32.51 },
-      { time: '2018-12-23', value: 31.11 },
-      { time: '2018-12-24', value: 27.02 },
-      { time: '2018-12-25', value: 27.32 },
-      { time: '2018-12-26', value: 25.17 },
-      { time: '2018-12-27', value: 28.89 },
-      { time: '2018-12-28', value: 25.46 },
-      { time: '2018-12-29', value: 23.92 },
-      { time: '2018-12-30', value: 22.68 },
-      { time: '2018-12-31', value: 22.67 },
-    ];
-    
-    interface LiveChartProps {
-      ws: WebSocket;
-    }
+interface LiveChartProps {
+  ws: WebSocket;
+}
+
+    const [mode, setMode] = useState("sideways");
+
+    const handleModeChange = (newMode: string) => {
+        setMode(newMode);
+        // If the socket is already connected, tell the C++ server to switch immediately
+        if (socket.readyState === WebSocket.OPEN) {
+            socket.send(newMode);
+        }
+    };
 
     const LiveChart: React.FC<LiveChartProps> = ({ws}) => {
         const containerRef = useRef<HTMLDivElement | null>(null);
@@ -50,13 +45,13 @@ export default function ChartComponent() {
             ws.addEventListener("message", (e) => {
               //console.log(`RECEIVED: ${e.data}: ${counter}`);
               counter++;
-              Queue.push(e.data);
+              Queue.push(Number(e.data));
             });
 
             candleSeries.setData(initialData);
             chart.timeScale().fitContent();
             const date = new Date(Date.UTC(2018, 12, 31, 12, 0, 0, 0));
-            var value = 100;
+            //var value = 100;
             function* getNextRealTimeUpdate() {
               while (true) {
                 date.setUTCDate(date.getUTCDate() + 1);
@@ -79,11 +74,9 @@ export default function ChartComponent() {
               clearInterval(intervalID);
                 return;
               }
-              // HERE
               var toParse = update.value.value;
-              let result = toParse.includes("Sideways");
-              if (result) {
-                toParse = toParse.substring(10);
+              if (toParse.includes(":")) {
+                toParse = toParse.split(":")[1].trim();
               }
               candleSeries.update({
                 time: update.value.time, 
@@ -104,9 +97,24 @@ export default function ChartComponent() {
             };
         }, []);
 
-        return <div className="candleChart" ref={containerRef} />
-    };
+        const changeMode = (newMode: string) => {
+          if (ws.readyState === WebSocket.OPEN) {
+            ws.send(newMode);
+          }
+        };
 
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+            <div style={{ paddingBottom: '10px', display: 'flex', gap: '10px', justifyContent: 'center' }}>
+            <button onClick={() => changeMode("bull")}>Bull</button>
+            <button onClick={() => changeMode("bear")}>Bear</button>
+            <button onClick={() => changeMode("sideways")}>Sideways</button>
+            </div>
+            <div className="candleChart" ref={containerRef} style={{ flexGrow: 1 }} />
+          </div>
+
+        );
+    };
 
     // Chart body
     function Chart() {

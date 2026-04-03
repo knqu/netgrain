@@ -3,26 +3,20 @@ import { useState, type ReactElement, useEffect } from 'react';
 
 export default function LeaderboardComponent() {
   const [up, setDirection] = useState<boolean>(false);
-  const [entries, setEntries] = useState<Leaderboard_row_entry[]>([
-    {"username" : "daniel_luo", profit: 1000000, "rank" : 1, "time" : "00:00:03"},
-    {"username" : "Haiyan", profit: 900000, "rank" : 2, "time" : "01:50:45"},
-    {"username" : "Kevin", profit: 800000, "rank" : 3, "time" : "02:30:15"},
-    {"username" : "Colin", profit: 700000, "rank" : 4, "time" : "10:42:43"},
-    {"username" : "James", profit: 600000, "rank" : 5, "time": "15:35:10"},
-  ]);
+  const [entries, setEntries] = useState<Leaderboard_row_entry[]>([]);
 
   useEffect(() => {
     const fetchLeaderboard = async () => {
       try {
         const response = await fetch(
-          "http://localhost:18080/api/fetchLeaderboard",
+          "/api/fetchLeaderboard",
           {
             method: "GET",
+            credentials: "include",
           }
         );
         if (response.status == 200 && response.body != null) {
           const responseStr = await response.text();
-          console.log(responseStr)
           const leaderboardJSON = JSON.parse(responseStr);
           setEntries(leaderboardJSON)
         }

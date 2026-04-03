@@ -2,7 +2,6 @@ import '../styling/Registration.css';
 import { useState } from 'react';
 import { useNavigate } from "react-router-dom";
 
-
 export default function Registration() {
     const navigate = useNavigate();
     const [email, setEmail] = useState<string>("");
@@ -12,7 +11,7 @@ export default function Registration() {
         e.preventDefault()
         try {
             const response = await fetch(
-                "http://localhost:18080/api/registration",
+                "/api/registration",
                 {
                     method : "POST",
                     headers : {"Content-Type" : "application/json"},
@@ -28,6 +27,7 @@ export default function Registration() {
     }
 
     return (
+        <div className="parent-container">
         <div className="registration-parent">
             <div className='registration-container'>
                 <h1 className="inter-font">Sign Up</h1>
@@ -50,6 +50,7 @@ export default function Registration() {
                     </div>
                 </div>
             </div>
+        </div>
         </div>
     );
 };

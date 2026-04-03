@@ -1,7 +1,5 @@
 export default function Generation() {
     return (
-        <h1>
-            This is the Generation page
-        </h1>
+        <iframe width="750" height="750" src="http://localhost:8080/"></iframe>
     );
 }
