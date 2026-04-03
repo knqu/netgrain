@@ -1,5 +1,5 @@
 import '../styling/Chart.css';
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
     createChart,
     AreaSeries,
@@ -7,19 +7,26 @@ import {
     type UTCTimestamp,
 } from "lightweight-charts";
 
-interface LiveChartProps {
-  ws: WebSocket;
-}
+export default function ChartComponent() {
+  const initialData = [
+      { time: '2018-12-22', value: 32.51 },
+      { time: '2018-12-23', value: 31.11 },
+      { time: '2018-12-24', value: 27.02 },
+      { time: '2018-12-25', value: 27.32 },
+      { time: '2018-12-26', value: 25.17 },
+      { time: '2018-12-27', value: 28.89 },
+      { time: '2018-12-28', value: 25.46 },
+      { time: '2018-12-29', value: 23.92 },
+      { time: '2018-12-30', value: 22.68 },
+      { time: '2018-12-31', value: 22.67 },
+    ];
+
+    interface LiveChartProps {
+      ws: WebSocket;
+    }
 
     const [mode, setMode] = useState("sideways");
-
-    const handleModeChange = (newMode: string) => {
-        setMode(newMode);
-        // If the socket is already connected, tell the C++ server to switch immediately
-        if (socket.readyState === WebSocket.OPEN) {
-            socket.send(newMode);
-        }
-    };
+    console.log(mode);
 
     const LiveChart: React.FC<LiveChartProps> = ({ws}) => {
         const containerRef = useRef<HTMLDivElement | null>(null);
@@ -42,6 +49,7 @@ interface LiveChartProps {
               console.log(`SENT: ping: ${counter}`);
             });
             var Queue: number[]= [];
+
             ws.addEventListener("message", (e) => {
               //console.log(`RECEIVED: ${e.data}: ${counter}`);
               counter++;
@@ -74,10 +82,12 @@ interface LiveChartProps {
               clearInterval(intervalID);
                 return;
               }
-              var toParse = update.value.value;
+              var toParse = String(update.value.value);
+
               if (toParse.includes(":")) {
                 toParse = toParse.split(":")[1].trim();
               }
+
               candleSeries.update({
                 time: update.value.time, 
                 value: Number(toParse)
@@ -101,6 +111,7 @@ interface LiveChartProps {
           if (ws.readyState === WebSocket.OPEN) {
             ws.send(newMode);
           }
+          setMode(newMode);
         };
 
         return (
@@ -118,7 +129,7 @@ interface LiveChartProps {
 
     // Chart body
     function Chart() {
-      const socket = new WebSocket("ws://localhost:5555");
+      const socket = new WebSocket("ws://localhost:18080/websocket");
 
       return (
           <div className="Chart_outer_container">

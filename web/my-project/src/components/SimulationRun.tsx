@@ -7,7 +7,7 @@ import {
   type UTCTimestamp,
 } from "lightweight-charts"
 
-import { type WidgetInterface, type WidgetListProps } from "./EndSimulation"
+import { type WidgetInterface } from "./EndSimulation"
 import EndSimulation from "./EndSimulation"
 //import type LiveChartProps from './LiveChart';
 

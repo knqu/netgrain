@@ -4,6 +4,7 @@
 #include "crow/middlewares/cookie_parser.h"
 #include "crow/middlewares/session.h"
 #include "../../../database/connector.cpp"
+#include "../../../core/src/generator/generator.hpp"
 #include <mailio/message.hpp>
 #include <mailio/smtp.hpp>
 
@@ -22,6 +23,94 @@ int main() {
     }};
 
     crow::mustache::set_global_base("../../my-project/dist");
+    
+    std::unordered_set<crow::websocket::connection *> users;
+    std::mutex mtx;
+
+
+    Generator global_gen(0.02, 2, 100, 100); // HX
+    Data_Transfer parameters;
+    parameters.conn.store(nullptr);
+    parameters.gen.store(true);
+    parameters.new_event.store(0);
+    parameters.send_data.store(false);
+
+    // MERGE ATTEMPT
+    CROW_WEBSOCKET_ROUTE(app, "/websocket")
+      .onaccept([&](const crow::request& req, void** userdata){
+        fmt::print("Accepted connection\n"));
+      })
+      .onopen([&](crow::websocket::connection &conn) {
+        fmt::print("new websocket connection from {}!\n", conn.get_remote_ip());
+        std::lock_guard<std::mutex> _(mtx);
+        users.insert(&conn);
+        parameters.conn.store(&conn);
+        parameters.send_data.store(true);
+      })
+      .onclose([&](
+        crow::websocket::connection &conn,
+        const std::string &reason,
+        uint16_t) {
+
+        fmt::print("websocket connection closed: {}\n", reason);
+        std::lock_guard<std::mutex> _(mtx);
+        parameters.send_data.store(false);
+        parameters.conn.store(nullptr);
+        users.erase(&conn);
+      })
+      .onmessage([&](
+        crow::websocket::connection &conn,
+        const std::string &data,
+        bool is_binary) {
+
+        fmt::print("data received {}\n", data);
+
+        std::lock_guard<std::mutex> _(mtx);
+        if (data == "flash_crash")
+        {
+          if (parameters.new_event.load() == 0)
+          {
+            parameters.new_event.store(1);
+            fmt::print("flash crash!\n");
+          }
+        }
+
+        if (data == "sideways") { // HX
+          fmt::print("sideways!\n");
+          parameters.new_event.store(3);
+        }
+
+        if (data == "bear") { 
+          fmt::print("bear market triggered!\n");
+          parameters.new_event.store(4); 
+        }
+
+        if (data == "bull") { 
+          fmt::print("bull market triggered!\n");
+          parameters.new_event.store(5); 
+        }
+
+
+        if (data == "stop")
+        {
+          parameters.send_data.store(false);
+        }
+
+        if (data.starts_with("bubble"))
+        {
+          if (parameters.new_event.load() == 0)
+          {
+            int threshold = std::stoi(data.substr(7), nullptr, 10);
+            parameters.new_event.store(2);
+            parameters.threshold.store(threshold);
+            fmt::print("bubble! {}\n", threshold);
+          }
+          else if (parameters.new_event.load() == 2)
+          {
+            fmt::print("bubble is ignored: called consecutively when another is active!\n");
+          }
+        }
+      });
 
     CROW_ROUTE(app, "/assets/index-<string>")([](std::string file) {
         crow::response res;
@@ -360,7 +449,12 @@ int main() {
         return res;
     });
 
+    std::thread([&]{
+      global_gen.generate_ws(&parameters);
+    }).detach();
+
     app.bindaddr("127.0.0.1").port(18080);
+    parameters.gen.store(false);
 
     app.run();
 }

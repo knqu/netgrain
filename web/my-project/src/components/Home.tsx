@@ -5,6 +5,7 @@ import HistoryComponent from './History';
 import Generation from './Generation';
 import GridComponent from './GridComponent';
 import SimResults from './SimResults';
+import LiveCharts from './LiveChart';
 import type { Widget } from './GridComponent';
 
 import '../styling/Home.css'
@@ -44,6 +45,7 @@ export default function AppHome() {
       <DashboardButton button="Simulation"></DashboardButton>
       <DashboardButton button="Generation"></DashboardButton>
       <DashboardButton button="simResults"></DashboardButton>
+      <DashboardButton button="liveCharts"></DashboardButton>
       <DashboardButton button="Add Widget" onClickOverride={() => { onAdd("") }}></DashboardButton>
       </div>
       </div>
@@ -132,6 +134,10 @@ export default function AppHome() {
       case "simResults" :
         return (
           <SimResults />
+        );
+      case "liveCharts" :
+        return (
+          <LiveCharts />
         );
     }
   }
