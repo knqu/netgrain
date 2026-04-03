@@ -4,6 +4,7 @@
 
 #include "order.hpp"
 #include "historicalData.hpp"
+#include "persistence_queue.hpp"
 
 class Engine {
     int init_balance;
@@ -12,22 +13,42 @@ class Engine {
 
     int next_order_id = 0;
     std::vector<Order> pending_orders;
+    std::vector<Order> cancelled_orders;
     std::vector<Fill> fill_log;
 
     FeesAndTaxes default_fees_taxes = {1.0, 1.0};
     TickerConfig default_config = {0.001, 5, 0.15, default_fees_taxes};
     std::unordered_map<std::string, TickerConfig> ticker_configs;
 
+    PersistenceQueue *pq;
+
 public:
-    Engine(int starting_balance) {
-        balance = starting_balance;
+    Engine(int starting_balance, PersistenceQueue *pq = nullptr) {
         init_balance = starting_balance;
+        balance = starting_balance;
+        this->pq = pq;
     }
 
     int get_balance() {
         return balance;
     }
 
+    std::unordered_map<std::string, Position> get_positions() {
+        return positions;
+    }
+
+    std::vector<Order> get_pending_orders() {
+        return pending_orders;
+    }
+
+    std::vector<Order> get_cancelled_orders() {
+        return cancelled_orders;
+    }
+
+    std::vector<Fill> get_fill_log() {
+        return fill_log;
+    }
+    
     int get_final_balance() { // returns post-short-term-tax 
       if (balance > init_balance) {
         return static_cast<int>(balance * (1 - default_config.short_term_tax));
@@ -46,7 +67,9 @@ public:
 
     int place_order(const std::string& ticker, int quantity, int target_price, Side side, OrderType type) {
         int id = next_order_id++;
-        pending_orders.push_back({id, ticker, quantity, target_price, side, type, OrderStatus::PENDING});
+        Order order = {id, ticker, quantity, target_price, side, type, OrderStatus::PENDING};
+        pending_orders.push_back(order);
+        if (pq) pq->push(OrderPlacedEvent{order});
         return id;
     }
 
@@ -54,6 +77,9 @@ public:
         for (auto order = pending_orders.begin(); order != pending_orders.end(); ++order) {
             if (order->id == order_id) {
                 order->status = OrderStatus::CANCELLED;
+                cancelled_orders.push_back(*order);
+                order = pending_orders.erase(order);
+                if (pq) pq->push(OrderCancelledEvent{order_id});
                 return true;
             }
         }
@@ -111,24 +137,33 @@ public:
                 fills.push_back({order->id, order->ticker, fill_quantity, fill_price, order->side, bar.date});
 
                 int trade_value = fill_price * fill_quantity;
-                balance -= static_cast<int>(trade_value * config.trade_fee); //HX: idk what this does
+                int fee = static_cast<int>(trade_value * config.trade_fee);
 
                 auto& pos = positions[order->ticker];  // get reference to position (or create if it doesn't exist)
                 pos.ticker = order->ticker;  // set ticker in case new position was created
 
                 if (order->side == Side::BUY) {
-                    balance -= trade_value;
+                    int total_cost = trade_value + fee;
+                    if (balance < total_cost) {
+                        ++order;
+                        continue;
+                    }
+                    balance -= total_cost;
+
                     pos.quantity += fill_quantity;
                     pos.cost_basis += trade_value;
                     pos.lots.push_back({fill_price, fill_quantity, bar.date});
                 } else {
-                    balance += trade_value;
-                    balance -= calculate_fee(&config, fill_quantity, trade_value); // HX; not sure but should there be each order specific commissions
+                    if (balance < fee) {
+                        ++order;
+                        continue;
+                    }
+                    balance += trade_value - fee;
+
                     pos.quantity -= fill_quantity;
-
                     int remaining = fill_quantity;
+                    
                     auto lot = pos.lots.begin();  // default to fifo disposal (todo: add other methods in the future)
-
                     while (remaining > 0 && lot != pos.lots.end()) {
                         int taken = std::min(remaining, lot->quantity);
                         pos.cost_basis -= lot->fill_price * taken;
@@ -146,9 +181,11 @@ public:
                 // keep remaining quantity pending if order isn't entirely filled
                 if (fill_quantity < order->quantity) {
                     order->quantity -= fill_quantity;
+                    order->status = OrderStatus::PARTIAL;
                     ++order;
                 } else {
                     order = pending_orders.erase(order);
+                    order->status = OrderStatus::FILLED;
                 }
             } else {
                 ++order;
@@ -156,6 +193,25 @@ public:
         }
 
         fill_log.insert(fill_log.end(), fills.begin(), fills.end());
+
+        if (pq && !fills.empty()) {
+            for (auto& f : fills)
+                pq->push(FillEvent{f});
+
+            pq->push(BalanceEvent{balance, fills.back().timestamp});
+
+            // push position snapshots for each ticker that was filled
+            std::unordered_map<std::string, bool> seen;
+            for (auto& f : fills) {
+                if (!seen[f.ticker]) {
+                    seen[f.ticker] = true;
+                    auto it = positions.find(f.ticker);
+                    if (it != positions.end())
+                        pq->push(PositionSnapshotEvent{it->second});
+                }
+            }
+        }
+
         return fills;
     }
 };
