@@ -14,9 +14,10 @@ interface GridProps {
   widgets: Widget[];
   removeWidget: (id: number) => void;
   addWidget: (content: string) => void;
+  setInitialWidgets: (widgets: Widget[]) => void;
 }
 
-export default function GridComponent({ widgets, removeWidget, addWidget }: GridProps) {
+export default function GridComponent({ widgets, removeWidget, addWidget, setInitialWidgets }: GridProps) {
   const { width, containerRef, mounted } = useContainerWidth();
   const [layouts, setLayouts] = useState<any>({});
 
@@ -26,25 +27,34 @@ export default function GridComponent({ widgets, removeWidget, addWidget }: Grid
         const response = await fetch('/api/fetchLayout');
         if (response.ok) {
           const savedData = await response.json();
-          if (Object.keys(savedData).length > 0) {
-            setLayouts(savedData);
+
+          if (savedData.layouts) {
+            setLayouts(savedData.layouts);
+          }
+
+          if (savedData.widgets) {
+            setInitialWidgets(savedData.widgets);
           }
         }
       } catch (err) {
         console.error("Failed to load layout from server", err);
       }
     };
-
     loadSavedLayout();
   }, []);
 
-  // TODO
   const saveLayoutToServer = async () => {
     try {
+      console.log(JSON.stringify(layouts));
+      const payload = {
+        layouts: layouts,
+        widgets: widgets
+      }
+
       const response = await fetch('/api/saveLayout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(layouts)
+        body: JSON.stringify(payload)
       });
       
       if (response.ok) {
@@ -59,7 +69,6 @@ export default function GridComponent({ widgets, removeWidget, addWidget }: Grid
 
   // HX
   const getAverage = async (parameter: string) => {
-    console.log(parameter);
     try {
       const response = await fetch('/api/simAveraged');
 
@@ -67,21 +76,30 @@ export default function GridComponent({ widgets, removeWidget, addWidget }: Grid
         var savedData = await response.text();
 
         if (!savedData) { // check if no simulations
-          savedData = "No Simulations, No Simulations, No Simulations";
+          savedData = "No Simulations,No Simulations,No Simulations";
+          const metrics = savedData.split(",");
+          if (parameter === "time") {
+            addWidget(metrics.at(0)!);
+          } else if (parameter === "money") {
+            addWidget(metrics.at(0)!);
+          } else if (parameter === "fees") {
+            addWidget(metrics.at(0)!);
+          } else {
+            console.error("Unknown parameter");
+          }
         }
-
-        const metrics = savedData.split(",");
-
-        if (parameter === "time") {
-          addWidget("Average Simulation Time: " + metrics.at(0)! + " seconds");
-        } else if (parameter === "money") {
-          addWidget("Average Simulation Profit: $" + metrics.at(1)!);
-        } else if (parameter === "fees") {
-          addWidget("Average Simulation Fee Paid: $" + metrics.at(2)!);
-        } else {
-          console.error("Unknown parameter");
+        else {
+          const metrics = savedData.split(",");
+          if (parameter === "time") {
+            addWidget("Average Simulation Time: " + metrics.at(0)! + " seconds");
+          } else if (parameter === "money") {
+            addWidget("Average Simulation Profit: $" + metrics.at(1)!);
+          } else if (parameter === "fees") {
+            addWidget("Average Simulation Fee Paid: $" + metrics.at(2)!);
+          } else {
+            console.error("Unknown parameter");
+          }
         }
-        console.log(savedData);
       }
     } catch (err) {
       console.error("Failed to grab averages from server", err);

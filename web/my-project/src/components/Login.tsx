@@ -30,7 +30,7 @@ export default function Login() {
         e.preventDefault();
         try {
             const response = await fetch(
-                ":api/loginAttempt",
+                "api/loginAttempt",
                 {
                     method: "POST",
                     headers : {"Content-Type" : "application/json"},
