@@ -11,6 +11,7 @@ class Engine {
 
     int next_order_id = 0;
     std::vector<Order> pending_orders;
+    std::vector<Order> cancelled_orders;
     std::vector<Fill> fill_log;
 
     TickerConfig default_config = {0.001, 5.0};
@@ -23,6 +24,22 @@ public:
 
     int get_balance() {
         return balance;
+    }
+
+    std::unordered_map<std::string, Position> get_positions() {
+        return positions;
+    }
+
+    std::vector<Order> get_pending_orders() {
+        return pending_orders;
+    }
+
+    std::vector<Order> get_cancelled_orders() {
+        return cancelled_orders;
+    }
+
+    std::vector<Fill> get_fill_log() {
+        return fill_log;
     }
 
     TickerConfig& get_config(const std::string& ticker) {
@@ -44,6 +61,8 @@ public:
         for (auto order = pending_orders.begin(); order != pending_orders.end(); ++order) {
             if (order->id == order_id) {
                 order->status = OrderStatus::CANCELLED;
+                cancelled_orders.push_back(*order);
+                order = pending_orders.erase(order);
                 return true;
             }
         }
@@ -95,23 +114,32 @@ public:
 
                 int trade_value = fill_price * fill_quantity;
                 int fee = static_cast<int>(trade_value * config.trade_fee);
-                balance -= fee;
 
                 auto& pos = positions[order->ticker];  // get reference to position (or create if it doesn't exist)
                 pos.ticker = order->ticker;  // set ticker in case new position was created
 
                 if (order->side == Side::BUY) {
-                    balance -= trade_value;
+                    int total_cost = trade_value + fee;
+                    if (balance < total_cost) {
+                        ++order;
+                        continue;
+                    }
+                    balance -= total_cost;
+
                     pos.quantity += fill_quantity;
                     pos.cost_basis += trade_value;
                     pos.lots.push_back({fill_price, fill_quantity, bar.date});
                 } else {
-                    balance += trade_value;
+                    if (trade_fee < balance) {
+                        ++order;
+                        continue;
+                    }
+                    balance += trade_value - fee;
+
                     pos.quantity -= fill_quantity;
-
                     int remaining = fill_quantity;
+                    
                     auto lot = pos.lots.begin();  // default to fifo disposal (todo: add other methods in the future)
-
                     while (remaining > 0 && lot != pos.lots.end()) {
                         int taken = std::min(remaining, lot->quantity);
                         pos.cost_basis -= lot->fill_price * taken;
@@ -129,9 +157,11 @@ public:
                 // keep remaining quantity pending if order isn't entirely filled
                 if (fill_quantity < order->quantity) {
                     order->quantity -= fill_quantity;
+                    order->status = OrderStatus::PARTIAL;
                     ++order;
                 } else {
                     order = pending_orders.erase(order);
+                    order->status = OrderStatus::FILLED;
                 }
             } else {
                 ++order;
