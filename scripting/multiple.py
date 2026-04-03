@@ -2,6 +2,7 @@ import asyncio
 import websockets
 import sys
 from queue import Queue
+import atexit
 
 # --------------------------------------------------------------------------------
 # USER SCRIPT
@@ -29,15 +30,14 @@ simulations = [
 # --------------------------------------------------------------------------------
 
 sim_queues = []
-calc_result_queues = []
+calc_result_bufs = []
 
 for i in range(0, len(simulations)):
   q = Queue()
   sim_queues.append(q)
 
 for i in range(0, len(simulations)):
-  q = Queue()
-  calc_result_queues.append(q)
+  calc_result_bufs.append([])
 
 async def receive_msg(ws):
   try:
@@ -45,8 +45,9 @@ async def receive_msg(ws):
       substrs = message.split(":")
       id = int(substrs[0])
       price_point = float(substrs[1])
-      sim_queues[id - 1].put(price_point)
-      calc_result_queues[id - 1].put(calc_point(price_point))
+      calculated = calc_point(price_point)
+      sim_queues[id - 1].put(calculated)
+      calc_result_bufs[id - 1].append(calculated)
   except websockets.ConnectionClosed:
     print("disconnected")
 
@@ -82,6 +83,7 @@ async def client_handler():
       print("connected to " + url)
 
       for sim in simulations:
+        await asyncio.sleep(0.6)
         await websocket.send(f"sim:{sim.drift}!{sim.volatility}!{sim.price}!{sim.target}")
 
       receive_task = asyncio.create_task(receive_msg(websocket))
@@ -91,6 +93,26 @@ async def client_handler():
       await asyncio.gather(receive_task, print_loop())
   except Exception:
     print("connection failed")
+
+@atexit.register
+def print_metrics():
+  print()
+  if (len(sim_queues) != 0):
+    print('-' * (12 * len(sim_queues) + 3 * (len(sim_queues)) - 1))
+    print_str = ""
+    avgs_sum = 0.0
+    for i, buf in enumerate(calc_result_bufs):
+      sum = 0.0
+      for point in buf:
+        sum += point
+      avg = sum / len(buf)
+      avg = avg / buf[0]
+      print_str += f"{avg:>12.4f}"
+      if i != len(sim_queues) - 1:
+        print_str += " | "
+      avgs_sum += avg
+    print(print_str)
+    print(f"AVERAGE PERF: {avgs_sum / len(calc_result_bufs)}")
 
 if __name__ == "__main__":
   try:

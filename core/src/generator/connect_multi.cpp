@@ -145,7 +145,7 @@ int main()
   server.wait();
 
   for (auto const& [key, val] : file_handles) {
-    file_handles.at(key) << "  terminate\n";
+    file_handles.at(key) << "  \"terminate\"\n";
     file_handles.at(key) << "]\n";
   }
 }
