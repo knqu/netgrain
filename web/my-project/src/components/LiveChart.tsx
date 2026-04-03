@@ -26,6 +26,16 @@ export default function ChartComponent() {
       ws: WebSocket;
     }
 
+    const [mode, setMode] = useState("sideways");
+
+    const handleModeChange = (newMode: string) => {
+        setMode(newMode);
+        // If the socket is already connected, tell the C++ server to switch immediately
+        if (socket.readyState === WebSocket.OPEN) {
+            socket.send(newMode);
+        }
+    };
+
     const LiveChart: React.FC<LiveChartProps> = ({ws}) => {
         const containerRef = useRef<HTMLDivElement | null>(null);
 
@@ -79,11 +89,9 @@ export default function ChartComponent() {
               clearInterval(intervalID);
                 return;
               }
-              // HERE
               var toParse = update.value.value;
-              let result = toParse.includes("Sideways");
-              if (result) {
-                toParse = toParse.substring(10);
+              if (toParse.includes(":")) {
+                toParse = toParse.split(":")[1].trim();
               }
               candleSeries.update({
                 time: update.value.time, 
@@ -104,9 +112,24 @@ export default function ChartComponent() {
             };
         }, []);
 
-        return <div className="candleChart" ref={containerRef} />
-    };
+        const changeMode = (newMode: string) => {
+          if (ws.readyState === WebSocket.OPEN) {
+            ws.send(newMode);
+          }
+        };
 
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+            <div style={{ paddingBottom: '10px', display: 'flex', gap: '10px', justifyContent: 'center' }}>
+            <button onClick={() => changeMode("bull")}>Bull</button>
+            <button onClick={() => changeMode("bear")}>Bear</button>
+            <button onClick={() => changeMode("sideways")}>Sideways</button>
+            </div>
+            <div className="candleChart" ref={containerRef} style={{ flexGrow: 1 }} />
+          </div>
+
+        );
+    };
 
     // Chart body
     function Chart() {

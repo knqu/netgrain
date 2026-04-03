@@ -11,7 +11,7 @@ int main()
   std::mutex mtx;
 
   //Generator global_gen(0.2, 0.3, 100, 150);
-  Generator global_gen(0.01, 10, 100, 200); // HX
+  Generator global_gen(0.02, 2, 100, 100); // HX
   Data_Transfer parameters;
   parameters.conn.store(nullptr);
   parameters.gen.store(true);
