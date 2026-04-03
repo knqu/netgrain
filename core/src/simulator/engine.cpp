@@ -63,6 +63,7 @@ public:
 
     void set_config(const std::string& ticker, TickerConfig config) {
         ticker_configs[ticker] = config;
+        if (pq) pq->push(TickerConfigEvent{ticker, config});
     }
 
     int place_order(const std::string& ticker, int quantity, int target_price, Side side, OrderType type) {

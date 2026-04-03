@@ -394,7 +394,9 @@ public:
             }
           case 3: // Ornstein–Uhlenbeck process
             {
-              data_buffer->push(ou(data_buffer->front(), norm, gen));
+              this->percent_drift = 0.05;
+              this->percent_volatility = 0.20;
+              data_buffer->enqueue(ou(data_buffer->peek(), norm, gen));
               if (gen_settings->send_data.load()) {
                 double res = send_price();
                 gen_settings->conn.load()->send_text(fmt::format("Sideways: {}", res));
