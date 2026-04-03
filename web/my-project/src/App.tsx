@@ -18,6 +18,8 @@ import LiveChartComponent from './components/LiveChart';
 import SimulationRun from './components/SimulationRun';
 
 function App() {
+  //const wsUri = "ws://localhost:5555/";
+  // const websocket = new WebSocket(wsUri);
   return (
     <Router>
       <Routes>
