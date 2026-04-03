@@ -12,8 +12,6 @@ interface LiveChartProps {
 }
 
 export default function ChartComponent({ws}: LiveChartProps) {
-    
-
     const LiveChart: React.FC<LiveChartProps> = ({ws}) => {
         const containerRef = useRef<HTMLDivElement | null>(null);
 
@@ -36,8 +34,9 @@ export default function ChartComponent({ws}: LiveChartProps) {
             var Queue: number[]= [];
             ws.addEventListener("message", (e) => {
               console.log(`RECEIVED: ${e.data}: ${counter}`);
+
               counter++;
-              Queue.push(e.data);
+              Queue.push(Number(e.data));
             });
 
 
@@ -67,7 +66,7 @@ export default function ChartComponent({ws}: LiveChartProps) {
                 return;
               }
               candleSeries.update(update.value);
-            }, 1000);
+            }, 500);
 
             const resizeObserver = new ResizeObserver(entries => {
                 const { width, height } = entries[0].contentRect;
@@ -88,8 +87,6 @@ export default function ChartComponent({ws}: LiveChartProps) {
 
     // Chart body
     function Chart() {
-      const socket = new WebSocket("ws://localhost:5555");
-      console.log(socket);
       return (
           <div className="Chart_outer_container">
               <div className="Chart_inner_container">

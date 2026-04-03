@@ -108,7 +108,7 @@ export default function AppHome() {
       case "Dashboard":
         return (
           <div className="Grid_and_Leaderboard">
-            <GridComponent widgets={widgets} removeWidget={removeWidget} addWidget={addWidget}></GridComponent>
+            <GridComponent widgets={widgets} removeWidget={removeWidget} addWidget={addWidget} setInitialWidgets={setWidgets}></GridComponent>
             <div className="Leaderboard_and_DailyMarket">
               <DailyMarketComponenet></DailyMarketComponenet>
               <LeaderboardComponent></LeaderboardComponent>

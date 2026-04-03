@@ -12,7 +12,7 @@
 #include <string>
 #include <fstream>
 #include <iostream>
-
+#include <unistd.h>
 
 int main() {
     using Session = crow::SessionMiddleware<crow::InMemoryStore>;
@@ -245,13 +245,15 @@ int main() {
     });
 
     CROW_ROUTE(app, "/api/saveLayout").methods(crow::HTTPMethod::POST, crow::HTTPMethod::Patch)([&](const crow::request& req) {
+        /*
         auto& cookie = app.get_context<crow::CookieParser>(req);
         std::string email = cookie.get_cookie("email");
         
         if (email.empty()) return crow::response(401); 
+        */
 
         try {
-            ConnectorSingleton::getInstance().linkCustomGUILayout(email, req.body);
+            ConnectorSingleton::getInstance().linkCustomGUILayout("user1@gmail.com", req.body);
             return crow::response(200);
         } catch (...) {
             return crow::response(500);
@@ -259,14 +261,17 @@ int main() {
     });
 
     CROW_ROUTE(app, "/api/fetchLayout").methods(crow::HTTPMethod::GET, crow::HTTPMethod::Patch)([&](const crow::request& req) {
+        /*
         auto& cookie = app.get_context<crow::CookieParser>(req);
         std::string email = cookie.get_cookie("email");
         
         if (email.empty()) return crow::response(401);
+        */
 
+        std::cout << "Starting fetchLayout\n";
         try {
-            std::string layoutJSON = ConnectorSingleton::getInstance().getCustomGUILayout(email);
-            
+            std::string layoutJSON = ConnectorSingleton::getInstance().getCustomGUILayout("user1@gmail.com");
+            std::cout << layoutJSON << "asdfasdf\n";
             crow::response res;
             res.write(layoutJSON.empty() ? "{}" : layoutJSON);
             res.set_header("Content-Type", "application/json");
@@ -280,9 +285,8 @@ int main() {
     CROW_ROUTE(app, "/api/simAveraged").methods(crow::HTTPMethod::GET, crow::HTTPMethod::Patch)([&](const crow::request& req) { 
         try {
             std::string result = ConnectorSingleton::getInstance().average("user1@gmail.com");
-            
             crow::response res;
-            res.write(result.empty() ? "{}" : result);
+            res.write(result.empty() ? "" : result);
             res.set_header("Content-Type", "text/csv");
             res.code = 200;
             return res;

@@ -9,6 +9,7 @@ import AlgoTable from './components/AlgoTable';
 import Login from './components/Login';
 import Registration from './components/Registration';
 import ChartComponent from './components/Chart';
+import ChartSelect from './components/ChartSelect';
 import SimResults from './components/SimResults';
 import Verification from './components/Verification';
 import ForgotPassword from './components/ForgotPassword';
@@ -17,6 +18,7 @@ import NewSim from './components/newSimPage'
 import SimulationRun from './components/SimulationRun';
 
 function App() {
+  const socket = new WebSocket("ws://localhost:5555");
   return (
     <Router>
       <Routes>
@@ -28,12 +30,14 @@ function App() {
         <Route path="/sim" element={<Simulation />} />
         <Route path="/simResults" element={<SimResults />} />
         <Route path="/chart" element={<ChartComponent />} />
+        <Route path="/chartSelect" element={<ChartSelect />} />
         <Route path="/algoTable" element={<AlgoTable />} />
         <Route path="/verification" element={<Verification />} />
         <Route path="/forgot" element={<ForgotPassword />} />
         <Route path="/newSim" element={<NewSim />} />
         <Route path="/codeEditor" element={<CodeEditor />} />
         <Route path="*" element={<Login />} />
+        <Route path="/liveChart" element={<LiveChartComponent ws={socket} />} />
         <Route path="/simRun" element={<SimulationRun />} />
       </Routes>
     </Router>
