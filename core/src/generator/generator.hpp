@@ -21,6 +21,7 @@
 #include <string>
 #include <stdlib.h>
 
+<<<<<<< Updated upstream
 struct GeneratedBar {
     u32 date;
     i64 open;
@@ -29,6 +30,11 @@ struct GeneratedBar {
     i64 close;
     u64 volume;
 };
+=======
+//included for throttling
+#include <thread>
+#include <chrono>
+>>>>>>> Stashed changes
 
 class Generator {
 private:
@@ -191,6 +197,7 @@ public:
     // affects the dispersion of generated values from the mean.
     int i = 0;
     while (gen_settings->gen.load()) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(1000));
       // generate the next data point in the weiner process and add it onto
       // the data buffer, before dequeuing it
       data_buffer->enqueue(gbm(data_buffer->peek(), norm, gen));
@@ -223,6 +230,44 @@ public:
    */
   double ou(double x_t, std::normal_distribution<double> &d, std::mt19937 &gen) {
     return x_t + ((this->percent_drift * (this->target_price - x_t)) * dt) + (this->percent_volatility * sqrt(dt) * d(gen));
+  }
+
+
+
+  /*
+   * bear maket logic -> based on gbm, customized to have a higher probability of large negative moves, and a lower probability of large positive moves
+   * Uses class drift/volatility, but occasionally triggers "panic selling"
+   */
+  double bear_math(double x_t, std::normal_distribution<double> &d, std::mt19937 &gen) {
+    double expected_return = (this->percent_drift - (this->percent_volatility * this->percent_volatility / 2.0)) * this->dt;
+    double random_shock = this->percent_volatility * sqrt(this->dt) * d(gen);
+    double total_move = expected_return + random_shock;
+
+    if (rand() % 100 < 3) {
+        total_move -= 0.05;
+    }
+
+    return x_t * exp(total_move);
+  }
+
+  /*
+   * Bull Market logic based on gbm, customized to have a higher probability of large positive moves, and a lower probability of large negative moves
+   * Uses class drift/volatility, but incorporates "buy the dip" and FOMO behavior
+   */
+  double bull_math(double x_t, std::normal_distribution<double> &d, std::mt19937 &gen) {
+    double expected_return = (this->percent_drift - (this->percent_volatility * this->percent_volatility / 2.0)) * this->dt;
+    double random_shock = this->percent_volatility * sqrt(this->dt) * d(gen);
+    double total_move = expected_return + random_shock;
+
+    if (total_move < -0.01) {
+        total_move *= 0.5; 
+    }
+
+    if (rand() % 100 < 2) {
+        total_move += 0.03;
+    }
+
+    return x_t * exp(total_move);
   }
 
   // return the number of datapoints generated, if data is not being tested
@@ -347,6 +392,31 @@ public:
                 double res = send_price();
                 gen_settings->conn.load()->send_text(fmt::format("Sideways: {}", res));
               }
+            }
+          case 4: //Bear market
+            {
+              this->percent_drift = -5.0;
+              this->percent_volatility = 0.30;
+              
+              data_buffer->enqueue(bear_math(data_buffer->peek(), norm, gen));
+              
+              if (gen_settings->send_data.load()) {
+                gen_settings->conn.load()->send_text(fmt::format("Bear: {}", send_price()));
+              }
+              break;
+            }
+
+          case 5: //Bull market
+            {
+              this->percent_drift = 5.0;
+              this->percent_volatility = 0.15;
+              
+              data_buffer->enqueue(bull_math(data_buffer->peek(), norm, gen));
+              
+              if (gen_settings->send_data.load()) {
+                gen_settings->conn.load()->send_text(fmt::format("Bull: {}", send_price()));
+              }
+              break;
             }
           default:
             break;
