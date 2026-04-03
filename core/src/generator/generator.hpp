@@ -21,6 +21,15 @@
 #include <string>
 #include <stdlib.h>
 
+struct GeneratedBar {
+    u32 date;
+    i64 open;
+    i64 high;
+    i64 low;
+    i64 close;
+    u64 volume;
+};
+
 class Generator {
 private:
   double percent_drift;
@@ -41,6 +50,9 @@ private:
   int liquidity;
   int market_cap;
   int target_price;
+
+  double last_bar_close = 0.0;
+  bool has_bar_state = false;
 
 public:
   // constructor and destructor
@@ -66,9 +78,20 @@ public:
     this->volatility = volatility;
     this->liquidity = liquidity;
     this->market_cap = market_cap;
+    this->percent_drift = 0.0;
+    this->percent_volatility = volatility / 100.0;
+    this->dt = 0.01;
+    this->target_price = base_price;
+    this->data_buffer = new Queue<double>();
+    this->data_buffer->enqueue(static_cast<double>(base_price));
+    // NOTE: even though the simulator passes in an int scaled by 100, the gbm math looks to be scale invariant
   }
 
   ~Generator() {
+  }
+
+  std::string get_ticker() const {
+    return ticker;
   }
 
   double get_dt() {
@@ -121,6 +144,42 @@ public:
     return ret;
   }
 
+  // generates one ohlcv bar by simulating ticks_per_bar intra-bar price movements via gbm, then aggregating
+  GeneratedBar generate_bar(u32 date, int ticks_per_bar = 50) {
+    // setup is basically copied from generate method below
+    std::random_device rd{};
+    std::mt19937 rng{rd()};
+    std::normal_distribution<double> norm{0.0, 1.0};
+
+    // state is carried between calls so close(N) == open(N+1)
+    double cur = has_bar_state ? last_bar_close : static_cast<double>(base_price);
+    double open = cur;
+    double high = cur;
+    double low = cur;
+
+    for (int i = 0; i < ticks_per_bar; i++) {
+      cur = gbm(cur, norm, rng);
+      if (cur > high) high = cur;
+      if (cur < low) low = cur;
+    }
+
+    last_bar_close = cur;
+    has_bar_state = true;
+
+    // simulate volume from liquidity parameter - made this up, values are arbitrary (between 80-120%)
+    u64 volume = (liquidity > 0)
+      ? static_cast<u64>(liquidity * (80 + (rand() % 41)) / 100)
+      : static_cast<u64>(500 + rand() % 1000);
+
+    return GeneratedBar{
+      date,
+      static_cast<i64>(open),
+      static_cast<i64>(high),
+      static_cast<i64>(low),
+      static_cast<i64>(cur),
+      volume
+    };
+  }
 
   // return the number of datapoints generated, if data is not being tested
   int generate(Data_Transfer *gen_settings, std::ostream &fout) {
