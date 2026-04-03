@@ -6,6 +6,7 @@ import Generation from './Generation';
 import GridComponent from './GridComponent';
 import SimResults from './SimResults';
 import LiveCharts from './LiveChart';
+import ChartSelect from './ChartSelect';
 import type { Widget } from './GridComponent';
 
 import '../styling/Home.css'
@@ -46,6 +47,7 @@ export default function AppHome() {
       <DashboardButton button="Generation"></DashboardButton>
       <DashboardButton button="simResults"></DashboardButton>
       <DashboardButton button="liveCharts"></DashboardButton>
+      <DashboardButton button="chartSelect"></DashboardButton>
       <DashboardButton button="Add Widget" onClickOverride={() => { onAdd("") }}></DashboardButton>
       </div>
       </div>
@@ -138,6 +140,10 @@ export default function AppHome() {
       case "liveCharts" :
         return (
           <LiveCharts />
+        );
+      case "chartSelect" :
+        return (
+          <ChartSelect />
         );
     }
   }
