@@ -59,7 +59,7 @@ SIM_CLIENT_FLAGS="$SIM_CLIENT_FLAGS -L./lib/ixwebsocket/bin/debug"
 SIM_CLIENT_FLAGS="$SIM_CLIENT_FLAGS -lz"
 SIM_CLIENT_FLAGS="$SIM_CLIENT_FLAGS -lixwebsocket"
 
-GEN_FLAGS="$FLAGS ./core/src/generator/*.cpp"
+GEN_FLAGS="$FLAGS ./core/src/generator/main.cpp"
 GEN_FLAGS="$GEN_FLAGS -I./core/src/generator/"
 
 DB_FLAGS="$FLAGS ./database/*.cpp"
@@ -67,6 +67,15 @@ DB_FLAGS="$DB_FLAGS -L$pqxx_lib"
 DB_FLAGS="$DB_FLAGS -L$pq_lib"
 DB_FLAGS="$DB_FLAGS -lpqxx -lpq"
 DB_FLAGS="$DB_FLAGS -I$libpqxx"
+
+GEN_SERVER_FLAGS="$FLAGS ./core/src/generator/send.cpp"
+GEN_SERVER_FLAGS="$GEN_SERVER_FLAGS -I./core/src/generator/"
+
+GEN_SERVER_MULTI_FLAGS="$FLAGS ./core/src/generator/send_multi.cpp"
+GEN_SERVER_MULTI_FLAGS="$GEN_SERVER_MULTI_FLAGS -I./core/src/generator/"
+
+GEN_SERVER_MULTI_CONN_FLAGS="$FLAGS ./core/src/generator/connect_multi.cpp"
+GEN_SERVER_MULTI_CONN_FLAGS="$GEN_SERVER_MULTI_CONN_FLAGS -I./core/src/generator/"
 
 simulator_compile_cmd () {
     $clang_path -Wall $SIM_FLAGS -g -o out/debug/macos/simulator
@@ -82,6 +91,18 @@ simulator_client_compile_cmd () {
 
 generator_compile_cmd () {
     $clang_path -Wall $GEN_FLAGS -g -o out/debug/macos/generator
+}
+
+generator_server_compile_cmd () {
+    $clang_path -Wall $GEN_SERVER_FLAGS -g -o out/debug/macos/gen_server
+}
+
+generator_server_multi_compile_cmd () {
+    $clang_path -Wall $GEN_SERVER_MULTI_FLAGS -g -o out/debug/macos/gen_server_multi
+}
+
+generator_server_connect_multi_compile_cmd () {
+    $clang_path -Wall $GEN_SERVER_MULTI_CONN_FLAGS -g -o out/debug/macos/gen_server_conn_multi
 }
 
 db_compile_cmd () {
@@ -109,6 +130,7 @@ if [ $1 = "run" ]; then
 
         mkdir -p out/debug/macos
         generator_compile_cmd
+
 
         if [ $? -eq 0 ]; then
             ./out/debug/macos/generator
@@ -138,6 +160,45 @@ if [ $1 = "run" ]; then
 
         if [ $? -eq 0 ]; then
             ./out/debug/macos/sim_client
+        fi
+
+    elif [ $2 = "gen_serve" ]; then
+
+        printf "compiling...\n"
+
+        mkdir -p out/debug/macos
+        generator_server_compile_cmd
+
+        printf "running...\n"
+
+        if [ $? -eq 0 ]; then
+            ./out/debug/macos/gen_server
+        fi
+
+    elif [ $2 = "gen_serve_multi" ]; then
+
+        printf "compiling...\n"
+
+        mkdir -p out/debug/macos
+        generator_server_multi_compile_cmd
+
+        printf "running...\n"
+
+        if [ $? -eq 0 ]; then
+            ./out/debug/macos/gen_server_multi
+        fi
+
+    elif [ $2 = "gen_serve_conn_multi" ]; then
+
+        printf "compiling...\n"
+
+        mkdir -p out/debug/macos
+        generator_server_connect_multi_compile_cmd
+
+        printf "running...\n"
+
+        if [ $? -eq 0 ]; then
+            ./out/debug/macos/gen_server_conn_multi
         fi
 
     elif [ $2 = "db" ]; then
@@ -173,6 +234,21 @@ elif [ $1 = "build" ]; then
         mkdir -p out/debug/macos
         simulator_client_compile_cmd
 
+    elif [ $2 = "gen_serve" ]; then
+
+        mkdir -p out/debug/macos
+        generator_server_compile_cmd
+
+    elif [ $2 = "gen_serve_multi" ]; then
+
+        mkdir -p out/debug/macos
+        generator_server_multi_compile_cmd
+
+    elif [ $2 = "gen_serve_conn_multi" ]; then
+
+        mkdir -p out/debug/macos
+        generator_server_connect_multi_compile_cmd
+
     elif [ $2 = "db" ]; then
 
         mkdir -p out/debug/macos
@@ -190,3 +266,4 @@ else
     echo "Unknown build option"
 
 fi
+

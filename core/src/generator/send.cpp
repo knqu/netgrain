@@ -4,14 +4,13 @@
 
 #include <unordered_set>
 
-int main()
+int main(int argc, const char *argv[])
 {
   crow::SimpleApp app;
   std::unordered_set<crow::websocket::connection *> users;
   std::mutex mtx;
 
-  //Generator global_gen(0.2, 0.3, 100, 150);
-  Generator global_gen(0.02, 2, 100, 100); // HX
+  Generator global_gen(0.2, 0.3, 100, 150);
   Data_Transfer parameters;
   parameters.conn.store(nullptr);
   parameters.gen.store(true);
@@ -42,8 +41,6 @@ int main()
       const std::string &data,
       bool is_binary) {
 
-      fmt::print("data received {}\n", data);
-
       std::lock_guard<std::mutex> _(mtx);
       if (data == "flash_crash")
       {
@@ -55,26 +52,20 @@ int main()
       }
 
       if (data == "sideways") { // HX
-        fmt::print("sideways!\n");
         if (parameters.new_event.load() == 0) {
           parameters.new_event.store(3);
+          fmt::print("sideways!\n");
         }
       }
 
-      if (data == "bear") { 
-        fmt::print("bear market triggered!\n");
-        if (parameters.new_event.load() == 0) {
-          parameters.new_event.store(4); 
-        }
+      if (data == "pause") {
+        parameters.pause.store(true);
       }
 
-      if (data == "bull") { 
-        fmt::print("bull market triggered!\n");
-        if (parameters.new_event.load() == 0) {
-          parameters.new_event.store(5); 
-        }      
+      if (data == "resume") {
+        parameters.pause.store(false);
       }
-
+      
 
       if (data == "stop")
       {
@@ -101,8 +92,12 @@ int main()
     global_gen.generate_ws(&parameters);
   }).detach();
 
-  app.port(5555).multithreaded().run();
-
+  if (argc > 1) {
+    app.port(atoi(argv[1])).multithreaded().run();
+  }
+  else {
+    app.port(5555).multithreaded().run();
+  }
   parameters.gen.store(false);
 }
 

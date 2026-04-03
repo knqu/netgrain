@@ -192,5 +192,5 @@ int main() {
     test_fifo_lot_disposal();
     test_fee_deduction();
 
-    std::cout << "All tests passed\n";
+    std::cout << "All engine tests passed\n";
 }

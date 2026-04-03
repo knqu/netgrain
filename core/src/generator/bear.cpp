@@ -37,8 +37,8 @@ public:
 
     double merton_jump(double dt, double S_t, std::normal_distribution<double> &norm, std::poisson_distribution<int> &poisson, std::normal_distribution<double> &jump_norm, std::mt19937 &gen) {
         double gbm_part = (this->percent_drift - 0.5 * pow(this->percent_volatility, 2)) * dt + this->percent_volatility * sqrt(dt) * norm(gen);
-        
-        int num_jumps = poisson(gen);
+        //gbm to simulate normal day-day movement in price
+        int num_jumps = poisson(gen); //poisson to detrimne if a jump happens
         double jump_part = 0.0;
         
         for (int i = 0; i < num_jumps; i++) {
@@ -63,7 +63,7 @@ public:
 
         int i = 0;
         while (gen_settings->gen) {
-            dataBuffer->enqueue(merton_jump(dt, dataBuffer->peek(), norm, poisson, jump_norm, gen));            
+            dataBuffer->enqueue(merton_jump(dt, dataBuffer->peek(), norm, poisson, jump_norm, gen));      //gen price and add to queue      
             myfile << dataBuffer->dequeue() << "\n";
             i += 1;
         }
