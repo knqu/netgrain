@@ -1,70 +1,108 @@
-#include <cmath>
-#include <iomanip>
-#include <iostream>
-#include <map>
-#include <random>
-#include <string>
-#include "generator.cpp"
-#include "ou.cpp"
-#include "benchmarks.cpp"
+#include <crow.h>
+
+#include "generator.hpp"
+
+#include <unordered_set>
 
 int main()
 {
-    std::random_device rd{};
-    std::mt19937 gen{rd()};
+  crow::SimpleApp app;
+  std::unordered_set<crow::websocket::connection *> users;
+  std::mutex mtx;
 
-    // get info for initial stock data
+  //Generator global_gen(0.2, 0.3, 100, 150);
+  Generator global_gen(0.01, 10, 100, 200); // HX
+  Data_Transfer parameters;
+  parameters.conn.store(nullptr);
+  parameters.gen.store(true);
+  parameters.new_event.store(0);
+  parameters.send_data.store(false);
 
-    double vol;
-    double drift;
-    int init_price;
-    gen_benchmark tester;
+  CROW_WEBSOCKET_ROUTE(app, "/")
+    .onopen([&](crow::websocket::connection &conn) {
+      fmt::print("new websocket connection from {}!\n", conn.get_remote_ip());
+      std::lock_guard<std::mutex> _(mtx);
+      users.insert(&conn);
+      parameters.conn.store(&conn);
+      parameters.send_data.store(true);
+    })
+    .onclose([&](
+      crow::websocket::connection &conn,
+      const std::string &reason,
+      uint16_t) {
 
-    while (1) {
-        int option;
-        std::cout << "Please enter what benchmark you want to test:\n1. speed benchmark\n2: data benchmark\n3: data validation benchmark\n4: exit\n";
-        std::cin >> option;
-        switch (option)
+      fmt::print("websocket connection closed: {}\n", reason);
+      std::lock_guard<std::mutex> _(mtx);
+      parameters.send_data.store(false);
+      parameters.conn.store(nullptr);
+      users.erase(&conn);
+    })
+    .onmessage([&](
+      crow::websocket::connection &conn,
+      const std::string &data,
+      bool is_binary) {
+
+      fmt::print("data received {}\n", data);
+
+      std::lock_guard<std::mutex> _(mtx);
+      if (data == "flash_crash")
+      {
+        if (parameters.new_event.load() == 0)
         {
-        case 1:
-            std::cout << "Please enter the percent drift of the stock data: ";
-            std::cin >> drift;
-            std::cout << "Please enter the percent volatility of the stock data: ";
-            std::cin >> vol;
-            std::cout << "Please enter the initial price: ";
-            std::cin >> init_price;
-            std::cout << "beginning speed benchmark program\n";
-            tester.speed_benchmark(drift, vol, init_price);
-            break;
-        case 2:
-            std::cout << "Please enter the percent drift of the stock data: ";
-            std::cin >> drift;
-            std::cout << "Please enter the percent volatility of the stock data: ";
-            std::cin >> vol;
-            std::cout << "Please enter the initial price: ";
-            std::cin >> init_price;
-            std::cout << "beginning data benchmark program\n";
-            tester.data_benchmark(drift, vol, init_price);
-            break;
-        case 3:
-            std::cout << "Please enter the percent drift of the stock data: ";
-            std::cin >> drift;
-            std::cout << "Please enter the percent volatility of the stock data: ";
-            std::cin >> vol;
-            std::cout << "Please enter the initial price: ";
-            std::cin >> init_price;
-            std::cout << "beginning data verification benchmark program\n";
-            tester.verification_benchmark(drift, vol, init_price);
-            break;
-        case 4:
-            goto end;
-            break;
-        default:
-            std::cout << "Invalid option\n\n";
-            break;
+          parameters.new_event.store(1);
+          fmt::print("flash crash!\n");
         }
+      }
 
-    }
-end:
-    return 0;
+      if (data == "sideways") { // HX
+        fmt::print("sideways!\n");
+        if (parameters.new_event.load() == 0) {
+          parameters.new_event.store(3);
+        }
+      }
+
+      if (data == "bear") { 
+        fmt::print("bear market triggered!\n");
+        if (parameters.new_event.load() == 0) {
+          parameters.new_event.store(4); 
+        }
+      }
+
+      if (data == "bull") { 
+        fmt::print("bull market triggered!\n");
+        if (parameters.new_event.load() == 0) {
+          parameters.new_event.store(5); 
+        }      
+      }
+
+
+      if (data == "stop")
+      {
+        parameters.send_data.store(false);
+      }
+
+      if (data.starts_with("bubble"))
+      {
+        if (parameters.new_event.load() == 0)
+        {
+          int threshold = std::stoi(data.substr(7), nullptr, 10);
+          parameters.new_event.store(2);
+          parameters.threshold.store(threshold);
+          fmt::print("bubble! {}\n", threshold);
+        }
+        else if (parameters.new_event.load() == 2)
+        {
+          fmt::print("bubble is ignored: called consecutively when another is active!\n");
+        }
+      }
+    });
+
+  std::thread([&]{
+    global_gen.generate_ws(&parameters);
+  }).detach();
+
+  app.port(5555).multithreaded().run();
+
+  parameters.gen.store(false);
 }
+

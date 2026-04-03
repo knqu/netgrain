@@ -2,7 +2,6 @@ import { useState } from 'react';
 
 import LeaderboardComponent from './Leaderboard';
 import HistoryComponent from './History';
-import Simulation from './Simulation';
 import Generation from './Generation';
 import GridComponent from './GridComponent';
 
@@ -10,6 +9,7 @@ import '../styling/Home.css'
 
 import '/node_modules/react-grid-layout/css/styles.css';
 import '/node_modules/react-resizable/css/styles.css';
+import NewSim from './newSimPage';
 
 export default function AppHome() {
   const [currentPage, setPage] = useState<string>("Dashboard");
@@ -110,7 +110,7 @@ export default function AppHome() {
         );
       case "Simulation" :
         return (
-          <Simulation />
+          <NewSim />
         );
       case "Generation" :
         return (

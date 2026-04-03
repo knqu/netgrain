@@ -11,7 +11,79 @@ import React, { useEffect, useRef } from "react";
 //         automaticLayout: true,
 //     });
 // }
-
+monaco.languages.registerCompletionItemProvider('python', {
+    provideCompletionItems: (model, position) => {
+        const suggestions = [
+            {
+                label: 'get_balance',
+                kind: monaco.languages.CompletionItemKind.Function,
+                insertText: 'get_balance()',
+                insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                detail: 'get the balance present in the simulator',
+                range: {
+                    startLineNumber: position.lineNumber,
+                    endLineNumber: position.lineNumber,
+                    startColumn: position.column - 1,
+                    endColumn: position.column
+                }
+            },
+            {
+                label: 'place_order',
+                kind: monaco.languages.CompletionItemKind.Function,
+                insertText: 'place_order(ticker, quantity, target_price, side, type)',
+                insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                detail: 'Place a stock order',
+                range: {
+                    startLineNumber: position.lineNumber,
+                    endLineNumber: position.lineNumber,
+                    startColumn: position.column - 1,
+                    endColumn: position.column
+                }
+            },
+            {
+                label: 'cancel_order',
+                kind: monaco.languages.CompletionItemKind.Function,
+                insertText: 'cancel_order(order_id)',
+                insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                detail: 'cancel a stock order',
+                range: {
+                    startLineNumber: position.lineNumber,
+                    endLineNumber: position.lineNumber,
+                    startColumn: position.column - 1,
+                    endColumn: position.column
+                }
+            },
+            {
+                label: 'calculate_fee',
+                kind: monaco.languages.CompletionItemKind.Function,
+                insertText: 'calculate_fee(config, fill_quantity, trade_value)',
+                insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                detail: 'calculate fee for a stock order',
+                range: {
+                    startLineNumber: position.lineNumber,
+                    endLineNumber: position.lineNumber,
+                    startColumn: position.column - 1,
+                    endColumn: position.column
+                }
+            },
+            {
+                label: 'get_config',
+                kind: monaco.languages.CompletionItemKind.Function,
+                insertText: 'get_config(ticker)',
+                insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                detail: 'get the config for a stock ticker',
+                range: {
+                    startLineNumber: position.lineNumber,
+                    endLineNumber: position.lineNumber,
+                    startColumn: position.column - 1,
+                    endColumn: position.column
+                }
+            },
+        ];
+        
+        return { suggestions: suggestions };
+    }
+});
 
 const EditorContainer: React.FC = () => {
     const containerRef = useRef<HTMLDivElement | null>(null);
@@ -60,8 +132,10 @@ export default function CodeEditor() {
         //      This is the code editing page.
         // </h1>
         <div className="editor_outer" >
+            <button className="file_send"> Send to backend </button>
             <div className="editor_inner">
-                <div className="editor">
+                
+                <div className="code_editor">
                     <EditorContainer></EditorContainer>
                 </div>
             </div>

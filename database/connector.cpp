@@ -3,6 +3,12 @@
 #include <pqxx/pqxx>
 #include <fmt/core.h>
 #include <regex>
+#include <utility>
+#include <filesystem>
+#include <iomanip>
+#include <ctime>
+#include <fstream>
+
 
 enum error_codes {
   UUID_NOT_FOUND, 
@@ -97,11 +103,18 @@ try
           instance = new ConnectorSingleton();
           try
           {
-            conn = new pqxx::connection(
-              "host=localhost "
-              "dbname=postgres "
-              "user=cnath"
-            );
+            #if _WIN64
+              conn = new pqxx::connection(
+                "host=localhost "
+                "dbname=postgres "
+                "user=cnath"
+              );
+            #elif __APPLE__
+              conn = new pqxx::connection(
+                "host=localhost "
+                "dbname=netgrain_db"
+              );
+            #endif
           }
           catch (const std::exception &e)
           {
@@ -180,6 +193,30 @@ try
       }
 
       fmt::print("SUCCESS\n");
+      return SUCCESS;
+    }
+
+    int changePassword(std::string identifier, std::string newPassword) {
+      int uuID = getUUID(identifier);
+
+      if (uuIDfound(uuID) == -1) {
+        fmt::print("UUID_NOT_FOUND");
+        return UUID_NOT_FOUND;
+      }
+
+      pqxx::work tx(*conn);
+
+      try
+      {
+        std::string query = "UPDATE userlogin SET password = $1 WHERE (userid = $2)";
+        pqxx::result r = tx.exec(query, pqxx::params{newPassword, uuID}).no_rows();
+      }
+      catch (const std::exception &e)
+      {
+        return -1;
+      }
+
+      tx.commit();
       return SUCCESS;
     }
 
@@ -267,11 +304,51 @@ try
       return result;
     }
 
-    // TODO: basic mockup actions of alg
-    std::string fetchSimulation(int simID, std::string identifier) {
+    std::string fetchLayout(std::string identifier) {
+      pqxx::work tx(*conn);
+      std::string query = "SELECT * FROM leaderboard ORDER BY profit DESC, simulationtime DESC";
+      pqxx::row r;
+
+      try
+      {
+        r = tx.exec(query).one_row();
+      }
+      catch (const std::exception &e)
+      {
+        return "";
+      }
+      tx.abort();
+
+      return r[4].as<std::string>();
+    }
+
+    std::vector<int> fetchAllSims(std::string identifier) {
+      int uuid = getUUID(identifier);
+      pqxx::work tx(*conn);
+      pqxx::result r;
+      std::vector<int> res;
+      try
+      {
+        std::string query = "SELECT * FROM pastSimulations WHERE (userid = $1)";
+        r = tx.exec(query, pqxx::params{uuid});
+        for (auto row = std::begin(r); row != std::end(r); row++) {
+          auto field = std::begin(row);
+          res.push_back(field.as<int>());
+        }
+        return res;
+      }
+      catch (const std::exception &e)
+      {
+        std::cerr << e.what() << "\n";
+      }
+      return std::vector<int>{};
+    }
+
+    std::vector<std::string> fetchSimulation(int simID, std::string identifier) {
       int uuid = getUUID(identifier);
       pqxx::work tx(*conn);
       pqxx::row r;
+
       try
       {
         std::string query = "SELECT * FROM pastSimulations WHERE (userid = $1 AND simid = $2)";
@@ -280,32 +357,91 @@ try
       catch (const std::exception &e)
       {
         std::cerr << e.what() << "\n";
-        return "";
+        return std::vector<std::string>();
       }
-      return r[2].c_str();
+      return std::vector<std::string> {r[2].c_str(), r[4].c_str()};
     }
-    
-    int changePassword(std::string identifier, std::string newPassword) {
-      int uuID = getUUID(identifier);
 
-      if (uuIDfound(uuID) == -1) {
-        fmt::print("UUID_NOT_FOUND");
-        return UUID_NOT_FOUND;
-      }
-      pqxx::work tx(*conn);
+    // return simID
+    int createSimulation(std::string identifer, std::string configUsed, int globalPresetID) {
+      int uuID = getUUID(identifer);
 
-      try
-      {
-        std::string query = "UPDATE userlogin SET password = $1 WHERE (userid = $2)";
-        pqxx::result r = tx.exec(query, pqxx::params{newPassword, uuID}).no_rows();
-      }
-      catch (const std::exception &e)
-      {
+      if (uuIDfound(uuID) == uuID) {
         return -1;
       }
 
+      pqxx::work tx(*conn);
+
+      int currentSeq = -1;
+
+      try {
+        std::string query = "SELECT last_value FROM pastsimulations_simid_seq;";
+        pqxx::row r = tx.exec(query).one_row();
+        currentSeq = r[0].as<int>();
+        currentSeq++;
+      }
+      catch (const std::exception &e)
+      {
+        std::cerr << e.what() << std::endl;
+      }
+
+      std::string path = "./sims/" + std::to_string(currentSeq) + "/";
+      std::filesystem::create_directories(path);
+
+      std::filesystem::permissions(
+        path,
+        std::filesystem::perms::others_all | std::filesystem::perms::owner_all | std::filesystem::perms::others_all,
+        std::filesystem::perm_options::add
+    );
+      // create files
+      std::ofstream MyFile(path + "simResults");
+      std::ofstream MyFile2(path + "algorithmActions");
+      std::ofstream MyFile3(path + "marketData");
+      MyFile.close();
+      MyFile2.close();
+      MyFile3.close();
+
+      auto t = std::time(nullptr);
+      auto tm = *std::localtime(&t);
+      std::ostringstream oss;
+      oss << std::put_time(&tm, "%d-%m-%Y %H-%M-%S");
+      auto str = oss.str();
+
+      try {
+        std::string query = "INSERT INTO pastsimulations (configused, userid, path_to_data, dateOfsim) VALUES ($1, $2, $3, $4)";
+        tx.exec(query, pqxx::params{configUsed, uuID, path, str});
+      }
+      catch (const std::exception &e)
+      {
+          std::cerr << e.what() << std::endl;
+      }
+
+      if (globalPresetID != -1) {
+        // determine if the globalPresetID is valid
+        std::string query = "SELECT * FROM globalcustompresets WHERE (presetid = $1)";
+
+        try
+        {
+          pqxx::row r = tx.exec(query, pqxx::params{globalPresetID}).one_row();
+        }
+        catch (const std::exception &e)
+        {
+            return PRESET_ID_NOT_FOUND;
+        }
+
+        try {
+          std::string query = "UPDATE pastsimulations SET custompresetusedifapplicable = $1 WHERE userid = $2";
+          tx.exec(query, pqxx::params{configUsed, uuID});
+        }
+        catch (const std::exception &e)
+        {
+            std::cerr << e.what() << std::endl;
+        }
+      }
+
       tx.commit();
-      return SUCCESS;
+
+      return currentSeq;
     }
 
     // Persistent Change
@@ -345,15 +481,6 @@ try
 
       fmt::print("SUCCESS");
       return SUCCESS;
-    }
-
-    std::string fetchLayout(std::string identifier) {
-      pqxx::work tx(*conn);
-      std::string query = "SELECT * FROM leaderboard ORDER BY profit DESC, simulationtime DESC";
-      pqxx::result r = tx.exec(query);
-
-      tx.abort();
-
     }
 
     /*
@@ -412,54 +539,6 @@ try
       return result;
     }
 
-    /*
-     * pass in customPresetID = -1 if no global preset was used
-     */
-    int createSimulation(std::string identifer, std::string analytics, std::string configUsed, int globalPresetID) {
-      int uuID = getUUID(identifer);
-
-      if (uuIDfound(uuID) == uuID) {
-        return UUID_NOT_FOUND;
-      }
-
-      pqxx::work tx(*conn);
-
-      try {
-        std::string query = "INSERT INTO pastsimulations (analytics, configused, userid) VALUES ($1, $2, $3)";
-        tx.exec(query, pqxx::params{analytics, configUsed, uuID});
-      }
-      catch (const std::exception &e)
-      {
-          std::cerr << e.what() << std::endl;
-      }
-
-      if (globalPresetID != -1) {
-        // determine if the globalPresetID is valid
-        std::string query = "SELECT * FROM globalcustompresets WHERE (presetid = $1)";
-
-        try
-        {
-          pqxx::row r = tx.exec(query, pqxx::params{globalPresetID}).one_row(); // one_row checks if only one entry found, exception otherwise
-        }
-        catch (const std::exception &e)
-        {
-            return PRESET_ID_NOT_FOUND;
-        }
-
-        try {
-          std::string query = "UPDATE pastsimulations SET custompresetusedifapplicable = $1 WHERE userid = $2";
-          tx.exec(query, pqxx::params{configUsed, uuID});
-        }
-        catch (const std::exception &e)
-        {
-            std::cerr << e.what() << std::endl;
-        }
-      }
-      tx.commit();
-
-      return SUCCESS;
-    }
-
     // createCustomGlobalPreset(...)
     int createCustomGlobalPreset(int scaling, int volatility, int liquidity, int tradingVol) {
       pqxx::work tx(*conn);
@@ -491,76 +570,18 @@ try
 
       return r[0].as<int>();
     }
-
-    void testingModule() {
-      fmt::print("\n---Initializing Testing---\n");
-
-      /* Leaderboard */
-      ConnectorSingleton::getInstance();
-      std::string test = ConnectorSingleton::getInstance().fetchLeaderBoard();
-      fmt::print("{}\n", test);
-      /*
-       * TESTS FOR TABLE USERLOGIN
-       */
-
-      ConnectorSingleton::getInstance().addUser("uniqueEmail@email.com", "12341234", "uniqueUser");
-      ConnectorSingleton::getInstance().addUser("uniqueEmail2@email.com", "12341234", "uniqueUser2");
-      assert(ConnectorSingleton::getInstance().addUser("different@gmail.com", "", "uniqueUser") == USERNAME_ALREADY_REGISTERED);
-      assert(ConnectorSingleton::getInstance().addUser("uniqueEmail@email.com", "", "asdf") == EMAIL_ALREADY_REGISTERED);
-      assert(ConnectorSingleton::getInstance().addUser("thisIsNotAnEmail", "", "") == INVALID_EMAIL_FORMAT);
-
-      assert(ConnectorSingleton::getInstance().login("uniqueEmail@email.com", "12341234"));
-      assert(! ConnectorSingleton::getInstance().login("hiIDontExist.com", "pleaseFail"));
-
-      // Table userlogin -- link + get customGUI tied to a user
-      //assert(ConnectorSingleton::getInstance().linkCustomGUILayout(1000, "/path/to/file") == UUID_NOT_FOUND);
-      /*
-      assert(ConnectorSingleton::getInstance().userHasCustomLayout(1000) == UUID_NOT_FOUND);
-      assert(ConnectorSingleton::getInstance().userHasCustomLayout(2) == CUSTOM_DASHBOARD_CONFIG_NOT_FOUND);
-
-      assert(ConnectorSingleton::getInstance().linkCustomGUILayout(1, "/path/to/file") == SUCCESS);
-      assert(ConnectorSingleton::getInstance().userHasCustomLayout(1) == SUCCESS);
-      assert(! ConnectorSingleton::getInstance().getCustomGUILayout(1).compare("/path/to/file"));
-      */
-
-      /*
-       * TESTS FOR LEADERBOARD
-       */
-
-      // CHOOSE DIFFERENT EMAIL AND USERNAME HERE EVERY TIME
-      std::string email = "asdfaasdf@gmail.com";
-      std::string username = "alsdfsdkjfa";
-      //int uuid = ConnectorSingleton::getInstance().addUser(email, "helllo", username); //insert unique user
-
-      /*
-      assert(ConnectorSingleton::getInstance().addLeaderboardAttempt(uuid, 100000, "12:12:12") == SUCCESS); // normal write
-      assert(ConnectorSingleton::getInstance().addLeaderboardAttempt(uuid, 200000, "14:14:14") == LEADERBOARD_ATTEMPT_MADE); // same user makes another attempt
-      assert(ConnectorSingleton::getInstance().addLeaderboardAttempt(-1, 200000, "14:14:14") == UUID_NOT_FOUND); // invalid user makes attempt
-
-      */
-      /*
-       * TESTS FOR A USER's SIMULATION
-      assert(ConnectorSingleton::getInstance().createSimulation(2, "insertSomeSmartAnalytics", "/path/to/config/used", -1) == SUCCESS);
-      assert(ConnectorSingleton::getInstance().createSimulation(2, "insertSomeSmartAnalytics", "/path/to/config/used", 100) == PRESET_ID_NOT_FOUND);
-       */
-      /*
-       * TESTS FOR GLOBAL PRESETS
-      assert(ConnectorSingleton::getInstance().createCustomGlobalPreset(10, 10, 10, 10) == DUPLICATE_PRESET_FOUND);
-
-       */
-    }
 };
-
 
 /*
 int main() {
-  // “Given the database and backend is implemented correctly, when a new user is created, then I should be able to verify it exists in my database.”
-  //ConnectorSingleton::getInstance().addUser("demoRunThree@gmail.com", "password1234!", "demoRunThree");
+  ConnectorSingleton::getInstance().createSimulation("user1", "" , -1);
+  ConnectorSingleton::getInstance().createSimulation("user1", "" , -1);
+  ConnectorSingleton::getInstance().createSimulation("user1", "" , -1);
+  ConnectorSingleton::getInstance().createSimulation("user1", "" , -1);
+  for (auto x : ConnectorSingleton::getInstance().fetchAllSims("user1")) {
+    fmt::print("Sim ID is {}\n", x);
+  }
 
-  // “Given the database and backend is implemented correctly, when the login credentials of the server are incorrect, then the backend should return an error message.”
-  // std::cout << ConnectorSingleton::getInstance().login("danielLuo@proton.com", "delirious") << std::endl;
-
-  // “Given the database is not running on the web server, when the backend sends a query, then there should be proper error handling.”
-  ConnectorSingleton::getInstance().addUser("iDontExist@gmail.com", "password1234!", "fake");
+  return 0;
 }
 */

@@ -53,7 +53,14 @@ struct Position {
     std::vector<Lot> lots;
 };
 
+struct FeesAndTaxes { // HX; each ticker/stock specific
+    double flat_fee_comm_per_share;
+    double percentage_comm_per_share;
+};
+
 struct TickerConfig {
     double volatility;
     double trade_fee;
+    double short_term_tax;
+    FeesAndTaxes fees_and_taxes;
 };

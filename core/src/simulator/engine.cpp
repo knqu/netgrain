@@ -7,6 +7,7 @@
 #include "persistence_queue.hpp"
 
 class Engine {
+    int init_balance;
     int balance;
     std::unordered_map<std::string, Position> positions;
 
@@ -15,13 +16,15 @@ class Engine {
     std::vector<Order> cancelled_orders;
     std::vector<Fill> fill_log;
 
-    TickerConfig default_config = {0.001, 5.0};
+    FeesAndTaxes default_fees_taxes = {1.0, 1.0};
+    TickerConfig default_config = {0.001, 5, 0.15, default_fees_taxes};
     std::unordered_map<std::string, TickerConfig> ticker_configs;
 
     PersistenceQueue *pq;
 
 public:
     Engine(int starting_balance, PersistenceQueue *pq = nullptr) {
+        init_balance = starting_balance;
         balance = starting_balance;
         this->pq = pq;
     }
@@ -44,6 +47,13 @@ public:
 
     std::vector<Fill> get_fill_log() {
         return fill_log;
+    }
+    
+    int get_final_balance() { // returns post-short-term-tax 
+      if (balance > init_balance) {
+        return static_cast<int>(balance * (1 - default_config.short_term_tax));
+      }
+      return balance;
     }
 
     TickerConfig& get_config(const std::string& ticker) {
@@ -74,6 +84,13 @@ public:
             }
         }
         return false;
+    }
+
+    int calculate_fee(TickerConfig* conf, int fill_quantity, int trade_value) { // HX
+      double total_fee = 0.0;
+      total_fee += (!conf->fees_and_taxes.flat_fee_comm_per_share) ? conf->fees_and_taxes.flat_fee_comm_per_share * fill_quantity: 0.0;
+      total_fee += (!conf->fees_and_taxes.percentage_comm_per_share) ? conf->fees_and_taxes.percentage_comm_per_share * trade_value : 0.0;
+      return static_cast<int>(total_fee);
     }
 
     std::vector<Fill> process_bar(std::unordered_map<std::string, MarketDataRow> bars) {
