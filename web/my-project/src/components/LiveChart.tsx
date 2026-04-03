@@ -11,7 +11,7 @@ interface LiveChartProps {
   ws: WebSocket;
 }
 
-export default function ChartComponent({ws}: LiveChartProps) {
+export default function LiveChartComponent({ws}: LiveChartProps) {
     const LiveChart: React.FC<LiveChartProps> = ({ws}) => {
         const containerRef = useRef<HTMLDivElement | null>(null);
 

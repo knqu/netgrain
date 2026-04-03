@@ -114,7 +114,7 @@ export default function HistoryComponent() {
         );
 
       if (response.status == 200) {
-        navigate("/simResults");
+        navigate("/ResultsTemplate");
       }
     } catch (err) {
       console.log(err);

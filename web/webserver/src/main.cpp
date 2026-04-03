@@ -12,7 +12,6 @@
 #include <string>
 #include <fstream>
 #include <iostream>
-#include <unistd.h>
 
 int main() {
     using Session = crow::SessionMiddleware<crow::InMemoryStore>;
@@ -206,7 +205,9 @@ int main() {
     CROW_ROUTE(app, "/api/fetchLeaderboard").methods(crow::HTTPMethod::GET, crow::HTTPMethod::Patch)([&](const crow::request& req) {
         try {
             crow::response res;
+            std::cout << "Fetching Leaderboard" << std::endl;
             std::string leaderboardJSON = ConnectorSingleton::getInstance().fetchLeaderBoard();
+            std::cout << "Start: " <<leaderboardJSON << std::endl;
 
             if (leaderboardJSON.size() == 0) {
                 res.code = 201;
@@ -271,7 +272,6 @@ int main() {
         std::cout << "Starting fetchLayout\n";
         try {
             std::string layoutJSON = ConnectorSingleton::getInstance().getCustomGUILayout("user1@gmail.com");
-            std::cout << layoutJSON << "asdfasdf\n";
             crow::response res;
             res.write(layoutJSON.empty() ? "{}" : layoutJSON);
             res.set_header("Content-Type", "application/json");
