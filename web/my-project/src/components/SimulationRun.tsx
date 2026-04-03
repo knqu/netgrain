@@ -1,19 +1,11 @@
 import "../styling/SimulationRun.css"
-import React, { useEffect, useRef, useState, useMemo } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   createChart,
-  type AreaData,
   AreaSeries,
   type IChartApi,
   type UTCTimestamp,
-  type ISeriesApi,
-  type WhitespaceData,
-  type LineSeriesOptions,
-  type DeepPartial,
-  type AreaStyleOptions,
-  type SeriesOptionsCommon,
 } from "lightweight-charts"
-import type { C } from "node_modules/react-grid-layout/dist/position-CetgOHhD.d.mts";
 //import type LiveChartProps from './LiveChart';
 
 
@@ -141,9 +133,11 @@ export default function SimulationRun() {
       case '1':
         setActiveStock('1');
         areaSeries.setData(data1);
+        break;
       case '2':
          setActiveStock('2');
          areaSeries.setData(data2);
+         break;
     }
   };
 

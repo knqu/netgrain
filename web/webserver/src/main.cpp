@@ -12,7 +12,7 @@
 #include <string>
 #include <fstream>
 #include <iostream>
-
+#include <unistd.h>
 
 int main() {  
     using Session = crow::SessionMiddleware<crow::InMemoryStore>;
@@ -29,9 +29,22 @@ int main() {
         return page;
     });
 
-    CROW_ROUTE(app, "/assets/index-<string>")([](std::string file) {
-        crow::response res;
-        res.set_static_file_info_unsafe("../../my-project/dist/assets/index-" + file);
+    CROW_ROUTE(app, "/assets/<path>")([](std::string file) {
+        std::string path = "../../my-project/dist/assets/" + file;
+        std::ifstream f(path, std::ios::in | std::ios::binary);
+
+        if (!f.good()) {
+          return crow::response(404);
+        }
+
+        std::string contents((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>());
+        crow::response res(contents);
+
+        if (path.find(".js") != std::string::npos) {
+          res.set_header("Content-Type", "application/javascript");
+        } else if (path.find(".css") != std::string::npos) {
+          res.set_header("Content-Type", "text/css");
+        }
         return res;
     });
 
@@ -234,13 +247,15 @@ int main() {
     });
 
     CROW_ROUTE(app, "/api/saveLayout").methods(crow::HTTPMethod::POST, crow::HTTPMethod::Patch)([&](const crow::request& req) {
+        /*
         auto& cookie = app.get_context<crow::CookieParser>(req);
         std::string email = cookie.get_cookie("email");
         
         if (email.empty()) return crow::response(401); 
+        */
 
         try {
-            ConnectorSingleton::getInstance().linkCustomGUILayout(email, req.body);
+            ConnectorSingleton::getInstance().linkCustomGUILayout("user1@gmail.com", req.body);
             return crow::response(200);
         } catch (...) {
             return crow::response(500);
@@ -248,14 +263,17 @@ int main() {
     });
 
     CROW_ROUTE(app, "/api/fetchLayout").methods(crow::HTTPMethod::GET, crow::HTTPMethod::Patch)([&](const crow::request& req) {
+        /*
         auto& cookie = app.get_context<crow::CookieParser>(req);
         std::string email = cookie.get_cookie("email");
         
         if (email.empty()) return crow::response(401);
+        */
 
+        std::cout << "Starting fetchLayout\n";
         try {
-            std::string layoutJSON = ConnectorSingleton::getInstance().getCustomGUILayout(email);
-            
+            std::string layoutJSON = ConnectorSingleton::getInstance().getCustomGUILayout("user1@gmail.com");
+            std::cout << layoutJSON << "asdfasdf\n";
             crow::response res;
             res.write(layoutJSON.empty() ? "{}" : layoutJSON);
             res.set_header("Content-Type", "application/json");
@@ -275,9 +293,8 @@ int main() {
 
         try {
             std::string result = ConnectorSingleton::getInstance().average("user1@gmail.com");
-            
             crow::response res;
-            res.write(result.empty() ? "{}" : result);
+            res.write(result.empty() ? "" : result);
             res.set_header("Content-Type", "text/csv");
             res.code = 200;
             return res;
@@ -303,5 +320,5 @@ int main() {
         "C:/Purdue 2nd Year/2 Semester/CS 307 Proj/netgrain/web/webserver/perms2/key.pem"
     );
     */
-    app.port(18080).multithreaded().run();
+    app.port(18080).run();
 }
