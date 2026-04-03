@@ -396,7 +396,7 @@ public:
             {
               this->percent_drift = 0.05;
               this->percent_volatility = 0.20;
-              data_buffer->enqueue(ou(data_buffer->peek(), norm, gen));
+              data_buffer->push(ou(data_buffer->front(), norm, gen));
               if (gen_settings->send_data.load()) {
                 double res = send_price();
                 gen_settings->conn.load()->send_text(fmt::format("Sideways: {}", res));
@@ -407,7 +407,7 @@ public:
               this->percent_drift = -5.0;
               this->percent_volatility = 0.30;
 
-              data_buffer->enqueue(bear_math(data_buffer->peek(), norm, gen));
+              data_buffer->push(bear_math(data_buffer->front(), norm, gen));
 
               if (gen_settings->send_data.load()) {
                 gen_settings->conn.load()->send_text(fmt::format("Bear: {}", send_price()));
