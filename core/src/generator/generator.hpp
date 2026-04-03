@@ -23,6 +23,7 @@
 #include <map>
 #include <string>
 #include <stdlib.h>
+#include <queue>
 
 class Generator {
 private:
@@ -31,7 +32,8 @@ private:
   double dt;
 
   // queue for streaming data
-  Queue<double> *data_buffer;
+  // Queue<double> *data_buffer;
+  std::queue<double> *data_buffer;
   // create a random device for normal distribution
 
   // std::random_device *device;
@@ -50,8 +52,8 @@ public:
   Generator(double drift, double volatility, int price, int target) {
     percent_drift = drift;
     percent_volatility = volatility;
-    data_buffer = new Queue<double>();
-    data_buffer->enqueue(price);
+    data_buffer = new std::queue<double>;
+    data_buffer->push(price);
     base_price = price;
     dt = 0.01;
     target_price = target;
@@ -89,11 +91,14 @@ public:
   void get_event(double n_drift, double n_vol, int n_price) {
     percent_drift = n_drift;
     percent_volatility = n_vol;
-    data_buffer->enqueue(n_price);
+    data_buffer->push(n_price);
   }
 
   double send_price() {
-    return data_buffer->dequeue();
+    if (data_buffer->size() == 0) return base_price;
+    double data = data_buffer->front();
+    data_buffer->pop();
+    return data;
   }
 
   /*
@@ -101,13 +106,13 @@ public:
    * takes, current price
    */
   void generate_new_data_point() {
-    u32 new_data = data_buffer->peek();
+    u32 new_data = data_buffer->front();
     short multiplier = 1;
     if (rand() % 10 == 0) {
       multiplier = -1;
     }
     new_data = new_data + multiplier * (rand() % (u32) (percent_drift * 100));
-    data_buffer->enqueue(new_data);
+    data_buffer->push(new_data);
   }
 
   /*
@@ -141,7 +146,7 @@ public:
     while (gen_settings->gen.load()) {
       // generate the next data point in the weiner process and add it onto
       // the data buffer, before dequeuing it
-      data_buffer->enqueue(gbm(data_buffer->peek(), norm, gen));
+      data_buffer->push(gbm(data_buffer->front(), norm, gen));
 
       // TODO: way to send data would go here, this could be in the format
       // of a second queue, extra fields in the Data_Transfer, etc. for now
@@ -198,7 +203,7 @@ public:
               if (tracker == 0)
               {
                 flash_crash_points = 14 + rand() % 11;
-                precede = data_buffer->peek();
+                precede = data_buffer->front();
                 curr = gbm(precede, norm, gen);
               }
 
@@ -246,7 +251,7 @@ public:
             {
               if (tracker == 0)
               {
-                larger = data_buffer->peek();
+                larger = data_buffer->front();
                 curr = gbm(larger, norm, gen);
               }
 
@@ -256,7 +261,7 @@ public:
 
                 gen_settings->new_event.store(0);
 
-                data_buffer->enqueue(gbm(curr * 0.3213, norm, gen));
+                data_buffer->push(gbm(curr * 0.3213, norm, gen));
 
                 if (gen_settings->send_data.load()) {
                   gen_settings->conn.load()
@@ -286,7 +291,7 @@ public:
             }
           case 3: // Ornstein–Uhlenbeck process 
             {
-              data_buffer->enqueue(ou(data_buffer->peek(), norm, gen));
+              data_buffer->push(ou(data_buffer->front(), norm, gen));
               if (gen_settings->send_data.load()) {
                 gen_settings->conn.load()
                   ->send_text(fmt::format("Sideways: {}", send_price()));
@@ -308,7 +313,7 @@ public:
         // no event
         // generate the next data point in the weiner process and add it onto
         // the data buffer, before dequeuing it
-        data_buffer->enqueue(gbm(data_buffer->peek(), norm, gen));
+        data_buffer->push(gbm(data_buffer->front(), norm, gen));
 
         // TODO: way to send data would go here, this could be in the format
         // of a second queue, extra fields in the Data_Transfer, etc. for now
@@ -360,7 +365,7 @@ skip:
               if (tracker == 0)
               {
                 flash_crash_points = 14 + rand() % 11;
-                precede = data_buffer->peek();
+                precede = data_buffer->front();
                 curr = gbm(precede, norm, gen);
               }
 
@@ -408,7 +413,7 @@ skip:
             {
               if (tracker == 0)
               {
-                larger = data_buffer->peek();
+                larger = data_buffer->front();
                 curr = gbm(larger, norm, gen);
               }
 
@@ -418,7 +423,7 @@ skip:
 
                 gen_settings->new_event.store(0);
 
-                data_buffer->enqueue(gbm(curr * 0.3213, norm, gen));
+                data_buffer->push(gbm(curr * 0.3213, norm, gen));
 
                 if (gen_settings->send_data.load()) {
                   gen_settings->conn.load()
@@ -448,7 +453,7 @@ skip:
             }
           case 3: // Ornstein–Uhlenbeck process 
             {
-              data_buffer->enqueue(ou(data_buffer->peek(), norm, gen));
+              data_buffer->push(ou(data_buffer->front(), norm, gen));
               if (gen_settings->send_data.load()) {
                 gen_settings->conn.load()
                   ->send_text(fmt::format("Sideways: {}", send_price()));
@@ -467,10 +472,15 @@ skip:
         */
       }
       else {
+        if (data_buffer->size() == 0) {
+          data_buffer->push(base_price);
+          continue;
+        }
+
         // no event
         // generate the next data point in the weiner process and add it onto
         // the data buffer, before dequeuing it
-        data_buffer->enqueue(gbm(data_buffer->peek(), norm, gen));
+        data_buffer->push(gbm(data_buffer->front(), norm, gen));
 
         // TODO: way to send data would go here, this could be in the format
         // of a second queue, extra fields in the Data_Transfer, etc. for now
@@ -525,7 +535,7 @@ skip:
               if (tracker == 0)
               {
                 flash_crash_points = 14 + rand() % 11;
-                precede = data_buffer->peek();
+                precede = data_buffer->front();
                 curr = gbm(precede, norm, gen);
               }
 
@@ -573,7 +583,7 @@ skip:
             {
               if (tracker == 0)
               {
-                larger = data_buffer->peek();
+                larger = data_buffer->front();
                 curr = gbm(larger, norm, gen);
               }
 
@@ -583,7 +593,7 @@ skip:
 
                 gen_settings->new_event.store(0);
 
-                data_buffer->enqueue(gbm(curr * 0.3213, norm, gen));
+                data_buffer->push(gbm(curr * 0.3213, norm, gen));
 
                 if (gen_settings->send_data.load()) {
                   gen_settings->conn.load()
@@ -613,7 +623,7 @@ skip:
             }
           case 3: // Ornstein–Uhlenbeck process 
             {
-              data_buffer->enqueue(ou(data_buffer->peek(), norm, gen));
+              data_buffer->push(ou(data_buffer->front(), norm, gen));
               if (gen_settings->send_data.load()) {
                 gen_settings->conn.load()
                   ->send_text(fmt::format("Sideways: {}", send_price()));
@@ -635,7 +645,7 @@ skip:
         // no event
         // generate the next data point in the weiner process and add it onto
         // the data buffer, before dequeuing it
-        data_buffer->enqueue(gbm(data_buffer->peek(), norm, gen));
+        data_buffer->push(gbm(data_buffer->front(), norm, gen));
 
         // TODO: way to send data would go here, this could be in the format
         // of a second queue, extra fields in the Data_Transfer, etc. for now
