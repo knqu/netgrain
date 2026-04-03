@@ -28,6 +28,8 @@ type seriesType =
 
 var data1: pointData[] = [];
 var data2: pointData[] = [];
+var lowerBound: number;
+var upperBound: number;
 // --- Main Dashboard ---
 export default function SimulationRun() {
   const [activeStock, setActiveStock] = useState('1');
@@ -74,6 +76,12 @@ export default function SimulationRun() {
         if (activeStock === '1') {
           areaSeries.update({ time: time, value: Number(e.data) });
         }
+        if (data1.at(-1)!.value < lowerBound || data1.at(-1)!.value > upperBound) {
+          lowerBound = Number.MIN_VALUE;
+          upperBound = Number.MAX_VALUE;
+          socketRef1.current!.send("pause");
+          socketRef2.current!.send("pause");
+        }
       });
       
 
@@ -91,6 +99,12 @@ export default function SimulationRun() {
         data2.push({ time: time, value: Number(e.data) });
         if (activeStock === '2') {
           areaSeries.update({ time: time, value: Number(e.data) });
+        }
+        if (data1.at(-1)!.value < lowerBound || data1.at(-1)!.value > upperBound) {
+          lowerBound = Number.MIN_VALUE;
+          upperBound = Number.MAX_VALUE;
+          socketRef1.current!.send("pause");
+          socketRef2.current!.send("pause");
         }
       });
     
@@ -141,10 +155,58 @@ export default function SimulationRun() {
     }
   };
 
+  function pause() {
+    console.log("send pause signal");
+    socketRef1.current!.send("pause");
+    socketRef2.current!.send("pause");
+  }
+
+  function resume() {
+    console.log("send resume signal");
+    socketRef1.current!.send("resume");
+    socketRef2.current!.send("resume");
+  }
+
+  function modify() {
+    console.log("modify demo")
+    socketRef1.current!.send("mod demo");
+    socketRef2.current!.send("mod demo");
+  }
+
+  async function sleep(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+
+  async function sleepAfterTime() {
+    console.log("Sleep after elapsed time demo");
+    const time = (document.getElementById("sleep timer") as HTMLInputElement).value;
+    console.log(`sleep for ${time} seconds`);
+    await sleep(Number(time) * 1000);
+    socketRef1.current!.send("pause");
+    socketRef2.current!.send("pause");
+  }
+
+  async function sleepOnCondition() {
+    console.log("Sleep after condition demo");
+    
+    lowerBound = Number((document.getElementById("lower bound") as HTMLInputElement).value);
+    upperBound = Number((document.getElementById("upper bound") as HTMLInputElement).value);
+
+  }
   //const websocket2 = useMemo(() => new WebSocket("ws://localhost:5555/"), []);
   return (
     <div className="chart-wrapper">
-       
+        <button onClick={() => pause()}>Pause</button>
+        <button onClick={() => resume()}>Resume</button>
+        <button onClick={() => modify()}>Modify Demo</button>
+        <button onClick={() => sleepAfterTime()}>wait pause demo</button>
+        <button onClick={() => sleepOnCondition()}>Conditional pause demo</button>
+        <input id="sleep timer" inputMode="decimal"></input>
+        <div>
+          <input id="lower bound" inputMode="decimal"></input>
+          <input id="upper bound" inputMode="decimal"></input>
+        </div>
       <div style={{ marginBottom: '10px' }}>
         <button onClick={() => updateChart('1')}>Stock 1</button>
         <button onClick={() => updateChart('2')}>Stock 2</button>
