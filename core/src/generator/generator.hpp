@@ -122,11 +122,8 @@ public:
     return ret;
   }
 
-  /*
-   * This function implements Ornstein–Uhlenbeck process for a sideways trading market.
-   */
   double ou(double x_t, std::normal_distribution<double> &d, std::mt19937 &gen) {
-    return x_t + ((this->speed_of_reversion * (this->mean - x_t)) * dt) + (this->volatility * sqrt(dt) * d(gen));
+    return x_t + ((this->percent_drift * (this->target_price - x_t)) * dt) + (this->percent_volatility * sqrt(dt) * d(gen));
   }
 
   // return the number of datapoints generated, if data is not being tested

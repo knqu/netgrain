@@ -93,7 +93,7 @@ int main(int argc, const char *argv[])
   }).detach();
 
   if (argc > 1) {
-    app.port(atoi[argv[1]]).multithreaded().run();
+    app.port(atoi(argv[1])).multithreaded().run();
   }
   else {
     app.port(5555).multithreaded().run();
