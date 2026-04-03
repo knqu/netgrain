@@ -18,6 +18,7 @@ import LiveChartComponent from './components/LiveChart';
 import SimulationRun from './components/SimulationRun';
 
 function App() {
+  const socket = new WebSocket("ws://localhost:5555");
   return (
     <Router>
       <Routes>
@@ -34,7 +35,7 @@ function App() {
         <Route path="/forgot" element={<ForgotPassword />} />
         <Route path="/newSim" element={<NewSim />} />
         <Route path="/codeEditor" element={<CodeEditor />} />
-        <Route path="/liveChart" element={<LiveChartComponent />} />
+        <Route path="/liveChart" element={<LiveChartComponent ws={socket} />} />
         <Route path="/simRun" element={<SimulationRun />} />
       </Routes>
     </Router>

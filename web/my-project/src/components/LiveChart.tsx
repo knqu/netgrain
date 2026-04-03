@@ -12,8 +12,6 @@ interface LiveChartProps {
 }
 
 export default function ChartComponent({ws}: LiveChartProps) {
-    
-
     const LiveChart: React.FC<LiveChartProps> = ({ws}) => {
         const containerRef = useRef<HTMLDivElement | null>(null);
 
@@ -88,7 +86,6 @@ export default function ChartComponent({ws}: LiveChartProps) {
 
     // Chart body
     function Chart() {
-      const socket = new WebSocket("ws://localhost:5555");
       return (
           <div className="Chart_outer_container">
               <div className="Chart_inner_container">

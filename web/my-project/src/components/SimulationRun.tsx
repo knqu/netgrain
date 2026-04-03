@@ -1,5 +1,5 @@
 import "../styling/SimulationRun.css"
-import React, { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import ChartComponent from './LiveChart';
 //import type LiveChartProps from './LiveChart';
 
