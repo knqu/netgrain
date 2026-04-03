@@ -473,6 +473,7 @@ try
         std::string path = "./sims/" + std::to_string(x) + "/simResults";
         std::ifstream myfile;
         myfile.open(path);
+
         if (!myfile.is_open()) {
           std::cerr << "Error opening the file!";
           return "";
@@ -532,6 +533,7 @@ try
 
       std::ifstream myfile;
       myfile.open(path);
+      std::cerr << path;
       if (!myfile.is_open()) {
         std::cerr << "Error opening the file!";
         return std::string();
@@ -553,6 +555,10 @@ try
       }
 
       std::string payload = "";
+
+      if (tokens.size() != 6) {
+        return "";
+      }
 
       for (int i = 3; i < tokens.size(); i++) {
         payload += tokens.at(i) + ",";
@@ -690,12 +696,11 @@ try
     }
 };
 
+/*
 int main() {
+  //ConnectorSingleton::getInstance().addUser("user1@gmail.com", "1234", "user1") ;
+  //ConnectorSingleton::getInstance().createSimulation("user1@gmail.com", "", -1);
   ConnectorSingleton::getInstance().createSimulation("user1@gmail.com", "", -1);
-  ConnectorSingleton::getInstance().createSimulation("user1@gmail.com", "", -1);
-  /*
-  fmt::print("{}\n", ConnectorSingleton::getInstance().average("user1@gmail.com"));
-  fmt::print("{}\n", ConnectorSingleton::getInstance().fees("user1@gmail.com", 1));
-  */
   return 0;
 }
+*/

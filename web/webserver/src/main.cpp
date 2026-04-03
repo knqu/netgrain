@@ -295,7 +295,7 @@ int main() {
         if (email.empty()) return crow::response(401);
 
         try {
-            std::string result = ConnectorSingleton::getInstance().fees(email, 7);
+            std::string result = ConnectorSingleton::getInstance().fees(email, 1);
             crow::response res;
             res.write(result.empty() ? "" : result);
             res.set_header("Content-Type", "text/plain");
@@ -362,5 +362,5 @@ int main() {
 
     app.bindaddr("127.0.0.1").port(18080);
 
-    app.multithreaded().run();
+    app.run();
 }

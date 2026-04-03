@@ -11,7 +11,6 @@ export default function SimResults() {
 
         if (response.ok) {
           const savedData = await response.text();
-          console.log("Test:" + savedData);
 
           if (savedData && savedData.trim().length > 0) {
             setFeeData(savedData);
@@ -30,7 +29,13 @@ export default function SimResults() {
     calculate();
   }, []);
 
+  const [flatFee, percentageFee, shortTermTax] = (feeData === "Fee Data Unavailable.") ? ["Fee Data Unavailable", "Fee Data Unavailable", "Fee Data Unavailable"] : (feeData || "").split(",");
+
   return (
-    <h5>{feeData}</h5>
+    <div>
+    <h5>Flat Commission Fee: {flatFee}</h5>
+    <h5>Percentage-based Fee: {percentageFee}</h5>
+    <h5>Short-term taxes: {shortTermTax}</h5>
+    </div>
   );
 }
