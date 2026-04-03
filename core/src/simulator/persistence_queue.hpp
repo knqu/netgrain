@@ -167,6 +167,7 @@ private:
     void dispatch(const std::vector<PersistEvent>& batch) {
         std::vector<FillEvent> fills;
         std::vector<OrderPlacedEvent> placed;
+        std::vector<OrderCancelledEvent> cancelled;
         std::vector<PositionSnapshotEvent> positions;
         BalanceEvent latest_balance{};
         bool has_balance = false;
@@ -180,6 +181,8 @@ private:
                     fills.push_back(e);
                 } else if constexpr (std::is_same_v<T, OrderPlacedEvent>) {
                     placed.push_back(e);
+                } else if constexpr (std::is_same_v<T, OrderCancelledEvent>) {
+                    cancelled.push_back(e);
                 } else if constexpr (std::is_same_v<T, BalanceEvent>) {
                     latest_balance = e;
                     has_balance = true;

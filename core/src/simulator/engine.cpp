@@ -154,7 +154,7 @@ public:
                     pos.cost_basis += trade_value;
                     pos.lots.push_back({fill_price, fill_quantity, bar.date});
                 } else {
-                    if (trade_fee < balance) {
+                    if (balance < fee) {
                         ++order;
                         continue;
                     }
