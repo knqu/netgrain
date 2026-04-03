@@ -309,6 +309,7 @@ int main() {
                 for (int j = 0; j < 4; j++) {
                     std::getline(file, fileInfo[j]);
                 }
+                file.close();
 
                 jsonStr += "{";
                 jsonStr += "\"SimName\":\"" + fileInfo[0] + "\",";
