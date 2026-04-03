@@ -4,6 +4,7 @@
 
 #include "order.hpp"
 #include "historicalData.hpp"
+#include "persistence_queue.hpp"
 
 class Engine {
     int balance;
@@ -17,9 +18,12 @@ class Engine {
     TickerConfig default_config = {0.001, 5.0};
     std::unordered_map<std::string, TickerConfig> ticker_configs;
 
+    PersistenceQueue *pq;
+
 public:
-    Engine(int starting_balance) {
+    Engine(int starting_balance, PersistenceQueue *pq = nullptr) {
         balance = starting_balance;
+        this->pq = pq;
     }
 
     int get_balance() {
@@ -53,7 +57,9 @@ public:
 
     int place_order(const std::string& ticker, int quantity, int target_price, Side side, OrderType type) {
         int id = next_order_id++;
-        pending_orders.push_back({id, ticker, quantity, target_price, side, type, OrderStatus::PENDING});
+        Order order = {id, ticker, quantity, target_price, side, type, OrderStatus::PENDING};
+        pending_orders.push_back(order);
+        if (pq) pq->push(OrderPlacedEvent{order});
         return id;
     }
 
@@ -63,6 +69,7 @@ public:
                 order->status = OrderStatus::CANCELLED;
                 cancelled_orders.push_back(*order);
                 order = pending_orders.erase(order);
+                if (pq) pq->push(OrderCancelledEvent{order_id});
                 return true;
             }
         }
@@ -169,6 +176,25 @@ public:
         }
 
         fill_log.insert(fill_log.end(), fills.begin(), fills.end());
+
+        if (pq && !fills.empty()) {
+            for (auto& f : fills)
+                pq->push(FillEvent{f});
+
+            pq->push(BalanceEvent{balance, fills.back().timestamp});
+
+            // push position snapshots for each ticker that was filled
+            std::unordered_map<std::string, bool> seen;
+            for (auto& f : fills) {
+                if (!seen[f.ticker]) {
+                    seen[f.ticker] = true;
+                    auto it = positions.find(f.ticker);
+                    if (it != positions.end())
+                        pq->push(PositionSnapshotEvent{it->second});
+                }
+            }
+        }
+
         return fills;
     }
 };
