@@ -109,6 +109,7 @@ try
             #if _WIN64
               conn = new pqxx::connection(
                 "host=localhost "
+                "port=5432 "
                 "dbname=postgres "
                 "user=cnath"
               );
@@ -583,7 +584,7 @@ try
      */
     std::string fetchLeaderBoard() {
       pqxx::work tx(*conn);
-      std::string query = "SELECT * FROM leaderboard ORDER BY profit DESC, simulationtime DESC;";
+      std::string query = "SELECT * FROM leaderboard ORDER BY profit DESC, simulationtime DESC";
       pqxx::result r = tx.exec(query);
       std::string result;
 
@@ -591,6 +592,7 @@ try
         result.append("[]");
         return result;
       }
+      tx.abort();
 
       result.append("[");
 

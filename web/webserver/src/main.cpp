@@ -32,7 +32,6 @@ int main() {
     });
 
     CROW_ROUTE(app, "/login")([]() {
-        std::cout << "breuh" << std::endl;
         auto page = crow::mustache::load_unsafe("index.html");
         return page.render();
     });
@@ -54,7 +53,6 @@ int main() {
         std::string password = reqBody["login_submitted_password"].s();
         
         int dbResponse = ConnectorSingleton::getInstance().login(email, password) ;
-        std::cout << dbResponse << std::endl;
 
        if (dbResponse == true) {
             auto& cookie = app.get_context<crow::CookieParser>(req);
@@ -65,7 +63,6 @@ int main() {
             return res;
         }
         else {
-            std::cout << "Invalid" << std::endl;
             return crow::response(400);
         }
     });
@@ -117,14 +114,11 @@ int main() {
 
         std::string userCodeInput = reqBody["submitted_verification_code"].s();
         std::string code = session.get("sixDigits", "");
-        std::cout << code << std::endl;
 
         if (userCodeInput == session.get("sixDigits", "")) {
             std::string email = session.get("registeredEmail", "");
             std::string password = session.get("registeredPassword", "");
-            std::cout << "line 115" << std::endl;
             if (session.get<bool>("forgot") == true) {
-                std::cout << "worked" << std::endl;
                 session.remove("forgot");
                 ConnectorSingleton::getInstance().changePassword(email, password);
             }
@@ -167,7 +161,6 @@ int main() {
         session.set("submitted_new_password", newPassword);
         session.set("sixDigits", sixDigits);
         session.set("forgot", true);
-        std::cout << "hi" << std::endl;
         try {
             mailio::mail_address sender("mailio library", "burnermonkeyeye@gmail.com");
             mailio::mail_address recipient("mailio library", registeredEmail);
@@ -207,7 +200,7 @@ int main() {
             crow::response res;
             std::cout << "Fetching Leaderboard" << std::endl;
             std::string leaderboardJSON = ConnectorSingleton::getInstance().fetchLeaderBoard();
-            std::cout << "Start: " <<leaderboardJSON << std::endl;
+            std::cout << "Start: " << leaderboardJSON << std::endl;
 
             if (leaderboardJSON.size() == 0) {
                 res.code = 201;
@@ -269,7 +262,6 @@ int main() {
         if (email.empty()) return crow::response(401);
         */
 
-        std::cout << "Starting fetchLayout\n";
         try {
             std::string layoutJSON = ConnectorSingleton::getInstance().getCustomGUILayout("user1@gmail.com");
             crow::response res;
@@ -328,7 +320,6 @@ int main() {
             }
             jsonStr.pop_back();
             jsonStr += "]";
-            std::cout << jsonStr << std::endl;
 
             crow::response res;
             res.code = 200;
