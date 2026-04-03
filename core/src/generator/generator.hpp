@@ -181,6 +181,9 @@ public:
     double larger = 0.0;
     int flash_crash_points = 15;
     while (gen_settings->gen.load()) {
+      if (gen_settings->pause.load()) {
+        continue;
+      }
       if (gen_settings->conn.load() == nullptr)
       {
         goto skip;

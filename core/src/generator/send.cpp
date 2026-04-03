@@ -4,7 +4,7 @@
 
 #include <unordered_set>
 
-int main()
+int main(int argc, const char *argv[])
 {
   crow::SimpleApp app;
   std::unordered_set<crow::websocket::connection *> users;
@@ -58,6 +58,15 @@ int main()
         }
       }
 
+      if (data == "pause") {
+        parameters.pause.store(true);
+      }
+
+      if (data == "resume") {
+        parameters.pause.store(false);
+      }
+      
+
       if (data == "stop")
       {
         parameters.send_data.store(false);
@@ -83,8 +92,12 @@ int main()
     global_gen.generate_ws(&parameters);
   }).detach();
 
-  app.port(5555).multithreaded().run();
-
+  if (argc > 1) {
+    app.port(atoi[argv[1]]).multithreaded().run();
+  }
+  else {
+    app.port(5555).multithreaded().run();
+  }
   parameters.gen.store(false);
 }
 
