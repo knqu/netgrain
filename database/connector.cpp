@@ -506,6 +506,39 @@ try
       return ss.str().substr(0, ss.str().size() - 1);
     }
 
+    std::string fees(std::string identifer, int simID) {
+      // assume simID is correctly passed in
+      int uuID = getUUID(identifer);
+
+      if (uuIDfound(uuID) == uuID) {
+        return std::string();
+      }
+
+      std::string path = "./sims/" + std::to_string(simID) + "/simResults";
+
+      std::ifstream myfile;
+      myfile.open(path);
+      if (!myfile.is_open()) {
+        std::cerr << "Error opening the file!";
+        return std::string();
+      }
+
+      std::string token;
+      std::vector<std::string> tokens;
+
+      while (std::getline(myfile, token, ',')) {
+        tokens.push_back(token);
+      }
+
+      std::string payload = "";
+
+      for (int i = 3; i < tokens.size(); i++) {
+        payload += tokens.at(i) + ",";
+      }
+
+      return payload.substr(0, payload.size() - 1);
+    }
+
     // Persistent Change
     // adding again, uuid doesn't exist, 
     // convert simulation time into timestamp
@@ -636,6 +669,8 @@ try
 
 /*
 int main() {
+  fmt::print("{}\n", ConnectorSingleton::getInstance().fees("user1@gmail.com", 2));
+
   return 0;
 }
 */
