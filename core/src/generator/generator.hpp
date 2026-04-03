@@ -69,8 +69,8 @@ public:
     this->base_price = price;
     this->target_price = target;
     this->dt = 0.01;
-    this->data_buffer = new Queue<double>();
-    this->data_buffer->enqueue(price);
+    this->data_buffer = new std::queue<double>;
+    this->data_buffer->push(price);
   }
 
   Generator(
@@ -89,8 +89,8 @@ public:
     this->percent_volatility = volatility / 100.0;
     this->dt = 0.01;
     this->target_price = base_price;
-    this->data_buffer = new Queue<double>();
-    this->data_buffer->enqueue(static_cast<double>(base_price));
+    this->data_buffer = new std::queue<double>;
+    this->data_buffer->push(static_cast<double>(base_price));
     // NOTE: even though the simulator passes in an int scaled by 100, the gbm math looks to be scale invariant
   }
 
@@ -418,7 +418,7 @@ public:
               this->percent_drift = 5.0;
               this->percent_volatility = 0.15;
 
-              data_buffer->enqueue(bull_math(data_buffer->peek(), norm, gen));
+              data_buffer->push(bull_math(data_buffer->front(), norm, gen));
 
               if (gen_settings->send_data.load()) {
                 gen_settings->conn.load()->send_text(fmt::format("Bull: {}", send_price()));
