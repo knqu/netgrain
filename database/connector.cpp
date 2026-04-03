@@ -7,7 +7,10 @@
 #include <filesystem>
 #include <iomanip>
 #include <ctime>
+#include <iostream>
+#include <string>
 #include <fstream>
+#include <sstream>
 
 
 enum error_codes {
@@ -106,6 +109,7 @@ try
             #if _WIN64
               conn = new pqxx::connection(
                 "host=localhost "
+                "port=5432 "
                 "dbname=postgres "
                 "user=cnath"
               );
@@ -344,6 +348,7 @@ try
       return std::vector<int>{};
     }
 
+    // returns (path_to_data, dateofsim)
     std::vector<std::string> fetchSimulation(int simID, std::string identifier) {
       int uuid = getUUID(identifier);
       pqxx::work tx(*conn);
@@ -375,10 +380,11 @@ try
       int currentSeq = -1;
 
       try {
-        std::string query = "SELECT last_value FROM pastsimulations_simid_seq;";
+        std::string query = "SELECT COUNT(*) FROM pastsimulations;";
         pqxx::row r = tx.exec(query).one_row();
         currentSeq = r[0].as<int>();
         currentSeq++;
+        fmt::print("currentSeq is {}\n", currentSeq);
       }
       catch (const std::exception &e)
       {
@@ -389,10 +395,11 @@ try
       std::filesystem::create_directories(path);
 
       std::filesystem::permissions(
-        path,
-        std::filesystem::perms::others_all | std::filesystem::perms::owner_all | std::filesystem::perms::others_all,
-        std::filesystem::perm_options::add
-    );
+          path,
+          std::filesystem::perms::others_all | std::filesystem::perms::owner_all | std::filesystem::perms::others_all,
+          std::filesystem::perm_options::add
+          );
+
       // create files
       std::ofstream MyFile(path + "simResults");
       std::ofstream MyFile2(path + "algorithmActions");
@@ -442,6 +449,122 @@ try
       tx.commit();
 
       return currentSeq;
+    }
+
+    // return csv
+    std::string average(std::string identifer) {
+      int uuID = getUUID(identifer);
+
+      // time profit fees_incurred
+
+      if (uuIDfound(uuID) == uuID) {
+        return "";
+      }
+
+      std::vector<int> simIDs = fetchAllSims(identifer);
+
+      if (simIDs.size() == 0) {
+        return "";
+      }
+
+      std::vector<double> results = {};
+
+      for (auto x : simIDs) {
+        std::string path = "./sims/" + std::to_string(x) + "/simResults";
+        std::ifstream myfile;
+        myfile.open(path);
+
+        if (!myfile.is_open()) {
+          std::cerr << "Error opening the file!";
+          return "";
+        }
+
+        std::string fileContent;
+        std::string token;
+        std::vector<std::string> tokens;
+
+        int i = 0; // number of lines down
+        int j = 0; // how many average metrics to take
+
+        for( std::string line; getline( myfile, line ); )
+        {
+          if (i == 4) {
+            while (std::getline(myfile, token, ',') && j < 3) {
+              tokens.push_back(token);
+              j++;
+            }
+          }
+          i++;
+        }
+
+        if (!results.size()) {
+          results.insert(results.end(), j, 0.0);
+        }
+
+        for (int j = 0; j < tokens.size(); j++) {
+          results.at(j) += atof(tokens.at(j).c_str());
+        }
+      }
+
+      for (int i = 0; i < results.size(); i++) {
+        results.at(i) /= simIDs.size();
+      }
+
+      std::stringstream ss("");
+
+      for (auto x : results) {
+        ss << std::fixed << std::setprecision(2) << x << ",";
+      }
+
+      fmt::print("{}\n", ss.str().substr(0, ss.str().size() - 1));
+      
+      return ss.str().substr(0, ss.str().size() - 1);
+    }
+
+    std::string fees(std::string identifer, int simID) {
+      // assume simID is correctly passed in
+      int uuID = getUUID(identifer);
+
+      if (uuIDfound(uuID) == uuID) {
+        return std::string();
+      }
+
+      std::string path = "./sims/" + std::to_string(simID) + "/simResults";
+
+      std::ifstream myfile;
+      myfile.open(path);
+      std::cerr << path;
+      if (!myfile.is_open()) {
+        std::cerr << "Error opening the file!";
+        return std::string();
+      }
+
+      int i = 0;
+
+      std::string token;
+      std::vector<std::string> tokens;
+
+      for ( std::string line; getline( myfile, line ); )
+      {
+        if (i == 4) {
+          while (std::getline(myfile, token, ',')) {
+            tokens.push_back(token);
+          }
+        }
+        i++;
+      }
+
+      std::string payload = "";
+
+      if (tokens.size() != 6) {
+        return "";
+      }
+
+      for (int i = 3; i < tokens.size(); i++) {
+        payload += tokens.at(i) + ",";
+      }
+
+      return payload.substr(0, payload.size() - 1);
     }
 
     // Persistent Change
@@ -530,6 +653,7 @@ try
         result.append(tmp);
         entry++;
       }
+      tx.abort();
 
       if (result.length() > 0) {
         result.pop_back();
@@ -574,14 +698,9 @@ try
 
 /*
 int main() {
-  ConnectorSingleton::getInstance().createSimulation("user1", "" , -1);
-  ConnectorSingleton::getInstance().createSimulation("user1", "" , -1);
-  ConnectorSingleton::getInstance().createSimulation("user1", "" , -1);
-  ConnectorSingleton::getInstance().createSimulation("user1", "" , -1);
-  for (auto x : ConnectorSingleton::getInstance().fetchAllSims("user1")) {
-    fmt::print("Sim ID is {}\n", x);
-  }
-
+  //ConnectorSingleton::getInstance().addUser("user1@gmail.com", "1234", "user1") ;
+  //ConnectorSingleton::getInstance().createSimulation("user1@gmail.com", "", -1);
+  ConnectorSingleton::getInstance().createSimulation("user1@gmail.com", "", -1);
   return 0;
 }
 */
