@@ -42,7 +42,7 @@ class Gen_Benchmark {
 
     int speed_benchmark(double drift, double vol, int init_price) {
       // step one, create generator
-      Generator new_gen(drift, vol, init_price);
+      Generator new_gen(drift, vol, init_price, 0);
       Data_Transfer tester;
       tester.gen.store(true);
       tester.new_event.store(0);
@@ -66,7 +66,7 @@ class Gen_Benchmark {
 
     int data_benchmark(double drift, double vol, int init_price) {
       // create generator
-      Generator new_gen(drift, vol, init_price);
+      Generator new_gen(drift, vol, init_price, 0);
       std::cout << "Generator info:\n";
       std::cout << "Volatility: " << new_gen.get_percent_volatility() << "\n";
       std::cout << "Drift: " << new_gen.get_percent_drift() << "\n\n";
@@ -85,7 +85,7 @@ class Gen_Benchmark {
 
     int verification_benchmark(double drift, double vol, int init_price) {
       // create generator
-      Generator new_gen(drift, vol, init_price);
+      Generator new_gen(drift, vol, init_price, 0);
       Data_Transfer tester;
       tester.gen.store(true);
       tester.new_event.store(0);

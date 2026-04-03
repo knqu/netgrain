@@ -26,6 +26,16 @@ export default function ChartComponent() {
       ws: WebSocket;
     }
 
+    const [mode, setMode] = useState("sideways");
+
+    const handleModeChange = (newMode: string) => {
+        setMode(newMode);
+        // If the socket is already connected, tell the C++ server to switch immediately
+        if (socket.readyState === WebSocket.OPEN) {
+            socket.send(newMode);
+        }
+    };
+
     const LiveChart: React.FC<LiveChartProps> = ({ws}) => {
         const containerRef = useRef<HTMLDivElement | null>(null);
 
@@ -42,16 +52,16 @@ export default function ChartComponent() {
             // const websocket = new WebSocket(wsUri);
             var counter = 0;
             ws.addEventListener("open", () => {
+              ws.send("sideways"); // HERE
               console.log("CONNECTED");
-                console.log(`SENT: ping: ${counter}`);
+              console.log(`SENT: ping: ${counter}`);
             });
             var Queue: number[]= [];
             ws.addEventListener("message", (e) => {
-              console.log(`RECEIVED: ${e.data}: ${counter}`);
+              //console.log(`RECEIVED: ${e.data}: ${counter}`);
               counter++;
               Queue.push(e.data);
             });
-
 
             candleSeries.setData(initialData);
             chart.timeScale().fitContent();
@@ -79,7 +89,14 @@ export default function ChartComponent() {
               clearInterval(intervalID);
                 return;
               }
-              candleSeries.update(update.value);
+              var toParse = update.value.value;
+              if (toParse.includes(":")) {
+                toParse = toParse.split(":")[1].trim();
+              }
+              candleSeries.update({
+                time: update.value.time, 
+                value: Number(toParse)
+              });
             }, 1000);
 
             const resizeObserver = new ResizeObserver(entries => {
@@ -95,26 +112,42 @@ export default function ChartComponent() {
             };
         }, []);
 
-        return <div className="candleChart" ref={containerRef} />
-    };
+        const changeMode = (newMode: string) => {
+          if (ws.readyState === WebSocket.OPEN) {
+            ws.send(newMode);
+          }
+        };
 
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+            <div style={{ paddingBottom: '10px', display: 'flex', gap: '10px', justifyContent: 'center' }}>
+            <button onClick={() => changeMode("bull")}>Bull</button>
+            <button onClick={() => changeMode("bear")}>Bear</button>
+            <button onClick={() => changeMode("sideways")}>Sideways</button>
+            </div>
+            <div className="candleChart" ref={containerRef} style={{ flexGrow: 1 }} />
+          </div>
+
+        );
+    };
 
     // Chart body
     function Chart() {
-        return (
-            <div className="Chart_outer_container">
-                <div className="Chart_inner_container">
-                    <div className="Chart" >
-                        <LiveChart /* PUT PROPER WEBSOCKET HERE *//>
-                    </div>
-                </div>
-            </div>
-        );
+      const socket = new WebSocket("ws://localhost:5555");
+
+      return (
+          <div className="Chart_outer_container">
+              <div className="Chart_inner_container">
+                  <div className="Chart" >
+                      <LiveChart ws={socket} />
+                  </div>
+              </div>
+          </div>
+      );
     }
 
     return (
         <div className="ChartContainer">
-            <Chart />
             <Chart />
         </div>
     );
