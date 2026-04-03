@@ -61,6 +61,21 @@ int main()
         }
       }
 
+      if (data == "bear") { 
+        fmt::print("bear market triggered!\n");
+        if (parameters.new_event.load() == 0) {
+          parameters.new_event.store(4); 
+        }
+      }
+
+      if (data == "bull") { 
+        fmt::print("bull market triggered!\n");
+        if (parameters.new_event.load() == 0) {
+          parameters.new_event.store(5); 
+        }      
+      }
+
+
       if (data == "stop")
       {
         parameters.send_data.store(false);
