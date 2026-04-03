@@ -379,10 +379,11 @@ try
       int currentSeq = -1;
 
       try {
-        std::string query = "SELECT last_value FROM pastsimulations_simid_seq;";
+        std::string query = "SELECT COUNT(*) FROM pastsimulations;";
         pqxx::row r = tx.exec(query).one_row();
         currentSeq = r[0].as<int>();
         currentSeq++;
+        fmt::print("currentSeq is {}\n", currentSeq);
       }
       catch (const std::exception &e)
       {
@@ -393,10 +394,11 @@ try
       std::filesystem::create_directories(path);
 
       std::filesystem::permissions(
-        path,
-        std::filesystem::perms::others_all | std::filesystem::perms::owner_all | std::filesystem::perms::others_all,
-        std::filesystem::perm_options::add
-    );
+          path,
+          std::filesystem::perms::others_all | std::filesystem::perms::owner_all | std::filesystem::perms::others_all,
+          std::filesystem::perm_options::add
+          );
+
       // create files
       std::ofstream MyFile(path + "simResults");
       std::ofstream MyFile2(path + "algorithmActions");
@@ -451,7 +453,6 @@ try
     // return csv
     std::string average(std::string identifer) {
       int uuID = getUUID(identifer);
-      std::vector<double> results = {};
 
       // time profit fees_incurred
 
@@ -459,13 +460,13 @@ try
         return "";
       }
 
-      fmt::print("averaging for {}\n", uuID);
-
       std::vector<int> simIDs = fetchAllSims(identifer);
 
       if (simIDs.size() == 0) {
         return "";
       }
+
+      std::vector<double> results = {};
 
       for (auto x : simIDs) {
         std::string path = "./sims/" + std::to_string(x) + "/simResults";
@@ -475,21 +476,31 @@ try
           std::cerr << "Error opening the file!";
           return "";
         }
+
         std::string fileContent;
         std::string token;
         std::vector<std::string> tokens;
-        while (std::getline(myfile, token, ',')) {
-          tokens.push_back(token);
-        }
 
-        if (results.size() < tokens.size()) {
-          for (int i = 1; i < token.size(); i++) {
-            results.push_back(0.0);
+        int i = 0; // number of lines down
+        int j = 0; // how many average metrics to take
+
+        for( std::string line; getline( myfile, line ); )
+        {
+          if (i == 4) {
+            while (std::getline(myfile, token, ',') && j < 3) {
+              tokens.push_back(token);
+              j++;
+            }
           }
+          i++;
         }
 
-        for (int i = 0; i < tokens.size(); i++) {
-          results.at(i) += atof(tokens.at(i).c_str());
+        if (!results.size()) {
+          results.insert(results.end(), j, 0.0);
+        }
+
+        for (int j = 0; j < tokens.size(); j++) {
+          results.at(j) += atof(tokens.at(j).c_str());
         }
       }
 
@@ -502,6 +513,8 @@ try
       for (auto x : results) {
         ss << std::fixed << std::setprecision(2) << x << ",";
       }
+
+      fmt::print("{}\n", ss.str().substr(0, ss.str().size() - 1));
       
       return ss.str().substr(0, ss.str().size() - 1);
     }
@@ -523,11 +536,19 @@ try
         return std::string();
       }
 
+      int i = 0;
+
       std::string token;
       std::vector<std::string> tokens;
 
-      while (std::getline(myfile, token, ',')) {
-        tokens.push_back(token);
+      for ( std::string line; getline( myfile, line ); )
+      {
+        if (i == 4) {
+          while (std::getline(myfile, token, ',')) {
+            tokens.push_back(token);
+          }
+        }
+        i++;
       }
 
       std::string payload = "";
@@ -667,10 +688,12 @@ try
     }
 };
 
-/*
 int main() {
-  fmt::print("{}\n", ConnectorSingleton::getInstance().fees("user1@gmail.com", 2));
-
+  ConnectorSingleton::getInstance().createSimulation("user1@gmail.com", "", -1);
+  ConnectorSingleton::getInstance().createSimulation("user1@gmail.com", "", -1);
+  /*
+  fmt::print("{}\n", ConnectorSingleton::getInstance().average("user1@gmail.com"));
+  fmt::print("{}\n", ConnectorSingleton::getInstance().fees("user1@gmail.com", 1));
+  */
   return 0;
 }
-*/

@@ -11,6 +11,7 @@ export default function SimResults() {
 
         if (response.ok) {
           const savedData = await response.text();
+          console.log("Test:" + savedData);
 
           if (savedData && savedData.trim().length > 0) {
             setFeeData(savedData);

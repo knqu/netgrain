@@ -21,7 +21,6 @@ import ResultsTemplate from './components/ResultsTemplate';
 
 function App() {
   const socket = new WebSocket("ws://localhost:5555");
-  console.log(socket);
   return (
     <Router>
       <Routes>
