@@ -17,6 +17,7 @@ enum class OrderType: int {
 enum class OrderStatus : int {
     PENDING,
     FILLED,
+    PARTIAL,
     CANCELLED
 };
 

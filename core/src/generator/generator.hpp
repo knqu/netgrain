@@ -24,6 +24,17 @@
 #include <string>
 #include <stdlib.h>
 #include <queue>
+#include <thread>
+#include <chrono>
+
+struct GeneratedBar {
+    u32 date;
+    i64 open;
+    i64 high;
+    i64 low;
+    i64 close;
+    u64 volume;
+};
 
 class Generator {
 private:
@@ -47,16 +58,19 @@ private:
   int market_cap;
   int target_price;
 
+  double last_bar_close = 0.0;
+  bool has_bar_state = false;
+
 public:
   // constructor and destructor
   Generator(double drift, double volatility, int price, int target) {
-    percent_drift = drift;
-    percent_volatility = volatility;
-    data_buffer = new std::queue<double>;
-    data_buffer->push(price);
-    base_price = price;
-    dt = 0.01;
-    target_price = target;
+    this->percent_drift = drift;
+    this->percent_volatility = volatility;
+    this->base_price = price;
+    this->target_price = target;
+    this->dt = 0.01;
+    this->data_buffer = new Queue<double>();
+    this->data_buffer->enqueue(price);
   }
 
   Generator(
@@ -71,9 +85,20 @@ public:
     this->volatility = volatility;
     this->liquidity = liquidity;
     this->market_cap = market_cap;
+    this->percent_drift = 0.0;
+    this->percent_volatility = volatility / 100.0;
+    this->dt = 0.01;
+    this->target_price = base_price;
+    this->data_buffer = new Queue<double>();
+    this->data_buffer->enqueue(static_cast<double>(base_price));
+    // NOTE: even though the simulator passes in an int scaled by 100, the gbm math looks to be scale invariant
   }
 
   ~Generator() {
+  }
+
+  std::string get_ticker() const {
+    return ticker;
   }
 
   double get_dt() {
@@ -119,8 +144,7 @@ public:
    * This function returns the brownian motion at increment t, given the
    * Weiner process at time t
    */
-  double gbm(double S_0, std::normal_distribution<double> &d,
-             std::mt19937 &gen) {
+  double gbm(double S_0, std::normal_distribution<double> &d, std::mt19937 &gen) {
     double ret =
       (
         this->percent_drift
@@ -130,8 +154,41 @@ public:
     return ret;
   }
 
-  double ou(double x_t, std::normal_distribution<double> &d, std::mt19937 &gen) {
-    return x_t + ((this->percent_drift * (this->target_price - x_t)) * dt) + (this->percent_volatility * sqrt(dt) * d(gen));
+  // generates one ohlcv bar by simulating ticks_per_bar intra-bar price movements via gbm, then aggregating
+  GeneratedBar generate_bar(u32 date, int ticks_per_bar = 50) {
+    // setup is basically copied from generate method below
+    std::random_device rd{};
+    std::mt19937 rng{rd()};
+    std::normal_distribution<double> norm{0.0, 1.0};
+
+    // state is carried between calls so close(N) == open(N+1)
+    double cur = has_bar_state ? last_bar_close : static_cast<double>(base_price);
+    double open = cur;
+    double high = cur;
+    double low = cur;
+
+    for (int i = 0; i < ticks_per_bar; i++) {
+      cur = gbm(cur, norm, rng);
+      if (cur > high) high = cur;
+      if (cur < low) low = cur;
+    }
+
+    last_bar_close = cur;
+    has_bar_state = true;
+
+    // simulate volume from liquidity parameter - made this up, values are arbitrary (between 80-120%)
+    u64 volume = (liquidity > 0)
+      ? static_cast<u64>(liquidity * (80 + (rand() % 41)) / 100)
+      : static_cast<u64>(500 + rand() % 1000);
+
+    return GeneratedBar{
+      date,
+      static_cast<i64>(open),
+      static_cast<i64>(high),
+      static_cast<i64>(low),
+      static_cast<i64>(cur),
+      volume
+    };
   }
 
   // return the number of datapoints generated, if data is not being tested
@@ -144,6 +201,7 @@ public:
     // affects the dispersion of generated values from the mean.
     int i = 0;
     while (gen_settings->gen.load()) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(1000));
       // generate the next data point in the weiner process and add it onto
       // the data buffer, before dequeuing it
       data_buffer->push(gbm(data_buffer->front(), norm, gen));
@@ -169,6 +227,51 @@ public:
       std::this_thread::sleep_for(std::chrono::milliseconds(9));
     }
     return i;
+  }
+
+  /*
+   * This function implements Ornstein–Uhlenbeck process for a sideways trading market.
+   */
+  double ou(double x_t, std::normal_distribution<double> &d, std::mt19937 &gen) {
+    return x_t + ((this->percent_drift * (this->target_price - x_t)) * dt) + (this->percent_volatility * sqrt(dt) * d(gen));
+  }
+
+
+
+  /*
+   * bear maket logic -> based on gbm, customized to have a higher probability of large negative moves, and a lower probability of large positive moves
+   * Uses class drift/volatility, but occasionally triggers "panic selling"
+   */
+  double bear_math(double x_t, std::normal_distribution<double> &d, std::mt19937 &gen) {
+    double expected_return = (this->percent_drift - (this->percent_volatility * this->percent_volatility / 2.0)) * this->dt;
+    double random_shock = this->percent_volatility * sqrt(this->dt) * d(gen);
+    double total_move = expected_return + random_shock;
+
+    if (rand() % 100 < 3) {
+        total_move -= 0.05;
+    }
+
+    return x_t * exp(total_move);
+  }
+
+  /*
+   * Bull Market logic based on gbm, customized to have a higher probability of large positive moves, and a lower probability of large negative moves
+   * Uses class drift/volatility, but incorporates "buy the dip" and FOMO behavior
+   */
+  double bull_math(double x_t, std::normal_distribution<double> &d, std::mt19937 &gen) {
+    double expected_return = (this->percent_drift - (this->percent_volatility * this->percent_volatility / 2.0)) * this->dt;
+    double random_shock = this->percent_volatility * sqrt(this->dt) * d(gen);
+    double total_move = expected_return + random_shock;
+
+    if (total_move < -0.01) {
+        total_move *= 0.5;
+    }
+
+    if (rand() % 100 < 2) {
+        total_move += 0.03;
+    }
+
+    return x_t * exp(total_move);
   }
 
   // return the number of datapoints generated, if data is not being tested
@@ -289,13 +392,38 @@ public:
 
               break;
             }
-          case 3: // Ornstein–Uhlenbeck process 
+          case 3: // Ornstein–Uhlenbeck process
             {
               data_buffer->push(ou(data_buffer->front(), norm, gen));
               if (gen_settings->send_data.load()) {
-                gen_settings->conn.load()
-                  ->send_text(fmt::format("Sideways: {}", send_price()));
+                double res = send_price();
+                gen_settings->conn.load()->send_text(fmt::format("Sideways: {}", res));
               }
+            }
+          case 4: //Bear market
+            {
+              this->percent_drift = -5.0;
+              this->percent_volatility = 0.30;
+
+              data_buffer->enqueue(bear_math(data_buffer->peek(), norm, gen));
+
+              if (gen_settings->send_data.load()) {
+                gen_settings->conn.load()->send_text(fmt::format("Bear: {}", send_price()));
+              }
+              break;
+            }
+
+          case 5: //Bull market
+            {
+              this->percent_drift = 5.0;
+              this->percent_volatility = 0.15;
+
+              data_buffer->enqueue(bull_math(data_buffer->peek(), norm, gen));
+
+              if (gen_settings->send_data.load()) {
+                gen_settings->conn.load()->send_text(fmt::format("Bull: {}", send_price()));
+              }
+              break;
             }
           default:
             break;
@@ -451,7 +579,7 @@ skip:
 
               break;
             }
-          case 3: // Ornstein–Uhlenbeck process 
+          case 3: // Ornstein–Uhlenbeck process
             {
               data_buffer->push(ou(data_buffer->front(), norm, gen));
               if (gen_settings->send_data.load()) {
@@ -621,7 +749,7 @@ skip:
 
               break;
             }
-          case 3: // Ornstein–Uhlenbeck process 
+          case 3: // Ornstein–Uhlenbeck process
             {
               data_buffer->push(ou(data_buffer->front(), norm, gen));
               if (gen_settings->send_data.load()) {
