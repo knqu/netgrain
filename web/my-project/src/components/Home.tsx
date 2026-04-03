@@ -4,6 +4,7 @@ import LeaderboardComponent from './Leaderboard';
 import HistoryComponent from './History';
 import Generation from './Generation';
 import GridComponent from './GridComponent';
+import type { Widget } from './GridComponent';
 
 import '../styling/Home.css'
 
@@ -13,17 +14,27 @@ import NewSim from './newSimPage';
 
 export default function AppHome() {
   const [currentPage, setPage] = useState<string>("Dashboard");
-  const [widgets, setWidgets] = useState<number[]>([1,2,3]); // initial set of widgets
+  const [widgets, setWidgets] = useState<Widget[]>([]); // initial set of widgets
 
-  const addWidget = () => { // add another widget
-    setWidgets(prev => [...prev, prev.length > 0 ? Math.max(...prev) + 1 : 1]);
+  const addWidget = (content: string) => { // add another widget with content or not
+    if (!content) { // empty
+      setWidgets(prev => {
+        const nextId = prev.length > 0 ? Math.max(...prev.map(w => w.id)) + 1 : 1;
+        return [...prev, { id: nextId, content: "Widget #".concat('' + nextId)}];
+      });
+    } else {
+      setWidgets(prev => {
+        const nextId = prev.length > 0 ? Math.max(...prev.map(w => w.id)) + 1 : 1;
+        return [...prev, { id: nextId, content: content }];
+      });
+    }
   };
 
   const removeWidget = (idToRemove: number) => { // delete specific widget
-    setWidgets((prev) => prev.filter((id) => id !== idToRemove));
+    setWidgets((prev) => prev.filter((widget) => widget.id !== idToRemove));
   };
 
-  function Dashboard({ onAdd }: { onAdd : () => void}) {
+  function Dashboard({ onAdd }: { onAdd : (content: string) => void}) {
     return (
       <div className="DashboardContainter">
       <div className="DashboardButtonContainer">
@@ -31,7 +42,7 @@ export default function AppHome() {
       <DashboardButton button="History"></DashboardButton>
       <DashboardButton button="Simulation"></DashboardButton>
       <DashboardButton button="Generation"></DashboardButton>
-      <DashboardButton button="Add Widget" onClickOverride={onAdd}></DashboardButton>
+      <DashboardButton button="Add Widget" onClickOverride={() => { onAdd("") }}></DashboardButton>
       </div>
       </div>
     );
@@ -97,7 +108,7 @@ export default function AppHome() {
       case "Dashboard":
         return (
           <div className="Grid_and_Leaderboard">
-            <GridComponent widgets={widgets} removeWidget={removeWidget}></GridComponent>
+            <GridComponent widgets={widgets} removeWidget={removeWidget} addWidget={addWidget}></GridComponent>
             <div className="Leaderboard_and_DailyMarket">
               <DailyMarketComponenet></DailyMarketComponenet>
               <LeaderboardComponent></LeaderboardComponent>

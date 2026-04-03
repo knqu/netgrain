@@ -1,12 +1,22 @@
 import { useState, useEffect } from 'react';
+import Dropdown from 'react-bootstrap/Dropdown';
+import DropdownButton from 'react-bootstrap/DropdownButton';
 import { Responsive, useContainerWidth } from 'react-grid-layout';
 
-interface GridProps {
-  widgets: number[];
-  removeWidget: (id: number) => void;
+import '../styling/GridComponent.css'
+
+export interface Widget {
+  id: number;
+  content: string;
 }
 
-export default function GridComponent({ widgets, removeWidget }: GridProps) {
+interface GridProps {
+  widgets: Widget[];
+  removeWidget: (id: number) => void;
+  addWidget: (content: string) => void;
+}
+
+export default function GridComponent({ widgets, removeWidget, addWidget }: GridProps) {
   const { width, containerRef, mounted } = useContainerWidth();
   const [layouts, setLayouts] = useState<any>({});
 
@@ -28,6 +38,7 @@ export default function GridComponent({ widgets, removeWidget }: GridProps) {
     loadSavedLayout();
   }, []);
 
+  // TODO
   const saveLayoutToServer = async () => {
     try {
       const response = await fetch('/api/saveLayout', {
@@ -46,6 +57,37 @@ export default function GridComponent({ widgets, removeWidget }: GridProps) {
     }
   };
 
+  // HX
+  const getAverage = async (parameter: string) => {
+    console.log(parameter);
+    try {
+      const response = await fetch('/api/simAveraged');
+
+      if (response.ok) {
+        var savedData = await response.text();
+
+        if (!savedData) { // check if no simulations
+          savedData = "No Simulations, No Simulations, No Simulations";
+        }
+
+        const metrics = savedData.split(",");
+
+        if (parameter === "time") {
+          addWidget("Average Simulation Time: " + metrics.at(0)! + " seconds");
+        } else if (parameter === "money") {
+          addWidget("Average Simulation Profit: $" + metrics.at(1)!);
+        } else if (parameter === "fees") {
+          addWidget("Average Simulation Fee Paid: $" + metrics.at(2)!);
+        } else {
+          console.error("Unknown parameter");
+        }
+        console.log(savedData);
+      }
+    } catch (err) {
+      console.error("Failed to grab averages from server", err);
+    }
+  };
+
   const onLayoutChange = (current: any, all: any) => {
     setLayouts(all);
     console.log(current);
@@ -60,6 +102,13 @@ export default function GridComponent({ widgets, removeWidget }: GridProps) {
         >
           Save Layout
         </button>
+
+        <DropdownButton id="dropdown" title="Average Widget">
+          <Dropdown.Item onClick={() => { getAverage("time") } }>Time</Dropdown.Item>
+          <Dropdown.Item onClick={() => { getAverage("money") } }>Money</Dropdown.Item>
+          <Dropdown.Item onClick={() => { getAverage("fees") } }>Fees</Dropdown.Item>
+        </DropdownButton>
+
       </div>
       <div ref={containerRef} className="Grid">
       {mounted && (
@@ -71,9 +120,9 @@ export default function GridComponent({ widgets, removeWidget }: GridProps) {
         width={width}
         rowHeight={100}
         >
-        {widgets.map((id, index) => (
+        {widgets.map((widget, index) => (
           <div 
-          key={id.toString()} 
+          key={widget.id.toString()} 
 
           data-grid={{ 
             x: (index % 3) * 4,
@@ -91,12 +140,12 @@ export default function GridComponent({ widgets, removeWidget }: GridProps) {
           <button
           className="absolute top-2 right-2 text-xs p-1 bg-red-500 rounded opacity-0 group-hover:opacity-100 transition-opacity z-20"
           onMouseDown={(e) => e.stopPropagation()} 
-          onClick={() => removeWidget(id)}
+          onClick={() => removeWidget(widget.id)}
           >
           ✕
           </button>
 
-          WIDGET {id}
+          {widget.content}
           </div>
 
         ))}

@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom";
+//import { useNavigate } from "react-router-dom";
 import "../styling/History.css"
 import type { ReactElement } from "react";
 import arrow from "../assets/arrow.png"
@@ -15,6 +15,8 @@ export default function HistoryComponent() {
     {SimName : "Daniel's Sim", Date : "29 March 2026", Duration : "5 seconds", Profit : "+1"}
   ];
 
+
+  /* Temporarily uncommented for compiling npm run build
   const navigate = useNavigate(); 
   async function fetchSim() {
     try {
@@ -35,6 +37,7 @@ export default function HistoryComponent() {
       console.log(err);
     }
   }
+  */
 
   function HistoryTableEntryCollapsed({ TableEntry } : {TableEntry : HistoryTableEntry}) {
     return (

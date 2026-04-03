@@ -1,8 +1,7 @@
 import '../styling/Chart.css';
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef } from "react";
 import {
     createChart,
-    type AreaData,
     AreaSeries,
     type IChartApi,
     type UTCTimestamp,
@@ -45,7 +44,7 @@ export default function ChartComponent({ws}: LiveChartProps) {
 
             chart.timeScale().fitContent();
             const date = new Date(Date.UTC(2018, 12, 31, 12, 0, 0, 0));
-            var value = 100;
+            //var value = 100;
             function* getNextRealTimeUpdate() {
               while (true) {
                 date.setUTCDate(date.getUTCDate() + 1);
@@ -90,16 +89,16 @@ export default function ChartComponent({ws}: LiveChartProps) {
 
     // Chart body
     function Chart() {
-        ws: WebSocket;
-        return (
-            <div className="Chart_outer_container">
-                <div className="Chart_inner_container">
-                    <div className="Chart" >
-                        <LiveChart ws={ws} />
-                    </div>
-                </div>
-            </div>
-        );
+      const socket = new WebSocket("ws://localhost:5555");
+      return (
+          <div className="Chart_outer_container">
+              <div className="Chart_inner_container">
+                  <div className="Chart" >
+                      <LiveChart ws={ws} />
+                  </div>
+              </div>
+          </div>
+      );
     }
 
     return (
