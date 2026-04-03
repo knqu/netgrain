@@ -452,11 +452,14 @@ try
     std::string average(std::string identifer) {
       int uuID = getUUID(identifer);
       std::vector<double> results = {};
+
       // time profit fees_incurred
 
       if (uuIDfound(uuID) == uuID) {
         return "";
       }
+
+      fmt::print("averaging for {}\n", uuID);
 
       std::vector<int> simIDs = fetchAllSims(identifer);
 
@@ -555,7 +558,6 @@ try
         result.append("[]");
         return result;
       }
-      tx.abort();
 
       result.append("[");
 
@@ -589,6 +591,7 @@ try
         result.append(tmp);
         entry++;
       }
+      tx.abort();
 
       if (result.length() > 0) {
         result.pop_back();
@@ -633,7 +636,6 @@ try
 
 /*
 int main() {
-  fmt::print("{}\n", ConnectorSingleton::getInstance().average("user1"));
   return 0;
 }
 */
