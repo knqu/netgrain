@@ -17,6 +17,7 @@ export default function Login() {
                     }
                 );
                 if (response.status == 200) {
+                    console.log("going to home");
                     navigate("/home");
                 }
             } catch (err) {
@@ -30,7 +31,7 @@ export default function Login() {
         e.preventDefault();
         try {
             const response = await fetch(
-                ":api/loginAttempt",
+                "/api/loginAttempt",
                 {
                     method: "POST",
                     headers : {"Content-Type" : "application/json"},
@@ -38,8 +39,8 @@ export default function Login() {
                     redirect: "manual",
                 }
             );
-            console.log(response);
             if (response.status == 200) {
+                console.log('breuh');
               navigate("/home");
             }
         } catch (err) {

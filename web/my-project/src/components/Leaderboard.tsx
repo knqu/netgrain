@@ -15,9 +15,10 @@ export default function LeaderboardComponent() {
     const fetchLeaderboard = async () => {
       try {
         const response = await fetch(
-          "http://localhost:18080/api/fetchLeaderboard",
+          "/api/fetchLeaderboard",
           {
             method: "GET",
+            credentials: "include",
           }
         );
         if (response.status == 200 && response.body != null) {

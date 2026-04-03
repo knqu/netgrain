@@ -14,7 +14,7 @@
 #include <iostream>
 
 
-int main() {  
+int main() {
     using Session = crow::SessionMiddleware<crow::InMemoryStore>;
     crow::App<crow::CookieParser, Session> app{Session{
         crow::CookieParser::Cookie("session").max_age(129600).path("/"),
@@ -27,6 +27,8 @@ int main() {
     CROW_ROUTE(app, "/assets/index-<string>")([](std::string file) {
         crow::response res;
         res.set_static_file_info_unsafe("../../my-project/dist/assets/index-" + file);
+        res.set_header("Access-Control-Allow-Origin", "https://localhost");
+        res.set_header("Access-Control-Allow-Credentials", "true");
         return res;
     });
 
@@ -53,6 +55,7 @@ int main() {
         std::string password = reqBody["login_submitted_password"].s();
         
         int dbResponse = ConnectorSingleton::getInstance().login(email, password) ;
+        std::cout << dbResponse << std::endl;
 
        if (dbResponse == true) {
             auto& cookie = app.get_context<crow::CookieParser>(req);
@@ -202,9 +205,16 @@ int main() {
 
     CROW_ROUTE(app, "/api/fetchLeaderboard").methods(crow::HTTPMethod::GET, crow::HTTPMethod::Patch)([&](const crow::request& req) {
         try {
-            std::string leaderboardJSON = ConnectorSingleton::getInstance().fetchLeaderBoard();
-            std::cout << leaderboardJSON << std::endl;
             crow::response res;
+            std::string leaderboardJSON = ConnectorSingleton::getInstance().fetchLeaderBoard();
+
+            if (leaderboardJSON.size() == 0) {
+                res.code = 201;
+                return res;
+            }
+            
+            res.set_header("Access-Control-Allow-Origin", "https://localhost");
+            res.set_header("Access-Control-Allow-Credentials", "true");
             res.write(leaderboardJSON);
             res.code = 200;
             return res;
@@ -267,13 +277,7 @@ int main() {
         }
     });
 
-    CROW_ROUTE(app, "/api/simAveraged").methods(crow::HTTPMethod::GET, crow::HTTPMethod::Patch)([&](const crow::request& req) { // HX
-                                                                                                                        /*
-        auto& cookie = app.get_context<crow::CookieParser>(req);
-        std::string email = cookie.get_cookie("email");
-        if (email.empty()) return crow::response(401);
-        */
-
+    CROW_ROUTE(app, "/api/simAveraged").methods(crow::HTTPMethod::GET, crow::HTTPMethod::Patch)([&](const crow::request& req) { 
         try {
             std::string result = ConnectorSingleton::getInstance().average("user1@gmail.com");
             
@@ -287,10 +291,57 @@ int main() {
         }
     });
 
+    CROW_ROUTE(app, "/api/fetchHistory").methods(crow::HTTPMethod::GET, crow::HTTPMethod::Patch)([&](const crow::request& req) {
+        auto& cookie = app.get_context<crow::CookieParser>(req);
+        std::string email = cookie.get_cookie("email");
+
+        if (email.empty()) return crow::response(401);
+        try {
+            std::vector<int> hist = ConnectorSingleton::getInstance().fetchAllSims(email);
+
+            if (hist.size() == 0) {
+                crow::response res;
+                res.code = 201;
+                return res;
+            }
+
+            std::string jsonStr = "[";
+            for (int i = 0; i < hist.size(); i++) {
+                std::string filePath = "../src/sims/" + std::to_string(hist[i]) + "/simResults";
+                std::vector<std::string> fileInfo(4);
+                std::ifstream file(filePath);
+                for (int j = 0; j < 4; j++) {
+                    std::getline(file, fileInfo[j]);
+                }
+
+                jsonStr += "{";
+                jsonStr += "\"SimName\":\"" + fileInfo[0] + "\",";
+                jsonStr += "\"Date\":\"" + fileInfo[1] + "\",";
+                jsonStr += "\"Duration\":\"" + fileInfo[2] + "\",";
+                jsonStr += "\"Profit\":\"" + fileInfo[3] + "\",";
+                jsonStr += "\"ID\":" + std::to_string(hist[i]);
+                jsonStr += "},";
+            }
+            jsonStr.pop_back();
+            jsonStr += "]";
+            std::cout << jsonStr << std::endl;
+
+            crow::response res;
+            res.code = 200;
+            res.set_header("Access-Control-Allow-Origin", "https://localhost");
+            res.set_header("Access-Control-Allow-Credentials", "true");
+            res.set_header("Content-Type", "application/json");
+            res.write(jsonStr);
+            return res;
+        } catch (...) {
+            return crow::response(500);
+        }
+    });
+
     CROW_CATCHALL_ROUTE(app)([](){
         std::cout << "Catch All" << std::endl;
         crow::response res;
-        res.set_static_file_info_unsafe("../../my-project/dist/catchall.html");
+        res.set_static_file_info_unsafe("../../my-project/src/components/catchall.html");
         return res;
     });
 

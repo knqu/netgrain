@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html>
+
+<body>
+    <script>
+        fetch('/login')
+            .then(res => {
+                if (res.status === 200) {
+                    window.location.href = '/login';
+                }
+            })
+            .catch(err => console.error(err));
+    </script>
+</body>
+
+</html>

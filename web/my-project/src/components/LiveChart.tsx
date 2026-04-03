@@ -89,6 +89,7 @@ export default function ChartComponent({ws}: LiveChartProps) {
     // Chart body
     function Chart() {
       const socket = new WebSocket("ws://localhost:5555");
+      console.log(socket);
       return (
           <div className="Chart_outer_container">
               <div className="Chart_inner_container">

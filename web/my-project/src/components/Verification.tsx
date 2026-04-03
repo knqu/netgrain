@@ -9,7 +9,7 @@ export default function Verification() {
         e.preventDefault()
         try {
             const response = await fetch(
-                "http://localhost:18080/api/verifyEmail",
+                "/api/verifyEmail",
                 {
                     method : "POST",
                     headers : {"Content-Type" : "application/json"},

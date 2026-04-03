@@ -12,7 +12,7 @@ export default function Registration() {
         e.preventDefault()
         try {
             const response = await fetch(
-                "http://localhost:18080/api/registration",
+                "/api/registration",
                 {
                     method : "POST",
                     headers : {"Content-Type" : "application/json"},

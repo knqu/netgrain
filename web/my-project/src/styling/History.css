@@ -24,6 +24,7 @@
 .HistoryTable {
     grid-column: 2;
     grid-row: 2;
+    overflow-y: auto;
 }
 
 .history-table-header {
@@ -54,6 +55,7 @@
 
 .history-table-contents {
     display: grid;
+    width: 90vw;
     grid-template-columns: 2fr repeat(4, 24fr) 1fr 1fr;
     grid-template-rows: auto;
 

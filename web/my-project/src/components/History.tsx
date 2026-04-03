@@ -15,15 +15,17 @@ export default function HistoryComponent() {
     "Date": string;
     "Duration": string;
     "Profit": string;
-    "ID"?: string;
+    "ID": string;
   }
 
-  const testData: HistoryTableEntry[] = [
+  const [histEntries, setHistEntries] = useState<HistoryTableEntry[]>([]);
+
+  /*const testData: HistoryTableEntry[] =  [
     { SimName: "Daniel's Sim", Date: "29 March 2026", Duration: "5 seconds", Profit: "+1" },
     { SimName: "Haiyan's Sim", Date: "30 March 2026", Duration: "15 seconds", Profit: "-1049" },
     { SimName: "Kevin's Sim", Date: "31 March 2026", Duration: "115 seconds", Profit: "0" },
     { SimName: "Colin's Sim", Date: "1 April 2026", Duration: "995 seconds", Profit: "+34" },
-  ];
+  ];*/
 
   const testLineData: LineData<number>[] = [
     { time: 0, value: 1100 },
@@ -103,7 +105,7 @@ export default function HistoryComponent() {
     try {
       const response =
         await fetch(
-          "http://localhost:18080/api/fetchSim",
+          "/api/fetchSim",
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -118,7 +120,6 @@ export default function HistoryComponent() {
       console.log(err);
     }
   }
-  */
 
   function DisplayLineChart({ chartIndex }: { chartIndex: boolean }) {
     const containerRef = useRef<HTMLDivElement | null>(null);
@@ -333,7 +334,7 @@ export default function HistoryComponent() {
             </div>
           </div>
 
-          <button className="expand-button" onClick={() => fetchSim}>
+          <button className="expand-button" onClick={fetchSim}>
             <img id="history-table-expand" src={expand}></img>
           </button>
         </div>
@@ -367,20 +368,26 @@ export default function HistoryComponent() {
     );
   }
 
-  let histEntries: HistoryTableEntry[] = [];
   useEffect(() => {  
     const fetchHist = async () => {
       try {
         const response = await fetch(
-          "http://localhost:18080/api/fetchHistory",
+          "/api/fetchHistory",
           {
             method: "GET",
+            credentials: "include",
           }
         );
 
         if (response.status == 200 && response.body != null) {
           const responseStr = await response.text();
-          histEntries = JSON.parse(responseStr);
+          console.log("String");
+          console.log(responseStr);
+
+          const temp = JSON.parse(responseStr);
+          setHistEntries(temp);
+          console.log("history entries");
+          console.log(histEntries);
         }
       } catch (err) {
         console.log(err);
@@ -390,6 +397,6 @@ export default function HistoryComponent() {
   }, []);
 
   return (
-    <HistoryTable TableEntryList={histEntries.length == 0 ? testData : histEntries}></HistoryTable>
+    <HistoryTable TableEntryList={histEntries}></HistoryTable>
   );
 }

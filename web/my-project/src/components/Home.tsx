@@ -68,7 +68,7 @@ export default function AppHome() {
     const timeStr = String(Math.floor(Math.random() * 24) + 1) + ":" + String(Math.floor(Math.random() * 24) + 1) + ":" + String(Math.floor(Math.random() * 24) + 1);
     try {
       const response = await fetch(
-        "http://localhost:18080/api/attemptDaily",
+        "/api/attemptDaily",
         {
           method: "POST",
           headers : {"Content-Type" : "application/json"},
