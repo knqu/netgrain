@@ -17,7 +17,6 @@ export default function Login() {
                     }
                 );
                 if (response.status == 200) {
-                    console.log("going to home");
                     navigate("/home");
                 }
             } catch (err) {

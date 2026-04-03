@@ -5,11 +5,20 @@
   font-style: normal;
 }
 
+.parent-container {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+    height: 90vh;
+}
+
 .registration-parent {
     background-color: #3D3F42;
     border-radius: 0.4em;
     border-color: white;
     padding: 0.5em;
+    width: 14vw;
 }
 
 .registration-container {
