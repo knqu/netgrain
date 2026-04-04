@@ -696,11 +696,7 @@ try
     }
 };
 
-/*
 int main() {
-  //ConnectorSingleton::getInstance().addUser("user1@gmail.com", "1234", "user1") ;
-  //ConnectorSingleton::getInstance().createSimulation("user1@gmail.com", "", -1);
-  ConnectorSingleton::getInstance().createSimulation("user1@gmail.com", "", -1);
+  ConnectorSingleton::getInstance().addUser("user2@gmail.com", "1234", "user2") ;
   return 0;
 }
-*/

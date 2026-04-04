@@ -37,9 +37,6 @@ int main() {
 
     // MERGE ATTEMPT
     CROW_WEBSOCKET_ROUTE(app, "/websocket")
-      .onaccept([&](const crow::request& req, void** userdata){
-        fmt::print("Accepted connection\n"));
-      })
       .onopen([&](crow::websocket::connection &conn) {
         fmt::print("new websocket connection from {}!\n", conn.get_remote_ip());
         std::lock_guard<std::mutex> _(mtx);
@@ -454,7 +451,7 @@ int main() {
     }).detach();
 
     app.bindaddr("127.0.0.1").port(18080);
-    parameters.gen.store(false);
+    //parameters.gen.store(false);
 
     app.run();
 }
