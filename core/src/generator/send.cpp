@@ -10,6 +10,9 @@ int main(int argc, const char *argv[])
   std::unordered_set<crow::websocket::connection *> users;
   std::mutex mtx;
 
+  /*
+   * This needs to be turned into an array of generators
+   */
   Generator global_gen(0.2, 0.3, 100, 150);
   Data_Transfer parameters;
   parameters.conn.store(nullptr);
