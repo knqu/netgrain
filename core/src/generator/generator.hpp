@@ -455,8 +455,7 @@ public:
         // of a second queue, extra fields in the Data_Transfer, etc. for now
         // printing to console will suffice
         if (gen_settings->send_data.load()) {
-          gen_settings->conn.load()
-            ->send_text(fmt::format("{}", send_price()));
+          gen_settings->conn.load()->send_text(fmt::format("{}", send_price()));
         }
       }
 
