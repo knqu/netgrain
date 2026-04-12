@@ -696,7 +696,9 @@ try
     }
 };
 
+/*
 int main() {
   ConnectorSingleton::getInstance().addUser("user2@gmail.com", "1234", "user2") ;
   return 0;
 }
+*/

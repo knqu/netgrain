@@ -44,7 +44,7 @@ int main() {
         parameters.conn.store(&conn);
         parameters.send_data.store(true);
       })
-      .onclose([&](
+      .onclose([&]( // need to reset
         crow::websocket::connection &conn,
         const std::string &reason,
         uint16_t) {
@@ -53,6 +53,7 @@ int main() {
         std::lock_guard<std::mutex> _(mtx);
         parameters.send_data.store(false);
         parameters.conn.store(nullptr);
+        global_gen.reset();
         users.erase(&conn);
       })
       .onmessage([&](
