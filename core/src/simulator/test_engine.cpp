@@ -3,7 +3,7 @@
 #include <string>
 #include <unordered_map>
 
-#include "engine.cpp"
+#include "engine.hpp"
 
 MarketDataRow make_bar(u32 date, i64 open, i64 high, i64 low, i64 close, u64 volume) {
     return {date, open, high, low, close, volume, 0};

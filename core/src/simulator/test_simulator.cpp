@@ -3,7 +3,7 @@
 #include <string>
 #include <unordered_map>
 
-#include "engine.cpp"
+#include "engine.hpp"
 #include "../generator/generator.hpp"
 
 MarketDataRow to_market_row(const GeneratedBar& bar) {

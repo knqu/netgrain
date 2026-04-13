@@ -33,19 +33,13 @@ struct PositionSnapshotEvent {
     Position position;
 };
 
-struct TickerConfigEvent {
-    std::string ticker;
-    TickerConfig config;
-};
-
 // struct that represents all possible events that can be pushed to the persistence queue
 using PersistEvent = std::variant<
     FillEvent,
     OrderPlacedEvent,
     OrderCancelledEvent,
     BalanceEvent,
-    PositionSnapshotEvent,
-    TickerConfigEvent
+    PositionSnapshotEvent
 >;
 
 // interface for writing events to the database (implemented by database/sim_writer.hpp)
@@ -58,7 +52,6 @@ public:
     virtual void write_orders_cancelled(const std::vector<OrderCancelledEvent>& batch) = 0;
     virtual void write_balance(const BalanceEvent& snapshot) = 0;
     virtual void write_positions(const std::vector<PositionSnapshotEvent>& batch) = 0;
-    virtual void write_ticker_configs(const std::vector<TickerConfigEvent>& batch) = 0;
 };
 
 // async write-back buffer for pushing events to the persistence writer
@@ -176,7 +169,6 @@ private:
         std::vector<OrderPlacedEvent> placed;
         std::vector<OrderCancelledEvent> cancelled;
         std::vector<PositionSnapshotEvent> positions;
-        std::vector<TickerConfigEvent> configs;
         BalanceEvent latest_balance{};
         bool has_balance = false;
 
@@ -196,8 +188,6 @@ private:
                     has_balance = true;
                 } else if constexpr (std::is_same_v<T, PositionSnapshotEvent>) {
                     positions.push_back(e);
-                } else if constexpr (std::is_same_v<T, TickerConfigEvent>) {
-                    configs.push_back(e);
                 }
             }, event);
         }
@@ -217,9 +207,6 @@ private:
         }
         if (!positions.empty()) {
             writer->write_positions(positions);
-        }
-        if (!configs.empty()) {
-            writer->write_ticker_configs(configs);
         }
     }
 };
