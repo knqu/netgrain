@@ -68,7 +68,7 @@ int main(int argc, const char *argv[])
       if (data == "resume") {
         parameters.pause.store(false);
       }
-      
+
 
       if (data == "stop")
       {
@@ -112,4 +112,3 @@ int main(int argc, const char *argv[])
 
   parameters.gen.store(false);
 }
-

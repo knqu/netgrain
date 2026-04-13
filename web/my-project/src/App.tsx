@@ -14,7 +14,7 @@ import SimResults from './components/SimResults';
 import Verification from './components/Verification';
 import ForgotPassword from './components/ForgotPassword';
 import CodeEditor from './components/CodeEditor';
-import NewSim from './components/newSimPage'
+//import NewSim from './components/newSimPage'
 import SimulationRun from './components/SimulationRun';
 import LiveChartComponent from './components/LiveChart';
 import ResultsTemplate from './components/ResultsTemplate';
@@ -35,7 +35,6 @@ function App() {
         <Route path="/algoTable" element={<AlgoTable />} />
         <Route path="/verification" element={<Verification />} />
         <Route path="/forgot" element={<ForgotPassword />} />
-        <Route path="/newSim" element={<NewSim />} />
         <Route path="/codeEditor" element={<CodeEditor />} />
         <Route path="*" element={<Login />} />
         <Route path="/liveChart" element={<LiveChartComponent />} />
