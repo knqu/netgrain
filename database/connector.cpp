@@ -10,6 +10,7 @@
 #include <iostream>
 #include <string>
 #include <fstream>
+#include <stdlib.h>
 #include <sstream>
 
 
@@ -367,12 +368,74 @@ try
       return std::vector<std::string> {r[2].c_str(), r[4].c_str()};
     }
 
+    double percentErr(double curr, double target) {
+      double result = ((target - curr)/curr)/100;
+      result = (result >= 0) ? result : result * (-1);
+      return 100 * result;
+    }
+
+    // Let sOne be current, and sTwo be the relative
+    std::vector<double> comparativeAnalytics(int sOne, int sTwo) {
+      pqxx::work tx(*conn);
+
+      // File 1
+      std::ifstream fileOne;
+      std::string pathOne = "./sims/" + std::to_string(sOne) + "/simResults";
+      fileOne.open(pathOne);
+      std::string token;
+      std::vector<std::string> tokens = {};
+      int i = 0;
+
+      for ( std::string line; getline( fileOne, line ); )
+      {
+        if (i == 4) {
+          while (std::getline(fileOne, token, ',')) {
+            tokens.push_back(token);
+          }
+        }
+        i++;
+      }
+
+      fileOne.close();
+
+      // File 2
+      std::ifstream fileTwo;
+      std::string pathTwo = "./sims/" + std::to_string(sTwo) + "/simResults";
+      fileTwo.open(pathTwo);
+      i = 0;
+      std::vector<std::string> tokensTwo = {};
+
+      for ( std::string line; getline( fileTwo, line ); )
+      {
+        if (i == 4) {
+          while (std::getline(fileTwo, token, ',')) {
+            tokensTwo.push_back(token);
+          }
+        }
+        i++;
+      }
+
+      fileTwo.close();
+
+      if (tokens.size() != tokensTwo.size()) {
+        fmt::print("Unequal metrics found\n");
+        return std::vector<double>();
+      }
+
+      std::vector<double> res = {};
+
+      for (int i = 0; i < tokens.size(); i++) {
+        res.push_back(percentErr(atof(tokens.at(i).c_str()), atof(tokensTwo.at(i).c_str())));
+      }
+
+      return res;
+    }
+
     // return simID
     int createSimulation(std::string identifer, std::string configUsed, int globalPresetID) {
       int uuID = getUUID(identifer);
 
       if (uuIDfound(uuID) == uuID) {
-        return -1;
       }
 
       pqxx::work tx(*conn);
@@ -557,6 +620,7 @@ try
       std::string payload = "";
 
       if (tokens.size() != 6) {
+        myfile.close();
         return "";
       }
 
@@ -564,6 +628,7 @@ try
         payload += tokens.at(i) + ",";
       }
 
+      myfile.close();
       return payload.substr(0, payload.size() - 1);
     }
 
@@ -698,7 +763,9 @@ try
 
 /*
 int main() {
-  ConnectorSingleton::getInstance().addUser("user2@gmail.com", "1234", "user2") ;
+  for (auto x : ConnectorSingleton::getInstance().comparativeAnalytics(1, 2)) {
+    fmt::print("{}\n", x);
+  }
   return 0;
 }
 */
