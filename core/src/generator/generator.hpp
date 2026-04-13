@@ -28,16 +28,16 @@
 #include <chrono>
 
 struct GeneratedBar {
-    u32 date;
-    i64 open;
-    i64 high;
-    i64 low;
-    i64 close;
-    u64 volume;
+  u32 date;
+  i64 open;
+  i64 high;
+  i64 low;
+  i64 close;
+  u64 volume;
 };
 
 class Generator {
-private:
+public:
   double percent_drift;
   double percent_volatility;
   double dt;
@@ -61,7 +61,6 @@ private:
   double last_bar_close = 0.0;
   bool has_bar_state = false;
 
-public:
   // constructor and destructor
   Generator(double drift, double volatility, int price, int target) {
     this->percent_drift = drift;
