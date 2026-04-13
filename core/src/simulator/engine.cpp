@@ -22,6 +22,13 @@ class Engine {
 
     PersistenceQueue *pq;
 
+    int apply_slippage(int price, int fill_qty, u64 bar_volume, double volatility, Side side) {
+        double half_spread = price * volatility;
+        double volume_ratio = (bar_volume > 0) ? static_cast<double>(fill_qty) / static_cast<double>(bar_volume) : 1.0;
+        double slippage = half_spread * (1.0 + volume_ratio);
+        return (side == Side::BUY) ? price + static_cast<int>(slippage) : price - static_cast<int>(slippage);
+    }
+
 public:
     Engine(int starting_balance, PersistenceQueue *pq = nullptr) {
         init_balance = starting_balance;
@@ -132,6 +139,8 @@ public:
             }
 
             if (should_fill) {
+                fill_price = apply_slippage(fill_price, fill_quantity, bar.volume, config.volatility, order->side);
+
                 int fill_quantity = std::min(order->quantity, static_cast<int>(bar.volume));
                 bar.volume -= fill_quantity;
 
