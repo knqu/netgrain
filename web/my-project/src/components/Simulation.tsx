@@ -429,12 +429,12 @@ const Simulation: React.FC = () => {
                                 + Add Stock
                             </button>
                         </div>
-                        <button 
+                        {/*<button 
                             className="sim-btn-primary"
                             onClick={handleStart}
                         >
                             Run Backtest
-                        </button>
+                        </button>*/}
                     {/* </div> */}
                 </div>
             ) : (
