@@ -133,7 +133,6 @@ export default function CodeEditor() {
         //      This is the code editing page.
         // </h1>
         <div className="editor_outer" >
-            <button className="file_send"> Send to backend </button>
             <div className="editor_inner">
                 
                 <div className="code_editor">
