@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from "react-router-dom";
+import "../styling/newSim.css"
+import CodeEditor from "./CodeEditor"
+import SimResults from "./SimResults";
 import '../styling/Simulation.css';
 
 function SimulationExec() {
@@ -84,6 +87,9 @@ const Simulation: React.FC = () => {
     // --- UPLOAD STATE ---
     const [uploadFile, setUploadFile] = useState<File | null>(null);
     const [uploadStatus, setUploadStatus] = useState<string>("");
+
+
+    const [currentPage, setPage] = useState<string>("Sim");
 
     // --- NEW: FETCH AVAILABLE TICKERS ON LOAD ---
     useEffect(() => {
@@ -238,6 +244,7 @@ const Simulation: React.FC = () => {
     };
 
     // --- UI RENDER ---
+    function ConfigUI() {
     return (
         <div className="sim-container">
             
@@ -509,6 +516,50 @@ const Simulation: React.FC = () => {
 
         </div>
     );
+    }
+
+    const startSim = async () => {
+        handleStart();
+        setPage("Start");
+    };    
+    
+
+    function renderPage() {
+        switch (currentPage) {
+            case "Sim":
+                return (
+                    <div className="outer-sim">
+                        <div className="action-board">
+                        <button className="startSim"
+                        onClick={startSim}>
+                        Start Simulation
+                        </button>
+                    </div>
+                    <div className="sim-grid">
+                        <div className="grid-item">
+                            <CodeEditor />
+                        </div>
+                        <div className="grid-item">
+                            <ConfigUI />
+                        </div>
+                    </div>
+            
+                    </div>
+                );
+                case "Start":
+                    return (<SimResults />);
+        }
+    }
+    
+
+
+    return(
+        <>
+            {renderPage()}
+        </>
+    )
+
+
 };
 
 export default Simulation;

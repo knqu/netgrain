@@ -7,13 +7,14 @@ import GridComponent from './GridComponent';
 import SimResults from './SimResults';
 import LiveCharts from './LiveChart';
 import ChartSelect from './ChartSelect';
+import Simulation from './Simulation';
 import type { Widget } from './GridComponent';
 
 import '../styling/Home.css'
 
 import '/node_modules/react-grid-layout/css/styles.css';
 import '/node_modules/react-resizable/css/styles.css';
-import NewSim from './newSimPage';
+//import NewSim from './newSimPage';
 
 export default function AppHome() {
   const [currentPage, setPage] = useState<string>("Dashboard");
@@ -127,7 +128,7 @@ export default function AppHome() {
         );
       case "Simulation" :
         return (
-          <NewSim />
+          <Simulation />
         );
       case "Generation" :
         return (
