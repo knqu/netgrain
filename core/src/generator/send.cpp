@@ -3,12 +3,15 @@
 #include "generator.hpp"
 
 #include <unordered_set>
+#include <chrono>
 
 int main(int argc, const char *argv[])
 {
   crow::SimpleApp app;
   std::unordered_set<crow::websocket::connection *> users;
   std::mutex mtx;
+
+  std::vector<double> *streamed_points = new std::vector<double>();
 
   Generator global_gen(0.2, 0.3, 100, 150);
   Data_Transfer parameters;
@@ -89,15 +92,24 @@ int main(int argc, const char *argv[])
     });
 
   std::thread([&]{
-    global_gen.generate_ws(&parameters);
+    global_gen.generate_ws(&parameters, streamed_points);
   }).detach();
 
-  if (argc > 1) {
+  if (argc > 1)
+  {
     app.port(atoi(argv[1])).multithreaded().run();
   }
   else {
     app.port(5555).multithreaded().run();
   }
+
+  std::chrono::time_point now = std::chrono::system_clock::now();
+  std::chrono::duration duration = now.time_since_epoch();
+  size_t seconds_since_epoch = std::chrono::duration_cast<std::chrono::seconds>(duration).count();
+  std::hash<size_t> hashing;
+
+  FILE *fp = fopen(fmt::format("{}", hashing(seconds_since_epoch)).c_str(), "wb");
+
   parameters.gen.store(false);
 }
 
