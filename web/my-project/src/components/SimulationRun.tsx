@@ -7,7 +7,7 @@ import {
   type UTCTimestamp,
 } from "lightweight-charts"
 
-import { type WidgetInterface, type WidgetListProps } from "./EndSimulation"
+import { type WidgetInterface } from "./EndSimulation"
 import EndSimulation from "./EndSimulation"
 //import type LiveChartProps from './LiveChart';
 
@@ -28,17 +28,12 @@ type seriesType =
     DeepPartial<AreaStyleOptions & SeriesOptionsCommon>
   >
 */
-
-var data1: pointData[] = [];
-var data2: pointData[] = [];
+var data: pointData[][] = [];
 var lowerBound: number;
 var upperBound: number;
 
-var data1High = 0.0;
-var data1Low = 1000.0;
-
-var data2High = 0.0;
-var data2Low = 1000.0;
+var highs: number[] = [0,0];
+var lows: number[] = [1000,1000];
 
 // --- Main Dashboard ---
 export default function SimulationRun() {
@@ -85,20 +80,20 @@ export default function SimulationRun() {
         date1.setUTCDate(date1.getUTCDate() + 1);
         const time: UTCTimestamp = date1.getTime() / 1000 as UTCTimestamp;
         counter++;
-        data1.push({ time: time, value: Number(e.data) });
+        data[0].push({ time: time, value: Number(e.data) });
 
         if (activeStock === '1') {
           areaSeries.update({ time: time, value: Number(e.data) });
         }
 
-        if (data1.at(-1)!.value > data1High) {
-          data1High = data1.at(-1)!.value;
+        if (data[0].at(-1)!.value > highs[0]) {
+          highs[0] = data[0].at(-1)!.value;
         }
-        if (data1.at(-1)!.value < data1Low) {
-          data1Low = data1.at(-1)!.value;
+        if (data[0].at(-1)!.value < lows[0]) {
+          lows[0] = data[0].at(-1)!.value;
         }
 
-        if (data1.at(-1)!.value < lowerBound || data1.at(-1)!.value > upperBound) {
+        if (data[0].at(-1)!.value < lowerBound || data[0].at(-1)!.value > upperBound) {
           lowerBound = Number.MIN_VALUE;
           upperBound = Number.MAX_VALUE;
           socketRef1.current!.send("pause");
@@ -118,19 +113,19 @@ export default function SimulationRun() {
         date2.setUTCDate(date2.getUTCDate() + 1);
         const time: UTCTimestamp = date2.getTime() / 1000 as UTCTimestamp;
         counter2++;
-        data2.push({ time: time, value: Number(e.data) });
+        data[1].push({ time: time, value: Number(e.data) });
         if (activeStock === '2') {
           areaSeries.update({ time: time, value: Number(e.data) });
         }
 
-        if (data2.at(-1)!.value > data2High) {
-          data2High = data2.at(-1)!.value;
+        if (data[1].at(-1)!.value > highs[1]) {
+          highs[1] = data[1].at(-1)!.value;
         }
-        if (data2.at(-1)!.value < data2Low) {
-          data2Low = data2.at(-1)!.value;
+        if (data[1].at(-1)!.value < lows[1]) {
+          lows[1] = data[1].at(-1)!.value;
         }
 
-        if (data2.at(-1)!.value < lowerBound || data2.at(-1)!.value > upperBound) {
+        if (data[1].at(-1)!.value < lowerBound || data[1].at(-1)!.value > upperBound) {
           lowerBound = Number.MIN_VALUE;
           upperBound = Number.MAX_VALUE;
           socketRef1.current!.send("pause");
@@ -178,11 +173,11 @@ export default function SimulationRun() {
     switch (str) {
       case '1':
         setActiveStock('1');
-        areaSeries.setData(data1);
+        areaSeries.setData(data[0]);
         break;
       case '2':
         setActiveStock('2');
-        areaSeries.setData(data2);
+        areaSeries.setData(data[1]);
         break;
     }
   };
@@ -259,24 +254,24 @@ export default function SimulationRun() {
     widgetVal.length = 0;
     switch (selectedOption) {
       case ('1'):
-        widgetVal.push({ lowVal: data1Low, highVal: data1High })
-        widgetVal.push({ lowVal: data2Low, highVal: data2High })
+        widgetVal.push({ lowVal: lows[0], highVal: highs[0] })
+        widgetVal.push({ lowVal: lows[1], highVal: highs[1] })
         break;
       case ('2'):
-        widgetVal.push({ lowVal: data1Low, highVal: data1High })
+        widgetVal.push({ lowVal: lows[0], highVal: highs[0] })
         widgetVal.push({ lowVal: null, highVal: null })
         break;
       case ('3'):
         widgetVal.push({ lowVal: null, highVal: null })
-        widgetVal.push({ lowVal: data2Low, highVal: data2High })
+        widgetVal.push({ lowVal: lows[1], highVal: highs[1] })
         break;
       case ('4'):
-        widgetVal.push({ lowVal: null, highVal: data1High })
-        widgetVal.push({ lowVal: null, highVal: data2High })
+        widgetVal.push({ lowVal: null, highVal: highs[0] })
+        widgetVal.push({ lowVal: null, highVal: highs[1] })
         break;
       case ('5'):
-        widgetVal.push({ lowVal: data1Low, highVal: null })
-        widgetVal.push({ lowVal: data2Low, highVal: null });
+        widgetVal.push({ lowVal: lows[0], highVal: null })
+        widgetVal.push({ lowVal: lows[1], highVal: null });
         break;
     }
     console.log(widgetVal);

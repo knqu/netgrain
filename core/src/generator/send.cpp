@@ -3,12 +3,106 @@
 #include "generator.hpp"
 
 #include <unordered_set>
+#include <chrono>
+
+void save_simulation(Generator *gen, Data_Transfer *params,
+                     std::vector<double> *streamed_points)
+{
+  std::chrono::time_point now = std::chrono::system_clock::now();
+  std::chrono::duration duration = now.time_since_epoch();
+  size_t seconds_since_epoch = std::chrono::duration_cast<std::chrono::seconds>(duration).count();
+  std::hash<size_t> hashing;
+
+  FILE *fp = fopen(
+    fmt::format("{}.sim", hashing(seconds_since_epoch)).c_str(), "wb");
+
+  double percent_drift = gen->get_percent_drift();
+  double percent_volatility = gen->get_percent_volatility();
+  double dt = gen->get_dt();
+  std::string ticker = gen->get_ticker();
+  size_t ticker_len = ticker.size();
+  int base_price = gen->base_price;
+  int volatility = gen->volatility;
+  int liquidity = gen->liquidity;
+  int market_cap = gen->market_cap;
+  int target_price = gen->target_price;
+  fwrite(&percent_drift, sizeof(double), 1, fp);
+  fwrite(&percent_volatility, sizeof(double), 1, fp);
+  fwrite(&dt, sizeof(double), 1, fp);
+  fwrite(&ticker_len, sizeof(size_t), 1, fp);
+  fwrite(ticker.c_str(), sizeof(char), strlen(ticker.c_str()), fp);
+  fwrite(&base_price, sizeof(int), 1, fp);
+  fwrite(&volatility, sizeof(int), 1, fp);
+  fwrite(&liquidity, sizeof(int), 1, fp);
+  fwrite(&market_cap, sizeof(int), 1, fp);
+  fwrite(&target_price, sizeof(int), 1, fp);
+
+  fwrite(&params->rate_per_second, sizeof(int), 1, fp);
+  fwrite(&params->new_event, sizeof(int), 1, fp);
+  fwrite(&params->n_vol, sizeof(double), 1, fp);
+  fwrite(&params->n_drift, sizeof(double), 1, fp);
+  fwrite(&params->n_price, sizeof(int), 1, fp);
+  fwrite(&params->threshold, sizeof(int), 1, fp);
+  fwrite(&params->pause, sizeof(bool), 1, fp);
+
+  size_t buffer_len = streamed_points->size();
+  fwrite(&buffer_len, sizeof(size_t), 1, fp);
+  for (int i = 0; i < streamed_points->size(); i++)
+  {
+    fwrite(&streamed_points->at(i), sizeof(double), 1, fp);
+  }
+
+  fclose(fp);
+}
+
+void load_simulation(std::string file, Generator *gen,
+                     Data_Transfer *params,
+                     std::vector<double> *streamed_points)
+{
+  FILE *fp = fopen(fmt::format("{}.sim", file).c_str(), "rb");
+
+  std::string ticker;
+  size_t ticker_len;
+  fread(&gen->percent_drift, sizeof(double), 1, fp);
+  fread(&gen->percent_volatility, sizeof(double), 1, fp);
+  fread(&gen->dt, sizeof(double), 1, fp);
+  fread(&ticker_len, sizeof(size_t), 1, fp);
+  char *ticker_buf = (char *) calloc(ticker_len, sizeof(char));
+  fwrite(ticker_buf, sizeof(char), strlen(ticker.c_str()), fp);
+  gen->ticker = std::string(ticker_buf);
+  fread(&gen->base_price, sizeof(int), 1, fp);
+  fread(&gen->volatility, sizeof(int), 1, fp);
+  fread(&gen->liquidity, sizeof(int), 1, fp);
+  fread(&gen->market_cap, sizeof(int), 1, fp);
+  fread(&gen->target_price, sizeof(int), 1, fp);
+
+  fread(&params->rate_per_second, sizeof(int), 1, fp);
+  fread(&params->new_event, sizeof(int), 1, fp);
+  fread(&params->n_vol, sizeof(double), 1, fp);
+  fread(&params->n_drift, sizeof(double), 1, fp);
+  fread(&params->n_price, sizeof(int), 1, fp);
+  fread(&params->threshold, sizeof(int), 1, fp);
+  fread(&params->pause, sizeof(bool), 1, fp);
+
+  size_t buffer_len;
+  fread(&buffer_len, sizeof(size_t), 1, fp);
+  for (int i = 0; i < buffer_len; i++)
+  {
+    double point;
+    fread(&point, sizeof(point), 1, fp);
+    streamed_points->push_back(point);
+  }
+
+  fclose(fp);
+}
 
 int main(int argc, const char *argv[])
 {
   crow::SimpleApp app;
   std::unordered_set<crow::websocket::connection *> users;
   std::mutex mtx;
+
+  std::vector<double> *streamed_points = new std::vector<double>();
 
   Generator global_gen(0.2, 0.3, 100, 150);
   Data_Transfer parameters;
@@ -65,7 +159,7 @@ int main(int argc, const char *argv[])
       if (data == "resume") {
         parameters.pause.store(false);
       }
-      
+
 
       if (data == "stop")
       {
@@ -89,15 +183,16 @@ int main(int argc, const char *argv[])
     });
 
   std::thread([&]{
-    global_gen.generate_ws(&parameters);
+    global_gen.generate_ws(&parameters, streamed_points);
   }).detach();
 
-  if (argc > 1) {
+  if (argc > 1)
+  {
     app.port(atoi(argv[1])).multithreaded().run();
   }
   else {
     app.port(5555).multithreaded().run();
   }
+
   parameters.gen.store(false);
 }
-

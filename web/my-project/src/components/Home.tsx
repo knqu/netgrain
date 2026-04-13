@@ -5,13 +5,16 @@ import HistoryComponent from './History';
 import Generation from './Generation';
 import GridComponent from './GridComponent';
 import SimResults from './SimResults';
+import LiveCharts from './LiveChart';
+import ChartSelect from './ChartSelect';
+import Simulation from './Simulation';
 import type { Widget } from './GridComponent';
 
 import '../styling/Home.css'
 
 import '/node_modules/react-grid-layout/css/styles.css';
 import '/node_modules/react-resizable/css/styles.css';
-import NewSim from './newSimPage';
+//import NewSim from './newSimPage';
 
 export default function AppHome() {
   const [currentPage, setPage] = useState<string>("Dashboard");
@@ -44,6 +47,8 @@ export default function AppHome() {
       <DashboardButton button="Simulation"></DashboardButton>
       <DashboardButton button="Generation"></DashboardButton>
       <DashboardButton button="simResults"></DashboardButton>
+      <DashboardButton button="liveCharts"></DashboardButton>
+      <DashboardButton button="chartSelect"></DashboardButton>
       <DashboardButton button="Add Widget" onClickOverride={() => { onAdd("") }}></DashboardButton>
       </div>
       </div>
@@ -123,7 +128,7 @@ export default function AppHome() {
         );
       case "Simulation" :
         return (
-          <NewSim />
+          <Simulation />
         );
       case "Generation" :
         return (
@@ -132,6 +137,14 @@ export default function AppHome() {
       case "simResults" :
         return (
           <SimResults />
+        );
+      case "liveCharts" :
+        return (
+          <LiveCharts />
+        );
+      case "chartSelect" :
+        return (
+          <ChartSelect />
         );
     }
   }
