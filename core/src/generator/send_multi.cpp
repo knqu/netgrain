@@ -75,7 +75,7 @@ int main()
         );
 
         std::thread([&]{
-          new_generator->generate_ws(&parameters, generators.size());
+          new_generator->generate_ws(&parameters);
         }).detach();
       }
 

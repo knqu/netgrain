@@ -41,7 +41,8 @@ const SimRun: React.FC<{ socketRef1: WebSocket, socketRef2: WebSocket, activeSto
   const containerRef = useRef<HTMLDivElement | null>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const seriesRef = useRef<any>(null);
-  
+  const [totalTicks, setTotalTicks] = useState(0);
+  const [clampedTicks, setClampedTicks] = useState(0);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -57,60 +58,82 @@ const SimRun: React.FC<{ socketRef1: WebSocket, socketRef2: WebSocket, activeSto
 
     var counter = 0;
     var counter2 = 0;
-    
-    
 
-    
+
+
+
 
 
     const onMsg1 = (e: MessageEvent) => {
-      console.log(`RECEIVED: ${e.data}: ${counter}`);
-      date1.setUTCDate(date1.getUTCDate() + 1);
-      const time: UTCTimestamp = date1.getTime() / 1000 as UTCTimestamp;
-      counter++;
-      data[0].push({ time: time, value: Number(e.data) });
+      try {
+        const payload = JSON.parse(e.data);
+        const price = Number(payload.price);
 
-      if (activeStock === '1') {
-        seriesRef.current.update({ time: time, value: Number(e.data) });
-      }
+        setTotalTicks(prev => prev + 1);
+        if (payload.clamped) {
+          setClampedTicks(prev => prev + 1);
+        }
 
-      if (data[0].at(-1)!.value > highs[0]) {
-        highs[0] = data[0].at(-1)!.value;
-      }
-      if (data[0].at(-1)!.value < lows[0]) {
-        lows[0] = data[0].at(-1)!.value;
-      }
+        date1.setUTCDate(date1.getUTCDate() + 1);
+        const time: UTCTimestamp = date1.getTime() / 1000 as UTCTimestamp;
+        counter++;
+        data[0].push({ time: time, value: price });
 
-      if (data[0].at(-1)!.value < lowerBound || data[0].at(-1)!.value > upperBound) {
-        lowerBound = Number.MIN_VALUE;
-        upperBound = Number.MAX_VALUE;
-        socketRef1.send("pause");
-        socketRef2.send("pause");
+        if (activeStock === '1') {
+          seriesRef.current.update({ time: time, value: price });
+        }
+
+        if (data[0].at(-1)!.value > highs[0]) {
+          highs[0] = data[0].at(-1)!.value;
+        }
+        if (data[0].at(-1)!.value < lows[0]) {
+          lows[0] = data[0].at(-1)!.value;
+        }
+
+        if (data[0].at(-1)!.value < lowerBound || data[0].at(-1)!.value > upperBound) {
+          lowerBound = Number.MIN_VALUE;
+          upperBound = Number.MAX_VALUE;
+          socketRef1.send("pause");
+          socketRef2.send("pause");
+        }
+      } catch (err) {
+        console.error("Error parsing WS message:", err);
       }
     }
-    
+
     const onMsg2 = (e: MessageEvent) => {
-      console.log(`RECEIVED: ${e.data}: ${counter2}`);
-      date2.setUTCDate(date2.getUTCDate() + 1);
-      const time: UTCTimestamp = date2.getTime() / 1000 as UTCTimestamp;
-      counter2++;
-      data[1].push({ time: time, value: Number(e.data) });
-      if (activeStock === '2') {
-        seriesRef.current.update({ time: time, value: Number(e.data) });
-      }
+      try {
+        const payload = JSON.parse(e.data);
+        const price = Number(payload.price);
 
-      if (data[1].at(-1)!.value > highs[1]) {
-        highs[1] = data[1].at(-1)!.value;
-      }
-      if (data[1].at(-1)!.value < lows[1]) {
-        lows[1] = data[1].at(-1)!.value;
-      }
+        setTotalTicks(prev => prev + 1);
+        if (payload.clamped) {
+          setClampedTicks(prev => prev + 1);
+        }
 
-      if (data[1].at(-1)!.value < lowerBound || data[1].at(-1)!.value > upperBound) {
-        lowerBound = Number.MIN_VALUE;
-        upperBound = Number.MAX_VALUE;
-        socketRef1.send("pause");
-        socketRef2.send("pause");
+        date2.setUTCDate(date2.getUTCDate() + 1);
+        const time: UTCTimestamp = date2.getTime() / 1000 as UTCTimestamp;
+        counter2++;
+        data[1].push({ time: time, value: price });
+        if (activeStock === '2') {
+          seriesRef.current.update({ time: time, value: price });
+        }
+
+        if (data[1].at(-1)!.value > highs[1]) {
+          highs[1] = data[1].at(-1)!.value;
+        }
+        if (data[1].at(-1)!.value < lows[1]) {
+          lows[1] = data[1].at(-1)!.value;
+        }
+
+        if (data[1].at(-1)!.value < lowerBound || data[1].at(-1)!.value > upperBound) {
+          lowerBound = Number.MIN_VALUE;
+          upperBound = Number.MAX_VALUE;
+          socketRef1.send("pause");
+          socketRef2.send("pause");
+        }
+      } catch (err) {
+        console.error("Error parsing WS message:", err);
       }
     }
 
@@ -132,7 +155,7 @@ const SimRun: React.FC<{ socketRef1: WebSocket, socketRef2: WebSocket, activeSto
       socketRef2.removeEventListener("message", onMsg2);
       resizeObserver.disconnect();
       chart.remove();
-      
+
     };
   }, []);
 
@@ -142,13 +165,27 @@ const SimRun: React.FC<{ socketRef1: WebSocket, socketRef2: WebSocket, activeSto
 
         const temp = activeStock === '1' ? data[0] : data[1];
         seriesRef.current.setData(temp);
-      } catch(err) {
+      } catch (err) {
         console.error("Chart is probably disposed", err);
       }
-      }
+    }
   }, [activeStock])
 
-  return <div className="areaChart" ref={containerRef} />
+  const percentReal = totalTicks === 0
+    ? 100
+    : (((totalTicks - clampedTicks) / totalTicks) * 100).toFixed(2);
+
+  const color = Number(percentReal) >= 95 ? "green" : "red";
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", height: "100%", width: "100%" }}>
+      <div style={{ padding: '10px', backgroundColor: '#f9f9f9', borderBottom: '2px solid #ccc', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ fontSize: '1.2rem' }}><strong>Generator Realism Phase:</strong> <span style={{ color: color, marginLeft: '8px' }}>{percentReal}% Adherence</span></div>
+        <div style={{ fontSize: '0.9rem', color: '#666' }}>{clampedTicks} wild outliers clamped</div>
+      </div>
+      <div className="areaChart" style={{ flexGrow: 1, minHeight: '400px' }} ref={containerRef} />
+    </div>
+  );
 };
 
 
@@ -177,12 +214,12 @@ export default function SimulationRun() {
   useEffect(() => {
     const handleOpen1 = () => console.log("Connected on 1");
     const handleOpen2 = () => console.log("Connected on 2");
-    
+
     socketRef1.current!.addEventListener("open", handleOpen1);
     socketRef2.current!.addEventListener("open", handleOpen2);
 
-   
-    return() => {
+
+    return () => {
       socketRef1.current!.removeEventListener("open", handleOpen1);
       socketRef2.current!.removeEventListener("open", handleOpen2);
     }
@@ -226,8 +263,8 @@ export default function SimulationRun() {
 
   function modify() {
     console.log("modify demo")
-    socketRef1.current!.send("mod demo");
-    socketRef2.current!.send("mod demo");
+    socketRef1.current!.send("flash_crash");
+    socketRef2.current!.send("flash_crash");
   }
 
   async function sleep(ms: number): Promise<void> {
@@ -310,7 +347,7 @@ export default function SimulationRun() {
     // determine what data is saved from the simulation for the widget
   };
 
-  function RenderPage() {
+  const renderPage = () => {
     console.log(Stats);
     switch (currentPage) {
       case "Run":
@@ -355,7 +392,7 @@ export default function SimulationRun() {
   //const websocket2 = useMemo(() => new WebSocket("ws://localhost:5555/"), []);
   return (
     <>
-      <RenderPage />
+      {renderPage()}
     </>
   );
 }

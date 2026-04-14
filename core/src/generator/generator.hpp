@@ -351,8 +351,8 @@ public:
 
                 if (gen_settings->send_data.load()) {
                   gen_settings->conn.load()
-                    ->send_text(fmt::format("tagged: {}",
-                                (double) (curr - offset)));
+                    ->send_text(fmt::format("{{\"price\": {}, \"clamped\": {}, \"type\": \"tagged\"}}",
+                                (double) (curr - offset), this->last_was_clamped ? "true" : "false"));
                 }
 
                 precede = curr;
@@ -363,7 +363,8 @@ public:
 
                 if (gen_settings->send_data.load()) {
                   gen_settings->conn.load()
-                    ->send_text(fmt::format("{}", curr));
+                    ->send_text(fmt::format("{{\"price\": {}, \"clamped\": {}, \"type\": \"normal\"}}",
+                                curr, this->last_was_clamped ? "true" : "false"));
                 }
 
                 tracker = 0;
@@ -392,7 +393,8 @@ public:
 
                 if (gen_settings->send_data.load()) {
                   gen_settings->conn.load()
-                    ->send_text(fmt::format("{}", send_price()));
+                    ->send_text(fmt::format("{{\"price\": {}, \"clamped\": {}, \"type\": \"normal\"}}",
+                                send_price(), this->last_was_clamped ? "true" : "false"));
                 }
 
                 tracker = 0;
@@ -405,7 +407,8 @@ public:
 
                 if (gen_settings->send_data.load()) {
                   gen_settings->conn.load()
-                    ->send_text(fmt::format("tagged: {}", curr));
+                    ->send_text(fmt::format("{{\"price\": {}, \"clamped\": {}, \"type\": \"tagged\"}}",
+                                curr, this->last_was_clamped ? "true" : "false"));
                 }
 
                 tracker += 1;
@@ -423,7 +426,7 @@ public:
               data_buffer->push(ou(data_buffer->front(), norm, gen));
               if (gen_settings->send_data.load()) {
                 double res = send_price();
-                gen_settings->conn.load()->send_text(fmt::format("Sideways: {}", res));
+                gen_settings->conn.load()->send_text(fmt::format("{{\"price\": {}, \"clamped\": {}, \"type\": \"sideways\"}}", res, this->last_was_clamped ? "true" : "false"));
               }
               break;
             }
@@ -435,7 +438,7 @@ public:
               data_buffer->push(bear_math(data_buffer->front(), norm, gen));
 
               if (gen_settings->send_data.load()) {
-                gen_settings->conn.load()->send_text(fmt::format("Bear: {}", send_price()));
+                gen_settings->conn.load()->send_text(fmt::format("{{\"price\": {}, \"clamped\": {}, \"type\": \"bear\"}}", send_price(), this->last_was_clamped ? "true" : "false"));
               }
               break;
             }
@@ -448,7 +451,7 @@ public:
               data_buffer->push(bull_math(data_buffer->front(), norm, gen));
 
               if (gen_settings->send_data.load()) {
-                gen_settings->conn.load()->send_text(fmt::format("Bull: {}", send_price()));
+                gen_settings->conn.load()->send_text(fmt::format("{{\"price\": {}, \"clamped\": {}, \"type\": \"bull\"}}", send_price(), this->last_was_clamped ? "true" : "false"));
               }
               break;
             }
@@ -474,7 +477,7 @@ public:
         // of a second queue, extra fields in the Data_Transfer, etc. for now
         // printing to console will suffice
         if (gen_settings->send_data.load()) {
-          gen_settings->conn.load()->send_text(fmt::format("{}", send_price()));
+          gen_settings->conn.load()->send_text(fmt::format("{{\"price\": {}, \"clamped\": {}, \"type\": \"normal\"}}", send_price(), this->last_was_clamped ? "true" : "false"));
         }
       }
 
@@ -541,8 +544,8 @@ skip:
 
                 if (gen_settings->send_data.load()) {
                   gen_settings->conn.load()
-                    ->send_text(fmt::format("tagged: {}",
-                                (double) (curr - offset)));
+                    ->send_text(fmt::format("{{\"price\": {}, \"clamped\": {}, \"type\": \"tagged\"}}",
+                                (double) (curr - offset), this->last_was_clamped ? "true" : "false"));
                 }
 
                 precede = curr;
@@ -553,7 +556,8 @@ skip:
 
                 if (gen_settings->send_data.load()) {
                   gen_settings->conn.load()
-                    ->send_text(fmt::format("{}", curr));
+                    ->send_text(fmt::format("{{\"price\": {}, \"clamped\": {}, \"type\": \"normal\"}}",
+                                curr, this->last_was_clamped ? "true" : "false"));
                 }
 
                 tracker = 0;
@@ -582,7 +586,8 @@ skip:
 
                 if (gen_settings->send_data.load()) {
                   gen_settings->conn.load()
-                    ->send_text(fmt::format("{}", send_price()));
+                    ->send_text(fmt::format("{{\"price\": {}, \"clamped\": {}, \"type\": \"normal\"}}",
+                                send_price(), this->last_was_clamped ? "true" : "false"));
                 }
 
                 tracker = 0;
@@ -595,7 +600,8 @@ skip:
 
                 if (gen_settings->send_data.load()) {
                   gen_settings->conn.load()
-                    ->send_text(fmt::format("tagged: {}", curr));
+                    ->send_text(fmt::format("{{\"price\": {}, \"clamped\": {}, \"type\": \"tagged\"}}",
+                                curr, this->last_was_clamped ? "true" : "false"));
                 }
 
                 tracker += 1;
@@ -611,7 +617,7 @@ skip:
               data_buffer->push(ou(data_buffer->front(), norm, gen));
               if (gen_settings->send_data.load()) {
                 gen_settings->conn.load()
-                  ->send_text(fmt::format("Sideways: {}", send_price()));
+                  ->send_text(fmt::format("{{\"price\": {}, \"clamped\": {}, \"type\": \"sideways\"}}", send_price(), this->last_was_clamped ? "true" : "false"));
               }
             }
           default:
@@ -638,7 +644,7 @@ skip:
         if (gen_settings->send_data.load()) {
           double price_point = send_price();
           gen_settings->conn.load()
-            ->send_text(fmt::format("{}", price_point));
+            ->send_text(fmt::format("{{\"price\": {}, \"clamped\": {}, \"type\": \"normal\"}}", price_point, this->last_was_clamped ? "true" : "false"));
           streamed_points->push_back(price_point);
         }
       }

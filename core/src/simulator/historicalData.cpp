@@ -1,5 +1,5 @@
 #include "historicalData.hpp"
-#include "../generator/generator.cpp"
+#include "../generator/generator.hpp"
 
 #include <fstream>
 #include <sstream>
