@@ -60,6 +60,7 @@ public:
 
   double last_bar_close = 0.0;
   bool has_bar_state = false;
+  bool last_was_clamped = false; // Tracks if the very last tick was an outlier correction
 
   // constructor and destructor
   Generator(double drift, double volatility, int price, int target) {
@@ -130,6 +131,24 @@ public:
     return data;
   }
 
+  double clamp_price(double old_price, double generated_price) {
+    double max_threshold = 0.05; 
+    
+    double max_allowed = old_price * (1.0 + max_threshold);
+    double min_allowed = old_price * (1.0 - max_threshold);
+    
+    if (generated_price > max_allowed) {
+        last_was_clamped = true;
+        return max_allowed;
+    } else if (generated_price < min_allowed) {
+        last_was_clamped = true;
+        return min_allowed;
+    }
+    last_was_clamped = false;
+    return generated_price;
+  }
+
+
   /*
    * Basic data generation function,
    * takes, current price
@@ -155,7 +174,7 @@ public:
         - (this->percent_volatility * this->percent_volatility / 2)
       ) * dt + this->percent_volatility * sqrt(dt) * d(gen);
     ret = S_0 * exp(ret);
-    return ret;
+    return clamp_price(S_0, ret);
   }
 
   // generates one ohlcv bar by simulating ticks_per_bar intra-bar price movements via gbm, then aggregating
@@ -237,7 +256,8 @@ public:
    * This function implements Ornstein–Uhlenbeck process for a sideways trading market.
    */
   double ou(double x_t, std::normal_distribution<double> &d, std::mt19937 &gen) {
-    return x_t + ((this->percent_drift * (this->target_price - x_t)) * dt) + (this->percent_volatility * sqrt(dt) * d(gen));
+    double ret = x_t + ((this->percent_drift * (this->target_price - x_t)) * dt) + (this->percent_volatility * sqrt(dt) * d(gen));
+    return clamp_price(x_t, ret);
   }
 
 
@@ -255,7 +275,7 @@ public:
         total_move -= 0.05;
     }
 
-    return x_t * exp(total_move);
+    return clamp_price(x_t, x_t * exp(total_move));
   }
 
   /*
@@ -275,7 +295,7 @@ public:
         total_move += 0.03;
     }
 
-    return x_t * exp(total_move);
+    return clamp_price(x_t, x_t * exp(total_move));
   }
 
   // return the number of datapoints generated, if data is not being tested
