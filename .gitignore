@@ -8,10 +8,13 @@ pch/
 compile_commands.json
 lib/usockets/bin/debug/libuSockets.a
 core/src/simulator/temp_data
-./database/dbData/web/webserver/my-drogon-app
 web/webserver/src/my_crow_app
 ou-run.txt
 **/my_crow_app
-database/dbData
+database/dbData/
 node_modules
-web/webserver/perms2
+web/webserver/build/
+web/webserver/vcpkg
+web/webserver/perms2/
+web/webserver/nginx-1.29.7/logs/
+web/webserver/build/Debug/my_app.exe
