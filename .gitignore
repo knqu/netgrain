@@ -1,3 +1,14 @@
 .env
+.cache
+*.exe
 out/
 **/.DS_Store
+pch/
+.clangd
+compile_commands.json
+lib/usockets/bin/debug/libuSockets.a
+core/src/simulator/temp_data
+./database/dbData/web/webserver/my-drogon-app
+web/webserver/src/my_crow_app
+ou-run.txt
+**/my_crow_app

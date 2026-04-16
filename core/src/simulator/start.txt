@@ -1,0 +1,26 @@
+g++ -std=c++17 -I../../../lib/fmtlib/include -I../../../lib/crow/include -I../../../lib/asio/include -I../../../lib/uwebsockets/src -I../../../lib/usockets-src/src -DUWS_NO_ZLIB historicalData.cpp main.cpp ../../../lib/fmtlib/bin/libfmt.a ../../../lib/usockets-src/uSockets.a -L/mingw64/lib -luv -lpthread -o parser
+
+
+    To run and then ./parser
+
+    to run very basic execution ond data: http://localhost:8080/api/run/AAPL
+
+
+1. Define the Data Contract (JSON Schema)
+Before writing any logic, the frontend and backend need to agree on exactly what the data looks like. You will define a simple JSON structure containing initial_capital (and eventually your other settings) so both ends know how to parse the message.
+
+2. Build the Frontend Input & Network Call
+You need a React component that captures the user's input (e.g., $100,000), packages it into the agreed-upon JSON schema, and fires off an HTTP POST request to your C++ server when the user clicks "Run Backtest."
+
+3. Architect the Backend Data Structures
+In C++, you need to create the internal representations of the simulation's state:
+
+SimulationConfig: A struct/class to store the settings parsed from the incoming JSON.
+
+Portfolio: A class representing the algorithmic trader's wallet, initialized with the cash value from SimulationConfig.
+
+4. Create the Backend API Endpoint
+You need a new route in your uWebSockets server (e.g., POST /api/simulate) that intercepts the frontend's JSON payload, deserializes it, creates the SimulationConfig, and funds the Portfolio.
+
+5. Wire the Portfolio into the Engine
+Finally, you will update your basic backtesting loop. Instead of just calculating theoretical profit, the algorithm will ask the Portfolio if it has enough cash to buy a share, deduct the funds, and add the profits back to the Portfolio's cash balance when it sells.

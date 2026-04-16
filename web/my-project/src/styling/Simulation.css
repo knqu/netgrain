@@ -1,0 +1,149 @@
+.sim-container {
+    max-width: 45vw;
+    margin: 0 auto;
+    font-family: sans-serif;
+    padding: 20px;
+    max-height: 100%;
+    overflow-y: auto;
+}
+
+.sim-panel {
+    background-color: #f9f9f9;
+    padding: 25px;
+    border-radius: 8px;
+    border: 1px solid #ddd;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+}
+
+.sim-setup {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5vw;
+}
+
+.upload-panel {
+    grid-column: 1/span 2;
+}
+.sim-asset-selector {
+    background-color: #f9f9f9;
+    padding: 25px;
+    border-radius: 8px;
+    border: 1px solid #ddd;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    display: flex;
+    flex-direction: column;
+}
+
+.sim-panel h2 {
+    margin-top: 0;
+    margin-bottom: 20px;
+    color: #333;
+}
+
+.sim-form-group {
+    margin-bottom: 15px;
+}
+
+.sim-form-row {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.sim-form-col {
+    flex: 1;
+}
+
+.sim-label {
+    display: block;
+    font-weight: bold;
+    margin-bottom: 5px;
+    color: #444;
+}
+
+.stocks {
+    background-color: #f9f9f9;
+    padding: 25px;
+    border-radius: 8px;
+    border: 1px solid #ddd;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    display: flex;
+    flex-direction: column;
+}
+
+.sim-stock-cards {
+    max-height: 25vh;
+    overflow-y: auto;
+}
+.sim-stock-card {
+    border: 1px solid #ddd;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+    background-color: #f9f9f9;
+}
+
+.sim-input {
+    width: 100%;
+    padding: 10px;
+    box-sizing: border-box;
+    background-color: #ffffff !important;
+    color: #000000 !important;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 14px;
+    color-scheme: light !important;
+}
+
+.sim-input::placeholder {
+    color: #888888 !important;
+}
+
+.sim-input:focus {
+    outline: none;
+    border-color: #007bff;
+    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+.sim-btn-primary {
+    width: 100%;
+    padding: 12px;
+    background-color: #007bff;
+    color: #ffffff; 
+    border: none;
+    border-radius: 4px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    margin-top: 10px;
+}
+
+.sim-btn-primary:hover {
+    background-color: #0056b3;
+}
+
+.sim-btn-secondary {
+    margin-top: 20px;
+    padding: 10px 15px;
+    background-color: #6c757d;
+    color: #ffffff;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.2s;
+}
+
+.sim-btn-secondary:hover {
+    background-color: #5a6268;
+}
+
+.sim-status-box {
+    background-color: #eeeeee;
+    padding: 15px;
+    border-radius: 4px;
+    white-space: pre-wrap;
+    font-family: monospace;
+    border: 1px solid #ccc;
+}
