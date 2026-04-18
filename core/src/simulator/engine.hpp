@@ -70,7 +70,6 @@ public:
 
     void set_config(const std::string& ticker, TickerConfig config) {
         ticker_configs[ticker] = config;
-        if (pq) pq->push(TickerConfigEvent{ticker, config});
     }
 
     int place_order(const std::string& ticker, int quantity, int target_price, Side side, OrderType type) {
@@ -139,10 +138,10 @@ public:
             }
 
             if (should_fill) {
-                fill_price = apply_slippage(fill_price, fill_quantity, bar.volume, config.volatility, order->side);
-
                 int fill_quantity = std::min(order->quantity, static_cast<int>(bar.volume));
                 bar.volume -= fill_quantity;
+
+                fill_price = apply_slippage(fill_price, fill_quantity, bar.volume, config.volatility, order->side);
 
                 fills.push_back({order->id, order->ticker, fill_quantity, fill_price, order->side, bar.date});
 
@@ -194,8 +193,8 @@ public:
                     order->status = OrderStatus::PARTIAL;
                     ++order;
                 } else {
-                    order = pending_orders.erase(order);
                     order->status = OrderStatus::FILLED;
+                    order = pending_orders.erase(order);
                 }
             } else {
                 ++order;
