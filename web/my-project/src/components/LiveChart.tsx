@@ -4,10 +4,9 @@ import {
     createChart,
     AreaSeries,
     type IChartApi,
-    type UTCTimestamp,
 } from "lightweight-charts";
 
-const initialData = [
+let initialData = [
   { time: '2018-12-22', value: 32.51 },
   { time: '2018-12-23', value: 31.11 },
   { time: '2018-12-24', value: 27.02 },
@@ -29,12 +28,31 @@ const LiveChart: React.FC<LiveChartProps> = ({ws}) => {
 
   useEffect(() => {
     if (!containerRef.current) return;
+
     const chart: IChartApi = createChart(containerRef.current, {
       width: containerRef.current.clientWidth,
       height: containerRef.current.clientHeight,
     })
 
     const candleSeries = chart.addSeries(AreaSeries);
+
+    chart.subscribeDblClick(param => {
+      if (param.seriesData && param.seriesData.size > 0) {
+        const clickedPoint = param.seriesData.get(candleSeries); 
+
+        if (clickedPoint) {
+          const clickedIndex = initialData.findIndex(d => d.time === clickedPoint.time);
+
+          if (clickedIndex !== -1) {
+            const newData = initialData.slice(0, clickedIndex + 1);
+            ws.send("update: " + newData[newData.length - 1].value.toString());
+
+            candleSeries.setData(newData);
+            initialData = newData;
+          }
+        }
+      }
+    });
 
     var counter = 0;
     var Queue: string[]= [];
@@ -45,27 +63,13 @@ const LiveChart: React.FC<LiveChartProps> = ({ws}) => {
     };
 
     const handleMessage = (e: MessageEvent) => {
+      const price = JSON.parse(e.data).price;
       counter++;
-      Queue.push(String(e.data));
+      Queue.push(String(price));
     };
 
     ws.addEventListener("open", handleOpen);
     ws.addEventListener("message", handleMessage);
-
-    /*
-    ws.addEventListener("message", (e) => {
-      console.log(`RECEIVED: ${e.data}: ${counter}`);
-      counter++;
-      Queue.push(e.data);
-      console.log(e.data);
-    });
-
-    ws.addEventListener("open", () => {
-      ws.send("sideways"); // HERE
-      console.log("CONNECTED");
-      console.log(`SENT: ping: ${counter}`);
-    });
-    */
 
     candleSeries.setData(initialData);
     chart.timeScale().fitContent();
@@ -79,18 +83,24 @@ const LiveChart: React.FC<LiveChartProps> = ({ws}) => {
       const val = Queue.shift();
 
       date.setUTCDate(date.getUTCDate() + 1);
-      const time = date.getTime() / 1000 as UTCTimestamp;
 
       var toParse = String(val);
       if (toParse.includes(":")) {
         toParse = toParse.split(":")[1].trim();
       }
 
+      const newDate = date.getFullYear().toString() + "-" + date.getMonth().toString().padStart(2, "0") + "-" + date.getDate().toString().padStart(2, "0");
+
       candleSeries.update({
-        time: time, 
+        time: newDate, 
         value: Number(toParse)
       });
-    }, 1000);
+
+      initialData.push({
+        time: newDate, 
+        value: Number(toParse)
+      });
+    }, 1000); // intervalID
 
     const resizeObserver = new ResizeObserver(entries => {
       const { width, height } = entries[0].contentRect;
@@ -98,7 +108,6 @@ const LiveChart: React.FC<LiveChartProps> = ({ws}) => {
     });
 
     resizeObserver.observe(containerRef.current);
-
 
     return () => {
       clearInterval(intervalID);
