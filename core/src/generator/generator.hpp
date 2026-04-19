@@ -116,6 +116,11 @@ public:
     data_buffer->push(static_cast<double>(base_price));
   }
 
+  void overwrite(double x) {
+    (*data_buffer) = {};
+    data_buffer->push(x);
+  }
+
   double send_price() {
     if (data_buffer->size() == 0) return base_price;
     double data = data_buffer->front();

@@ -1,5 +1,5 @@
 import "../styling/SimulationRun.css"
-import React, { use, useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   createChart,
   AreaSeries,
