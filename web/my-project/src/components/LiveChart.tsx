@@ -36,6 +36,9 @@ const LiveChart: React.FC<LiveChartProps> = ({ws}) => {
 
     const candleSeries = chart.addSeries(AreaSeries);
 
+    var counter = 0;
+    var Queue: string[]= [];
+
     chart.subscribeDblClick(param => {
       if (param.seriesData && param.seriesData.size > 0) {
         const clickedPoint = param.seriesData.get(candleSeries); 
@@ -44,18 +47,18 @@ const LiveChart: React.FC<LiveChartProps> = ({ws}) => {
           const clickedIndex = initialData.findIndex(d => d.time === clickedPoint.time);
 
           if (clickedIndex !== -1) {
-            const newData = initialData.slice(0, clickedIndex + 1);
+            const newData = initialData.slice(0, clickedIndex);
             ws.send("update: " + newData[newData.length - 1].value.toString());
 
             candleSeries.setData(newData);
             initialData = newData;
+            Queue.length = 0;
+
           }
         }
       }
     });
 
-    var counter = 0;
-    var Queue: string[]= [];
 
     const handleOpen = () => {
       ws.send("sideways");
