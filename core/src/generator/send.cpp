@@ -4,6 +4,7 @@
 
 #include <unordered_set>
 #include <chrono>
+#include <algorithm>
 
 void save_simulation(Generator *gen, Data_Transfer *params,
                      std::vector<double> *streamed_points)
@@ -178,6 +179,27 @@ int main(int argc, const char *argv[])
         else if (parameters.new_event.load() == 2)
         {
           fmt::print("bubble is ignored: called consecutively when another is active!\n");
+        }
+      }
+
+      if (data.starts_with("rewind"))
+      {
+        if (parameters.new_event.load() == 0)
+        {
+          int rewind_count = std::stoi(data.substr(7), nullptr, 10);
+          rewind_count = std::min<int>(rewind_count, streamed_points->size());
+          double last_price_point =
+            streamed_points->at(streamed_points->size() - rewind_count);
+          streamed_points->erase(
+            streamed_points->end() - rewind_count,
+            streamed_points->end()
+          );
+          parameters.reset_price.store(last_price_point);
+          parameters.new_event.store(6);
+        }
+        else if (parameters.new_event.load() == 2)
+        {
+          fmt::print("rewind is ignored: another event is active\n");
         }
       }
     });
