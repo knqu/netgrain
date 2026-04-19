@@ -1,5 +1,7 @@
 #pragma once
 
+#include "def.hpp"
+
 #include <string>
 #include <vector>
 
@@ -24,8 +26,8 @@ enum class OrderStatus : int {
 struct Order {
     int id;
     std::string ticker;
-    int quantity;
-    int target_price;  // limit or stop price
+    i64 quantity;
+    i64 target_price;  // limit or stop price
     Side side;
     OrderType order_type;
     OrderStatus status;
@@ -34,22 +36,22 @@ struct Order {
 struct Fill {
     int order_id;
     std::string ticker;
-    int quantity;
-    int fill_price;
+    i64 quantity;
+    i64 fill_price;
     Side side;
-    int timestamp;
+    u32 timestamp;
 };
 
 struct Lot {
-    int fill_price;
-    int quantity;
-    int timestamp;
+    i64 fill_price;
+    i64 quantity;
+    u32 timestamp;
 };
 
 struct Position {
     std::string ticker;
-    int quantity;
-    int cost_basis;
+    i64 quantity = 0;
+    i64 cost_basis = 0;
     std::vector<Lot> lots;
 };
 

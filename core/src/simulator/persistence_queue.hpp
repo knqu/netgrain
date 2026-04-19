@@ -25,8 +25,8 @@ struct OrderCancelledEvent {
 };
 
 struct BalanceEvent {
-    int balance;
-    int timestamp;
+    i64 balance;
+    u32 timestamp;
 };
 
 struct PositionSnapshotEvent {

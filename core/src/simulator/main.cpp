@@ -1,5 +1,6 @@
 #include "../../../lib/uwebsockets/src/App.h"
-#include "historicalData.hpp"
+#include "../../../lib/nlohmann/json.hpp"
+#include "simulator.hpp"
 
 #include <fstream>
 #include <iostream>
@@ -9,16 +10,15 @@
 #include <algorithm>
 #include <cstdio>
 #include <filesystem>
-#include <regex>
-#include <cstdint>
 
+using njson = nlohmann::json;
 
 // Global object
 MarketDataManager data_manager;
 
 int main() {
     // Loading init from /data...
-    string default_dir = "../../../data/";
+    string default_dir = "data/";  // NOTE: assumes program is run from root directory
 
     if (filesystem::exists(default_dir) && filesystem::is_directory(default_dir)) {    
         for (const auto& entry : filesystem::recursive_directory_iterator(default_dir)) { //recursive bc I changed to have subfolders for asset classes
@@ -92,9 +92,9 @@ int main() {
                         }
                         //CHANGED TO BOOLEAN TO PROPOGATE CHANGES TO SIMULATION.TSX
                         bool load_success = data_manager.load_ticker_data(ticker, save_path, asset_class);
-                        
+
                         if (load_success) {
-                            data_manager.print_first_row(ticker); 
+                            data_manager.print_first_row(ticker);
                         }
 
                         if (remove(save_path.c_str()) == 0) {
@@ -116,29 +116,6 @@ int main() {
                     }
                 }
             });
-        })
-        .options("/api/results", [](auto *res, auto *req) {
-            res->writeHeader("Access-Control-Allow-Origin", "*");
-            res->writeHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
-            res->writeHeader("Access-Control-Allow-Headers", "Content-Type");
-            res->end();
-        })
-        // THIS WILL BE REMOVED IN THE FUTURE IT IS TO SHOW JSON WORKS
-        .get("/api/results", [](auto *res, auto *req) {
-            
-            SimulationConfig dummy_config;
-            dummy_config.initial_capital = 100000;
-            dummy_config.trade_fee = 1.50 * 100000;
-            dummy_config.start_date = "2013-12-10";
-            dummy_config.end_date = "2017-11-10";
-            dummy_config.stocks.push_back(Stocks());
-            dummy_config.stocks[0].name = "AAPL";
-            
-            string output_json = data_manager.run_simulation(dummy_config);
-            
-            res->writeHeader("Access-Control-Allow-Origin", "*");
-            res->writeHeader("Content-Type", "application/json");
-            res->end(output_json);
         })
 
         // 3. Market State Endpoint
@@ -168,65 +145,87 @@ int main() {
                 buffer->append(chunk.data(), chunk.length());
                 //possibly put these parsing functions in a different file later on, but for now this is fine for testing purposes?
                 if (isLast) {
-                    string json = *buffer;
-                    SimulationConfig config;
-                    smatch match;
-
-                    /* Acceptance Critera - HX */
-                    std::ofstream outfile("initial_market.json");
-                    if (outfile.is_open()) {
-                        outfile << json;
-                        outfile.close();
-                        std::cout << "successfully written\n";
-                    } else {
-                        std::cerr << "failed to write\n";
+                    njson j;
+                    try {
+                        j = njson::parse(*buffer);
+                    } catch (const njson::parse_error& e) {
+                        res->writeHeader("Access-Control-Allow-Origin", "*");
+                        res->writeHeader("Content-Type", "application/json");
+                        res->end(R"({"error": "Invalid JSON"})");
+                        return;
                     }
 
-                    // Parse Initial Capital
-                    if (regex_search(json, match, regex(R"("initial_capital":\s*([0-9.]+))"))) {
-                        double raw_cap = stod(match[1].str());
-                        config.initial_capital = static_cast<int64_t>(raw_cap * 100000); 
+                    std::string mode = j.value("mode", "csv");
+                    i64 initial_capital = static_cast<i64>(j.value("initial_capital", 10000.0) * PRICE_SCALE_FACTOR);
+                    int num_bars = j.value("num_bars", 252);
+
+                    struct TickerEntry {
+                        std::string name;
+                        int base_price = 100;
+                        int volatility = 20;
+                        int liquidity = 1000;
+                        int market_cap = 5000;
+                    };
+                    std::vector<TickerEntry> ticker_entries;
+
+                    if (!j.contains("stocks") || !j["stocks"].is_array()) {
+                        res->writeHeader("Access-Control-Allow-Origin", "*");
+                        res->writeHeader("Content-Type", "application/json");
+                        res->end(R"({"error": "No tickers provided"})");
+                        return;
                     }
 
-                    // Parse Trade Fee
-                    if (regex_search(json, match, regex(R"("trade_fee":\s*([0-9.]+))"))) {
-                        double raw_fee = stod(match[1].str());
-                        config.trade_fee = static_cast<int64_t>(raw_fee * 100000); 
+                    for (auto& stock : j["stocks"]) {
+                        TickerEntry entry;
+                        entry.name       = stock.at("ticker").get<std::string>();
+                        entry.base_price = stock.value("base_price", 100);
+                        entry.liquidity  = stock.value("liquidity", 1000);
+                        entry.volatility = stock.value("volatility", 20);
+                        entry.market_cap = stock.value("market_cap", 5000);
+                        ticker_entries.push_back(entry);
                     }
 
-                    // Parse Dates
-                    if (regex_search(json, match, regex(R"("start_date":\s*"([^"]*))"))) {
-                        config.start_date = match[1].str();
-                    }
-                    if (regex_search(json, match, regex(R"("end_date":\s*"([^"]*))"))) {
-                        config.end_date = match[1].str();
-                    }
-
-                    // Parse Tickers Array
-                     std::regex stock_regex(R"-("ticker":\s*"([^"]*)",\s*"base_price":\s*([^,]*),\s*"liquidity":\s*([^,]*),\s*"volatility":\s*([^,]*),\s*"market_cap":\s*([^}]*))-");
-
-                    int i = 0;
-
-                    while (std::regex_search(json, match, stock_regex)) {
-                      config.stocks.push_back(Stocks());
-                      
-                      config.stocks[i].name = match[1].str(); 
-                      config.stocks[i].base_price = std::stod(match[2].str()); 
-                      config.stocks[i].liquidity  = std::stod(match[3].str());
-                      config.stocks[i].volatility = std::stod(match[4].str());
-                      config.stocks[i].market_cap = std::stod(match[5].str());
-                      
-                      i++;
-                      
-                      json = match.suffix().str(); 
+                    if (ticker_entries.empty()) {
+                        res->writeHeader("Access-Control-Allow-Origin", "*");
+                        res->writeHeader("Content-Type", "application/json");
+                        res->end(R"({"error": "No tickers provided"})");
+                        return;
                     }
 
-                    // Prove the struct was populated correctly
-                    data_manager.print_config(config);
-                    string output_json = data_manager.run_simulation(config);
+                    Engine engine(initial_capital);
+                    SimulationResult result;
+
+                    if (mode == "generated") {
+                        std::vector<Generator> generators;
+                        for (const auto& entry : ticker_entries) {
+                            generators.emplace_back(
+                                entry.name,
+                                entry.base_price,
+                                entry.volatility,
+                                entry.liquidity,
+                                entry.market_cap
+                            );
+                        }
+                        result = run_generated_simulation(engine, generators, num_bars);
+                    } else {  // csv mode
+                        std::vector<std::string> tickers;
+                        for (const auto& entry : ticker_entries) {
+                            // verify all tickers are loaded
+                            if (!data_manager.has_ticker(entry.name)) {
+                                res->writeHeader("Access-Control-Allow-Origin", "*");
+                                res->writeHeader("Content-Type", "application/json");
+                                res->end("{\"error\": \"Ticker data not found: " + entry.name + "\"}");
+                                return;
+                            }
+                            tickers.push_back(entry.name);
+                        }
+                        result = run_csv_simulation(engine, data_manager, tickers);
+                    }
+
+                    std::string output = serialize_simulation_result(result);
                     res->writeHeader("Access-Control-Allow-Origin", "*");
                     res->writeHeader("Content-Type", "application/json");
-                    res->end(output_json);                
+                    res->end(output);
                 }
             });
         })
@@ -234,7 +233,7 @@ int main() {
         // 6. LISTEN & RUN (Must be absolutely last in the chain)
         .listen(8080, [](auto *listen_socket) {
             if (listen_socket) {
-                cout << "uWebSockets Engine running on port 8080\n";
+                cout << "Simulator running on port 8080\n";
             } else {
                 cout << "Failed to start server.\n";
             }

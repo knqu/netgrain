@@ -6,10 +6,6 @@
 #include "engine.hpp"
 #include "../generator/generator.hpp"
 
-MarketDataRow to_market_row(const GeneratedBar& bar) {
-    return {bar.date, bar.open, bar.high, bar.low, bar.close, bar.volume, 0};
-}
-
 void test_generated_bar_ohlcv_invariants() {
     Generator gen("AAPL", 150, 10, 1000, 1000000);
 
@@ -47,7 +43,7 @@ void test_market_buy_with_generated_bar() {
 
     auto bar = gen.generate_bar(20260101);
     std::unordered_map<std::string, MarketDataRow> bars;
-    bars["AAPL"] = to_market_row(bar);
+    bars["AAPL"] = bar;
     auto fills = engine.process_bar(bars);
 
     assert(fills.size() == 1);
@@ -65,19 +61,19 @@ void test_market_sell_with_generated_bars() {
     std::unordered_map<std::string, MarketDataRow> bars;
 
     engine.place_order("AAPL", 10, 0, Side::BUY, OrderType::MARKET);
-    bars["AAPL"] = to_market_row(gen.generate_bar(20260101));
+    bars["AAPL"] = gen.generate_bar(20260101);
     engine.process_bar(bars);
 
-    int balance_after_buy = engine.get_balance();
+    i64 balance_after_buy = engine.get_balance();
 
     engine.place_order("AAPL", 10, 0, Side::SELL, OrderType::MARKET);
-    bars["AAPL"] = to_market_row(gen.generate_bar(20260102));
+    bars["AAPL"] = gen.generate_bar(20260102);
     auto fills = engine.process_bar(bars);
 
     assert(fills.size() == 1);
     assert(fills[0].side == Side::SELL);
     assert(engine.get_balance() != balance_after_buy);
-    assert(engine.get_positions()["AAPL"].quantity == 0);
+    assert(engine.get_positions().at("AAPL").quantity == 0);
 
     std::cout << "PASSED: market sell clears position with generated bars\n";
 }
@@ -91,15 +87,15 @@ void test_multi_ticker_generated() {
     engine.place_order("AAPL", 5, 0, Side::BUY, OrderType::MARKET);
     engine.place_order("GOOG", 3, 0, Side::BUY, OrderType::MARKET);
 
-    bars["AAPL"] = to_market_row(aapl.generate_bar(20260101));
-    bars["GOOG"] = to_market_row(goog.generate_bar(20260101));
+    bars["AAPL"] = aapl.generate_bar(20260101);
+    bars["GOOG"] = goog.generate_bar(20260101);
     auto fills = engine.process_bar(bars);
 
     assert(fills.size() == 2);
 
-    auto positions = engine.get_positions();
-    assert(positions["AAPL"].quantity == 5);
-    assert(positions["GOOG"].quantity == 3);
+    auto& positions = engine.get_positions();
+    assert(positions.at("AAPL").quantity == 5);
+    assert(positions.at("GOOG").quantity == 3);
 
     std::cout << "PASSED: multi-ticker with generated bars\n";
 }
@@ -110,10 +106,10 @@ void test_limit_buy_fills_within_generated_range() {
     std::unordered_map<std::string, MarketDataRow> bars;
 
     auto bar = gen.generate_bar(20260101);
-    i64 limit_price = bar.low;  // guaranteed to be reached
+    i64 limit_price = bar.low;
 
     engine.place_order("AAPL", 5, limit_price, Side::BUY, OrderType::LIMIT);
-    bars["AAPL"] = to_market_row(bar);
+    bars["AAPL"] = bar;
     auto fills = engine.process_bar(bars);
 
     assert(fills.size() == 1);
@@ -128,10 +124,10 @@ void test_limit_buy_misses_outside_generated_range() {
     std::unordered_map<std::string, MarketDataRow> bars;
 
     auto bar = gen.generate_bar(20260101);
-    i64 limit_price = bar.low - 1000;  // way below the bar
+    i64 limit_price = bar.low - 1000;
 
     engine.place_order("AAPL", 5, limit_price, Side::BUY, OrderType::LIMIT);
-    bars["AAPL"] = to_market_row(bar);
+    bars["AAPL"] = bar;
     auto fills = engine.process_bar(bars);
 
     assert(fills.size() == 0);
@@ -146,14 +142,14 @@ void test_stop_sell_triggers_within_generated_range() {
     std::unordered_map<std::string, MarketDataRow> bars;
 
     engine.place_order("AAPL", 10, 0, Side::BUY, OrderType::MARKET);
-    bars["AAPL"] = to_market_row(gen.generate_bar(20260101));
+    bars["AAPL"] = gen.generate_bar(20260101);
     engine.process_bar(bars);
 
     auto bar2 = gen.generate_bar(20260102);
-    i64 stop_price = bar2.low;  // guaranteed to be hit
+    i64 stop_price = bar2.low;
 
     engine.place_order("AAPL", 10, stop_price, Side::SELL, OrderType::STOP);
-    bars["AAPL"] = to_market_row(bar2);
+    bars["AAPL"] = bar2;
     auto fills = engine.process_bar(bars);
 
     assert(fills.size() == 1);
@@ -165,23 +161,23 @@ void test_stop_sell_triggers_within_generated_range() {
 void test_balance_conservation_round_trip() {
     Generator gen("AAPL", 150, 10, 1000, 1000000);
     Engine engine(100000);
-    engine.set_config("AAPL", {0.0, 0.0, 0.0, {0.0, 0.0}});  // zero fees
+    engine.set_config("AAPL", {0.0, 0.0, 0.0, {0.0, 0.0}});
     std::unordered_map<std::string, MarketDataRow> bars;
 
     engine.place_order("AAPL", 10, 0, Side::BUY, OrderType::MARKET);
     auto bar1 = gen.generate_bar(20260101);
-    bars["AAPL"] = to_market_row(bar1);
+    bars["AAPL"] = bar1;
     engine.process_bar(bars);
 
-    int cost = bar1.open * 10;
+    i64 cost = bar1.open * 10;
     assert(engine.get_balance() == 100000 - cost);
 
     engine.place_order("AAPL", 10, 0, Side::SELL, OrderType::MARKET);
     auto bar2 = gen.generate_bar(20260102);
-    bars["AAPL"] = to_market_row(bar2);
+    bars["AAPL"] = bar2;
     engine.process_bar(bars);
 
-    int revenue = bar2.open * 10;
+    i64 revenue = bar2.open * 10;
     assert(engine.get_balance() == 100000 - cost + revenue);
 
     std::cout << "PASSED: balance is exactly correct with zero fees\n";
@@ -194,11 +190,11 @@ void test_multi_bar_position_accumulation() {
 
     for (int i = 0; i < 5; i++) {
         engine.place_order("AAPL", 10, 0, Side::BUY, OrderType::MARKET);
-        bars["AAPL"] = to_market_row(gen.generate_bar(20260101 + i));
+        bars["AAPL"] = gen.generate_bar(20260101 + i);
         engine.process_bar(bars);
     }
 
-    assert(engine.get_positions()["AAPL"].quantity == 50);
+    assert(engine.get_positions().at("AAPL").quantity == 50);
     assert(engine.get_fill_log().size() == 5);
 
     std::cout << "PASSED: position accumulates over multiple generated bars\n";

@@ -1,5 +1,4 @@
 #include "historicalData.hpp"
-#include "../generator/generator.hpp"
 
 #include <fstream>
 #include <sstream>
@@ -148,114 +147,14 @@ string MarketDataManager::get_market_state_json() {
     return json;
 }
 
-//added a serialize to json function to conver sum results to json, can be changed in the future******
-string MarketDataManager::serialize_results_to_json(const SimulationConfig& config, const SimulationMetrics& metrics) {
-    ostringstream json;
-    json << "{\n";
-    
-    json << "  \"config\": {\n";
-    json << "    \"initial_capital\": " << metrics.initial_balance << ",\n";
-    
-    json << "    \"stocks\": [";
-    for (size_t i = 0; i < config.stocks.size(); ++i) {
-        json << "{";
-        json << "\"ticker\":\"" << config.stocks[i].name << "\",";
-        json << "\"base_price\":\"" << to_string(config.stocks[i].base_price) << "\",";
-        json << "\"liquidity\":\"" << to_string(config.stocks[i].liquidity) << "\",";
-        json << "\"volatility\":\"" << to_string(config.stocks[i].volatility) << "\",";
-        json << "\"market_cap\":\"" << to_string(config.stocks[i].market_cap) << "\",";
-        json << "}";
-        if (i < config.stocks.size() - 1) json << ", ";
-    }
-    json << "],\n";
-    
-    json << "    \"start_date\": \"" << config.start_date << "\",\n";
-    json << "    \"end_date\": \"" << config.end_date << "\",\n";
-    
-    double unscaled_fee = static_cast<double>(config.trade_fee) / 100000.0;
-    json << "    \"trade_fee\": " << unscaled_fee << "\n";
-    json << "  },\n";
-
-    json << "  \"metrics\": {\n";
-    json << "    \"total_trades\": " << metrics.total_trades << ",\n";
-    json << "    \"winning_trades\": " << metrics.winning_trades << ",\n";
-    json << "    \"losing_trades\": " << metrics.losing_trades << ",\n";
-    json << "    \"win_rate_percent\": " << metrics.win_rate_percent << ",\n";
-    json << "    \"initial_balance\": " << metrics.initial_balance << ",\n";
-    json << "    \"final_balance\": " << metrics.final_balance << ",\n";
-    json << "    \"net_profit\": " << metrics.net_profit << "\n";
-    json << "  }\n";
-    
-    json << "}";
-
-    return json.str();
+const vector<MarketDataRow>& MarketDataManager::get_bars(const string& ticker) const {
+    return market.at(ticker);
 }
 
-
-void MarketDataManager::initialize_generators(const std::vector<Stocks>& stocks) {
-  for (const auto& stock : stocks)
-  {
-    // Waiting for generator class to work
-
-  }
-
-}
-
-//added very basic testing function to show a basic execution on the stored data -> change made to accept simulation config struct to handle output of simulation
-// as well as sending packet to frontend with output for user to download metrics.
-string MarketDataManager::run_simulation(const SimulationConfig& config) {
-    //check if empty
-    if (config.stocks.empty()) {
-        return "{\"error\": \"No tickers provided in config\"}";
+vector<string> MarketDataManager::get_tickers() const {
+    vector<string> tickers;
+    for (const auto& [ticker, _] : market) {
+        tickers.push_back(ticker);
     }
-
-    string ticker = config.stocks[0].name; //for now grab first ticker in list for functional demonstration.
-
-    if (market.find(ticker) == market.end() || market[ticker].empty()) {
-        return "{\"error\": \"Ticker data not found: " + ticker + "\"}";
-    }
-
-    const auto& data = market[ticker];
-    int winning_trades = 0;
-    int losing_trades = 0;
-    i64 total_profit_scaled = 0;
-
-    //random ahh algorithm -> idk how it works dont ask, its to show data in storage is operable
-    for (const auto& row : data) {
-        // Buy at open, sell at close, AND deduct the trading fee!
-        i64 daily_profit = (row.close - row.open) - config.trade_fee; 
-        
-        total_profit_scaled += daily_profit;
-
-        if (daily_profit > 0) {
-            winning_trades++;
-        } else if (daily_profit < 0) {
-            losing_trades++;
-        }
-    }
-    //calc final metrics:
-    SimulationMetrics metrics;
-    metrics.total_trades = winning_trades + losing_trades;
-    metrics.winning_trades = winning_trades;
-    metrics.losing_trades = losing_trades;
-    metrics.win_rate_percent = metrics.total_trades > 0 ? (static_cast<double>(winning_trades) / metrics.total_trades) * 100.0 : 0.0;
-    
-    metrics.net_profit = static_cast<double>(total_profit_scaled) / 100000.0;
-    metrics.initial_balance = static_cast<double>(config.initial_capital) / 100000.0;
-    metrics.final_balance = metrics.initial_balance + metrics.net_profit;
-
-    //send to serializer
-    return serialize_results_to_json(config, metrics);
-}
-
-
-void MarketDataManager::print_config(const SimulationConfig& config) {
-        cout << "\n--- SIMULATION CONFIG STRUCT --- \n";
-        cout << "Initial Capital (Scaled): " << config.initial_capital << "\n";
-        cout << "Trade Fee (Scaled):       " << config.trade_fee << "\n";
-        cout << "Start Date:               " << (config.start_date.empty() ? "None" : config.start_date) << "\n";
-        cout << "End Date:                 " << (config.end_date.empty() ? "None" : config.end_date) << "\n";
-        cout << "Tickers to Trade:         ";
-        for (const auto& t : config.stocks) cout << t.name << " ";
-        cout << "\n--------------------------------------\n\n";
+    return tickers;
 }

@@ -14,6 +14,7 @@
 #include "queue.hpp"
 #include "blocking_queue.hpp"
 #include "data_transfer.hpp"
+#include "../simulator/historicalData.hpp"
 #include <cmath>
 #include <thread>
 #include <iostream>
@@ -26,15 +27,6 @@
 #include <queue>
 #include <thread>
 #include <chrono>
-
-struct GeneratedBar {
-  u32 date;
-  i64 open;
-  i64 high;
-  i64 low;
-  i64 close;
-  u64 volume;
-};
 
 class Generator {
 public:
@@ -178,7 +170,7 @@ public:
   }
 
   // generates one ohlcv bar by simulating ticks_per_bar intra-bar price movements via gbm, then aggregating
-  GeneratedBar generate_bar(u32 date, int ticks_per_bar = 50) {
+  MarketDataRow generate_bar(u32 date, int ticks_per_bar = 50) {
     // setup is basically copied from generate method below
     std::random_device rd{};
     std::mt19937 rng{rd()};
@@ -204,13 +196,14 @@ public:
       ? static_cast<u64>(liquidity * (80 + (rand() % 41)) / 100)
       : static_cast<u64>(500 + rand() % 1000);
 
-    return GeneratedBar{
+    return MarketDataRow{
       date,
       static_cast<i64>(open),
       static_cast<i64>(high),
       static_cast<i64>(low),
       static_cast<i64>(cur),
-      volume
+      volume,
+      0
     };
   }
 
