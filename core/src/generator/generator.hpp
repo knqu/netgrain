@@ -474,6 +474,9 @@ public:
               (*data_buffer) = {};
               data_buffer->push(static_cast<double>(gen_settings->reset_price.load()));
 
+              gen_settings->new_event.store(0);
+              gen_settings->pause.store(true);
+
               break;
             }
 
