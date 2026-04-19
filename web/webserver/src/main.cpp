@@ -27,7 +27,6 @@ int main() {
     std::unordered_set<crow::websocket::connection *> users;
     std::mutex mtx;
 
-
     Generator global_gen(0.02, 2, 100, 100); // HX
     Data_Transfer parameters;
     parameters.conn.store(nullptr);
@@ -88,7 +87,6 @@ int main() {
           parameters.new_event.store(5); 
         }
 
-
         if (data == "stop")
         {
           parameters.send_data.store(false);
@@ -107,6 +105,11 @@ int main() {
           {
             fmt::print("bubble is ignored: called consecutively when another is active!\n");
           }
+        }
+
+        if (data.starts_with("update")) {
+          int index = data.find(":");
+          global_gen.overwrite(stod(data.substr(index + 2)));
         }
       });
 
