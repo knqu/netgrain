@@ -1,6 +1,6 @@
 #define CROW_ENABLE_SSL
 
-#include "crow.h"
+#include <crow.h>
 #include "crow/middlewares/cookie_parser.h"
 #include "crow/middlewares/session.h"
 #include "../../../database/connector.cpp"
@@ -27,6 +27,8 @@ int main() {
     std::unordered_set<crow::websocket::connection *> users;
     std::mutex mtx;
 
+    std::vector<Generator *> generators;
+
     Generator global_gen(0.02, 2, 100, 100); // HX
     Data_Transfer parameters;
     parameters.conn.store(nullptr);
@@ -36,82 +38,82 @@ int main() {
 
     // MERGE ATTEMPT
     CROW_WEBSOCKET_ROUTE(app, "/websocket")
-      .onopen([&](crow::websocket::connection &conn) {
-        fmt::print("new websocket connection from {}!\n", conn.get_remote_ip());
-        std::lock_guard<std::mutex> _(mtx);
-        users.insert(&conn);
-        parameters.conn.store(&conn);
-        parameters.send_data.store(true);
-      })
-      .onclose([&]( // need to reset
-        crow::websocket::connection &conn,
-        const std::string &reason,
-        uint16_t) {
+        .onopen([&](crow::websocket::connection &conn) {
+            fmt::print("new websocket connection from {}!\n", conn.get_remote_ip());
+            std::lock_guard<std::mutex> _(mtx);
+            users.insert(&conn);
+            parameters.conn.store(&conn);
+            parameters.send_data.store(true);
+        })
+        .onclose([&]( // need to reset
+            crow::websocket::connection &conn,
+            const std::string &reason,
+            uint16_t) {
 
-        fmt::print("websocket connection closed: {}\n", reason);
-        std::lock_guard<std::mutex> _(mtx);
-        parameters.send_data.store(false);
-        parameters.conn.store(nullptr);
-        global_gen.reset();
-        users.erase(&conn);
-      })
-      .onmessage([&](
-        crow::websocket::connection &conn,
-        const std::string &data,
-        bool is_binary) {
+            fmt::print("websocket connection closed: {}\n", reason);
+            std::lock_guard<std::mutex> _(mtx);
+            parameters.send_data.store(false);
+            parameters.conn.store(nullptr);
+            global_gen.reset();
+            users.erase(&conn);
+        })
+        .onmessage([&](
+            crow::websocket::connection &conn,
+            const std::string &data,
+            bool is_binary) {
 
-        fmt::print("data received {}\n", data);
+            fmt::print("data received {}\n", data);
 
-        std::lock_guard<std::mutex> _(mtx);
-        if (data == "flash_crash")
-        {
-          if (parameters.new_event.load() == 0)
-          {
-            parameters.new_event.store(1);
-            fmt::print("flash crash!\n");
-          }
-        }
+            std::lock_guard<std::mutex> _(mtx);
+            if (data == "flash_crash")
+            {
+                if (parameters.new_event.load() == 0)
+                {
+                    parameters.new_event.store(1);
+                    fmt::print("flash crash!\n");
+                }
+            }
 
-        if (data == "sideways") { // HX
-          fmt::print("sideways!\n");
-          parameters.new_event.store(3);
-        }
+            if (data == "sideways") { // HX
+                fmt::print("sideways!\n");
+                parameters.new_event.store(3);
+            }
 
-        if (data == "bear") { 
-          fmt::print("bear market triggered!\n");
-          parameters.new_event.store(4); 
-        }
+            if (data == "bear") { 
+                fmt::print("bear market triggered!\n");
+                parameters.new_event.store(4); 
+            }
 
-        if (data == "bull") { 
-          fmt::print("bull market triggered!\n");
-          parameters.new_event.store(5); 
-        }
+            if (data == "bull") { 
+                fmt::print("bull market triggered!\n");
+                parameters.new_event.store(5); 
+            }
 
-        if (data == "stop")
-        {
-          parameters.send_data.store(false);
-        }
+            if (data == "stop")
+            {
+                parameters.send_data.store(false);
+            }
 
-        if (data.starts_with("bubble"))
-        {
-          if (parameters.new_event.load() == 0)
-          {
-            int threshold = std::stoi(data.substr(7), nullptr, 10);
-            parameters.new_event.store(2);
-            parameters.threshold.store(threshold);
-            fmt::print("bubble! {}\n", threshold);
-          }
-          else if (parameters.new_event.load() == 2)
-          {
-            fmt::print("bubble is ignored: called consecutively when another is active!\n");
-          }
-        }
+            if (data.starts_with("bubble"))
+            {
+                if (parameters.new_event.load() == 0)
+                {
+                    int threshold = std::stoi(data.substr(7), nullptr, 10);
+                    parameters.new_event.store(2);
+                    parameters.threshold.store(threshold);
+                    fmt::print("bubble! {}\n", threshold);
+                }
+                else if (parameters.new_event.load() == 2)
+                {
+                    fmt::print("bubble is ignored: called consecutively when another is active!\n");
+                }
+            }
 
-        if (data.starts_with("update")) {
-          int index = data.find(":");
-          global_gen.overwrite(stod(data.substr(index + 2)));
-        }
-      });
+            if (data.starts_with("update")) {
+                int index = data.find(":");
+                global_gen.overwrite(stod(data.substr(index + 2)));
+            }
+        });
 
     CROW_ROUTE(app, "/assets/index-<string>")([](std::string file) {
         crow::response res;
@@ -126,7 +128,10 @@ int main() {
         return page.render();
     });
 
-    CROW_ROUTE(app, "/api/cookieCheck").methods(crow::HTTPMethod::GET, crow::HTTPMethod::PATCH)([&](const crow::request& req) {
+    CROW_ROUTE(app, "/api/cookieCheck").methods(
+        crow::HTTPMethod::GET,
+        crow::HTTPMethod::PATCH)([&](const crow::request& req) {
+
         auto& session = app.get_context<Session>(req);
         if (session.get<bool>("loggedIn") == true) {
             return crow::response(200);
@@ -135,7 +140,10 @@ int main() {
         return crow::response(400);
     });
 
-    CROW_ROUTE(app, "/api/loginAttempt").methods(crow::HTTPMethod::POST, crow::HTTPMethod::PATCH)([&](const crow::request& req) {
+    CROW_ROUTE(app, "/api/loginAttempt").methods(
+        crow::HTTPMethod::POST,
+        crow::HTTPMethod::PATCH)([&](const crow::request& req) {
+
         auto& session = app.get_context<Session>(req);
         auto reqBody = crow::json::load(req.body);
 
@@ -144,20 +152,22 @@ int main() {
         
         int dbResponse = ConnectorSingleton::getInstance().login(email, password) ;
 
-       if (dbResponse == true) {
+        if (dbResponse == true) {
             auto& cookie = app.get_context<crow::CookieParser>(req);
             cookie.set_cookie("email", email).max_age(129600).path("/");
             session.set("loggedIn", true);
             crow::response res;
-            res.code = 200;
-            return res;
+            res.code = 200;return res;
         }
         else {
             return crow::response(400);
         }
     });
 
-    CROW_ROUTE(app, "/api/registration").methods(crow::HTTPMethod::POST, crow::HTTPMethod::PATCH)([&](const crow::request& req) {
+    CROW_ROUTE(app, "/api/registration").methods(
+        crow::HTTPMethod::POST,
+        crow::HTTPMethod::PATCH)([&](const crow::request& req) {
+
         auto& session = app.get_context<Session>(req);
         auto reqBody = crow::json::load(req.body);
 
@@ -186,7 +196,10 @@ int main() {
             msg.content(std::string("You Verifcation Code is: ") + sixDigits);
         
             mailio::smtps conn("smtp.gmail.com", 587);
-            conn.authenticate("burnermonkeyeye@gmail.com", "sddm nwly whin hkqr", mailio::smtps::auth_method_t::START_TLS);
+            conn.authenticate(
+                "burnermonkeyeye@gmail.com",
+                "sddm nwly whin hkqr",
+                mailio::smtps::auth_method_t::START_TLS);
             conn.submit(msg);
         }
         catch (mailio::smtp_error& exc) {
@@ -198,7 +211,10 @@ int main() {
         return crow::response(200);
     });
 
-    CROW_ROUTE(app, "/api/verifyEmail").methods(crow::HTTPMethod::POST, crow::HTTPMethod::PATCH)([&](const crow::request& req) {
+    CROW_ROUTE(app, "/api/verifyEmail").methods(
+        crow::HTTPMethod::POST,
+        crow::HTTPMethod::PATCH)([&](const crow::request& req) {
+
         auto& session = app.get_context<Session>(req);
         auto reqBody = crow::json::load(req.body);
 
@@ -232,7 +248,10 @@ int main() {
         }
     });
 
-    CROW_ROUTE(app, "/api/forgotPassword").methods(crow::HTTPMethod::POST, crow::HTTPMethod::PATCH)([&](const crow::request& req) {
+    CROW_ROUTE(app, "/api/forgotPassword").methods(
+        crow::HTTPMethod::POST,
+        crow::HTTPMethod::PATCH)([&](const crow::request& req) {
+
         auto& session = app.get_context<Session>(req);
         auto reqBody = crow::json::load(req.body);
 
@@ -262,7 +281,10 @@ int main() {
             msg.content(std::string("You Verifcation Code is: ") + sixDigits);
         
             mailio::smtps conn("smtp.gmail.com", 587);
-            conn.authenticate("burnermonkeyeye@gmail.com", "sddm nwly whin hkqr", mailio::smtps::auth_method_t::START_TLS);
+            conn.authenticate(
+                "burnermonkeyeye@gmail.com",
+                "sddm nwly whin hkqr",
+                mailio::smtps::auth_method_t::START_TLS);
             conn.submit(msg);
         }
         catch (mailio::smtp_error& exc) {
@@ -274,18 +296,25 @@ int main() {
         return crow::response(200);
     });
 
-    CROW_ROUTE(app, "/api/attemptDaily").methods(crow::HTTPMethod::POST, crow::HTTPMethod::Patch)([&](const crow::request& req) {
+    CROW_ROUTE(app, "/api/attemptDaily").methods(
+        crow::HTTPMethod::POST,
+        crow::HTTPMethod::Patch)([&](const crow::request& req) {
+
         auto reqBody = crow::json::load(req.body);
         try {
             auto& cookie = app.get_context<crow::CookieParser>(req);            
-            ConnectorSingleton::getInstance().addLeaderboardAttempt(cookie.get_cookie("email"), reqBody["profit"].i(), reqBody["time"].s());
+            ConnectorSingleton::getInstance().addLeaderboardAttempt(
+                cookie.get_cookie("email"), reqBody["profit"].i(), reqBody["time"].s());
         } catch (...) {
             return crow::response(400);
         }
         return crow::response(200);
     });
 
-    CROW_ROUTE(app, "/api/fetchLeaderboard").methods(crow::HTTPMethod::GET, crow::HTTPMethod::Patch)([&](const crow::request& req) {
+    CROW_ROUTE(app, "/api/fetchLeaderboard").methods(
+        crow::HTTPMethod::GET,
+        crow::HTTPMethod::Patch)([&](const crow::request& req) {
+
         try {
             crow::response res;
             std::cout << "Fetching Leaderboard" << std::endl;
@@ -307,18 +336,25 @@ int main() {
         }
     });
 
-    CROW_ROUTE(app, "/api/saveSim").methods(crow::HTTPMethod::GET, crow::HTTPMethod::Patch)([&](const crow::request& req) {
+    CROW_ROUTE(app, "/api/saveSim").methods(
+        crow::HTTPMethod::GET,
+        crow::HTTPMethod::Patch)([&](const crow::request& req) {
+
         // save to database
         return crow::response(200);
     });
 
-    CROW_ROUTE(app, "/api/fetchSim").methods(crow::HTTPMethod::POST, crow::HTTPMethod::Patch)([&](const crow::request& req) {
+    CROW_ROUTE(app, "/api/fetchSim").methods(
+        crow::HTTPMethod::POST,
+        crow::HTTPMethod::Patch)([&](const crow::request& req) {
+
         auto& cookie = app.get_context<crow::CookieParser>(req);
         auto reqBody = crow::json::load(req.body);
         
         try {
             return crow::response(200);
-            std::string filePath = ConnectorSingleton::getInstance().fetchSimulation(reqBody["submitted_simID"].i(), cookie.get_cookie("email")).at(0);
+            std::string filePath = ConnectorSingleton::getInstance().fetchSimulation(
+                reqBody["submitted_simID"].i(), cookie.get_cookie("email")).at(0);
             crow::response res;
             res.write("{filePath : " + filePath + "}");
             res.code = 200;
@@ -328,7 +364,10 @@ int main() {
         }
     });
 
-    CROW_ROUTE(app, "/api/saveLayout").methods(crow::HTTPMethod::POST, crow::HTTPMethod::Patch)([&](const crow::request& req) {
+    CROW_ROUTE(app, "/api/saveLayout").methods(
+        crow::HTTPMethod::POST,
+        crow::HTTPMethod::Patch)([&](const crow::request& req) {
+
         auto& cookie = app.get_context<crow::CookieParser>(req);
         std::string email = cookie.get_cookie("email");
         
@@ -342,7 +381,10 @@ int main() {
         }
     });
 
-    CROW_ROUTE(app, "/api/fetchLayout").methods(crow::HTTPMethod::GET, crow::HTTPMethod::Patch)([&](const crow::request& req) {
+    CROW_ROUTE(app, "/api/fetchLayout").methods(
+        crow::HTTPMethod::GET,
+        crow::HTTPMethod::Patch)([&](const crow::request& req) {
+
         auto& cookie = app.get_context<crow::CookieParser>(req);
         std::string email = cookie.get_cookie("email");
         
@@ -360,7 +402,10 @@ int main() {
         }
     });
 
-    CROW_ROUTE(app, "/api/simAveraged").methods(crow::HTTPMethod::GET, crow::HTTPMethod::Patch)([&](const crow::request& req) { 
+    CROW_ROUTE(app, "/api/simAveraged").methods(
+        crow::HTTPMethod::GET,
+        crow::HTTPMethod::Patch)([&](const crow::request& req) { 
+
         auto& cookie = app.get_context<crow::CookieParser>(req);
         std::string email = cookie.get_cookie("email");
         if (email.empty()) return crow::response(401);
@@ -378,7 +423,10 @@ int main() {
         }
     });
 
-    CROW_ROUTE(app, "/api/calculateFee").methods(crow::HTTPMethod::GET, crow::HTTPMethod::Patch)([&](const crow::request& req) { 
+    CROW_ROUTE(app, "/api/calculateFee").methods(
+        crow::HTTPMethod::GET,
+        crow::HTTPMethod::Patch)([&](const crow::request& req) { 
+
         auto& cookie = app.get_context<crow::CookieParser>(req);
         std::string email = cookie.get_cookie("email");
         
@@ -396,7 +444,10 @@ int main() {
         }
     });
 
-    CROW_ROUTE(app, "/api/fetchHistory").methods(crow::HTTPMethod::GET, crow::HTTPMethod::Patch)([&](const crow::request& req) {
+    CROW_ROUTE(app, "/api/fetchHistory").methods(
+        crow::HTTPMethod::GET,
+        crow::HTTPMethod::Patch)([&](const crow::request& req) {
+
         auto& cookie = app.get_context<crow::CookieParser>(req);
         std::string email = cookie.get_cookie("email");
 
