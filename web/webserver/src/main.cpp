@@ -74,6 +74,43 @@ int main() {
                 }
             }
 
+            if (data.starts_with("sim"))
+            {
+                std::string sim_args_str = data.substr(5);
+
+                int find_pos = sim_args_str.find_first_of("!");
+                double drift = std::stod(sim_args_str.substr(0, find_pos));
+
+                sim_args_str = sim_args_str.substr(find_pos + 1);
+                find_pos = sim_args_str.find_first_of("!");
+                double volatility = std::stod(sim_args_str.substr(0, find_pos));
+
+                sim_args_str = sim_args_str.substr(find_pos + 1);
+                find_pos = sim_args_str.find_first_of("!");
+                int price = std::stoi(sim_args_str.substr(0, find_pos));
+
+                sim_args_str = sim_args_str.substr(find_pos + 1);
+                int target = std::stoi(sim_args_str);
+
+                Generator *new_generator =
+                  new Generator(drift, volatility, price, target);
+                generators.push_back(new_generator);
+
+                fmt::print("[id: {}]: {} {} {} {}\n",
+                  generators.size(),
+                  drift,
+                  volatility,
+                  price,
+                  target
+                );
+
+                /*
+                std::thread([&]{
+                  new_generator->generate_ws(&parameters);
+                }).detach();
+                */
+            }
+
             if (data == "sideways") { // HX
                 fmt::print("sideways!\n");
                 parameters.new_event.store(3);
