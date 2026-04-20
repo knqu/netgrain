@@ -37,12 +37,54 @@ var lows: number[] = [1000, 1000];
 
 // -- Sim Run component
 
-const SimRun: React.FC<{ socketRef1: WebSocket, socketRef2: WebSocket, activeStock: String, date1: Date, date2: Date }> = ({ socketRef1, socketRef2, activeStock, date1, date2 }) => {
+const SimRun: React.FC<{ socketRefs: WebSocket[], activeStock: String, dates: Date[] }> = ({ socketRefs, activeStock, dates }) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const seriesRef = useRef<any>(null);
   const [totalTicks, setTotalTicks] = useState(0);
   const [clampedTicks, setClampedTicks] = useState(0);
+
+
+  function addMsg(curSocket: WebSocket, idx: number) {
+    const onMsgTemp = (e: MessageEvent) => {
+      try {
+        const payload = JSON.parse(e.data);
+        const price = Number(payload.price);
+
+        setTotalTicks(prev => prev + 1);
+        if (payload.clamped) {
+          setClampedTicks(prev => prev + 1);
+        }
+
+        dates[idx].setUTCDate(dates[idx].getUTCDate() + 1);
+        const time: UTCTimestamp = dates[idx].getTime() / 1000 as UTCTimestamp;
+        data[idx].push({ time: time, value: price });
+
+        if (activeStock === '1') {
+          seriesRef.current.update({ time: time, value: price });
+        }
+
+        if (data[idx].at(-1)!.value > highs[idx]) {
+          highs[idx] = data[0].at(-1)!.value;
+        }
+        if (data[idx].at(-1)!.value < lows[idx]) {
+          lows[idx] = data[idx].at(-1)!.value;
+        }
+
+        if (data[idx].at(-1)!.value < lowerBound || data[idx].at(-1)!.value > upperBound) {
+          lowerBound = Number.MIN_VALUE;
+          upperBound = Number.MAX_VALUE;
+          for (var i = 0; i < socketRefs.length; i++) {
+            socketRefs[idx].send("pause");
+          }
+        }
+      } catch (err) {
+        console.error("Error parsing WS message:", err);
+      }
+    }
+    curSocket.addEventListener("message", onMsgTemp);
+    return onMsgTemp;
+  } 
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -55,91 +97,11 @@ const SimRun: React.FC<{ socketRef1: WebSocket, socketRef2: WebSocket, activeSto
     const areaSeries = chart.addSeries(AreaSeries);
     seriesRef.current = areaSeries;
 
-
-    var counter = 0;
-    var counter2 = 0;
-
-
-
-
-
-
-    const onMsg1 = (e: MessageEvent) => {
-      try {
-        const payload = JSON.parse(e.data);
-        const price = Number(payload.price);
-
-        setTotalTicks(prev => prev + 1);
-        if (payload.clamped) {
-          setClampedTicks(prev => prev + 1);
-        }
-
-        date1.setUTCDate(date1.getUTCDate() + 1);
-        const time: UTCTimestamp = date1.getTime() / 1000 as UTCTimestamp;
-        counter++;
-        data[0].push({ time: time, value: price });
-
-        if (activeStock === '1') {
-          seriesRef.current.update({ time: time, value: price });
-        }
-
-        if (data[0].at(-1)!.value > highs[0]) {
-          highs[0] = data[0].at(-1)!.value;
-        }
-        if (data[0].at(-1)!.value < lows[0]) {
-          lows[0] = data[0].at(-1)!.value;
-        }
-
-        if (data[0].at(-1)!.value < lowerBound || data[0].at(-1)!.value > upperBound) {
-          lowerBound = Number.MIN_VALUE;
-          upperBound = Number.MAX_VALUE;
-          socketRef1.send("pause");
-          socketRef2.send("pause");
-        }
-      } catch (err) {
-        console.error("Error parsing WS message:", err);
-      }
+    var msgarr: ((e: MessageEvent)=> void)[] = [];
+    for (var i = 0; i < socketRefs.length; i++) {
+      msgarr.push(addMsg(socketRefs[i], i));
     }
-
-    const onMsg2 = (e: MessageEvent) => {
-      try {
-        const payload = JSON.parse(e.data);
-        const price = Number(payload.price);
-
-        setTotalTicks(prev => prev + 1);
-        if (payload.clamped) {
-          setClampedTicks(prev => prev + 1);
-        }
-
-        date2.setUTCDate(date2.getUTCDate() + 1);
-        const time: UTCTimestamp = date2.getTime() / 1000 as UTCTimestamp;
-        counter2++;
-        data[1].push({ time: time, value: price });
-        if (activeStock === '2') {
-          seriesRef.current.update({ time: time, value: price });
-        }
-
-        if (data[1].at(-1)!.value > highs[1]) {
-          highs[1] = data[1].at(-1)!.value;
-        }
-        if (data[1].at(-1)!.value < lows[1]) {
-          lows[1] = data[1].at(-1)!.value;
-        }
-
-        if (data[1].at(-1)!.value < lowerBound || data[1].at(-1)!.value > upperBound) {
-          lowerBound = Number.MIN_VALUE;
-          upperBound = Number.MAX_VALUE;
-          socketRef1.send("pause");
-          socketRef2.send("pause");
-        }
-      } catch (err) {
-        console.error("Error parsing WS message:", err);
-      }
-    }
-
-    socketRef1.addEventListener("message", onMsg1);
-    socketRef2.addEventListener("message", onMsg2);
-
+  
     chart.timeScale().fitContent();
 
     const resizeObserver = new ResizeObserver(entries => {
@@ -151,8 +113,9 @@ const SimRun: React.FC<{ socketRef1: WebSocket, socketRef2: WebSocket, activeSto
     if (activeStock === '1') seriesRef.current.setData(data[0]!);
     if (activeStock === '2') seriesRef.current.setData(data[1]!);
     return () => {
-      socketRef1.removeEventListener("message", onMsg1);
-      socketRef2.removeEventListener("message", onMsg2);
+      for (var i = 0; i < socketRefs.length; i++) {
+        socketRefs[i].removeEventListener("message", msgarr[i])
+      }
       resizeObserver.disconnect();
       chart.remove();
 
@@ -376,7 +339,7 @@ export default function SimulationRun() {
             <div className="Chart_outer_container">
               <div className="Chart_inner_container">
                 <div className="Chart" >
-                  <SimRun socketRef1={socketRef1.current!} socketRef2={socketRef2.current!} activeStock={activeStock} date1={date1.current!} date2={date2.current!} />
+                  <SimRun socketRefs={[socketRef1.current!, socketRef2.current!]} activeStock={activeStock} dates={[date1.current!, date2.current!]} />
                 </div>
               </div>
             </div>
