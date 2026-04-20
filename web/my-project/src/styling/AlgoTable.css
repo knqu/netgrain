@@ -7,7 +7,7 @@
 }
 
 .SimResult_table_head_row_container {
-    width: 900px;
+    width: 500;
     background-color: #252628;
     border-radius: 0.3em;
     padding: 0.76em;
@@ -28,7 +28,7 @@
     flex-direction: row;
     align-items: center;
 
-    width: 900px;
+    width: 400px;
     background-color: #3D3F42;
     border-radius: 0.3em;
     padding: 0.5em;

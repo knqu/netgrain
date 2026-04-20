@@ -4,6 +4,7 @@ import LeaderboardComponent from './Leaderboard';
 import HistoryComponent from './History';
 import Generation from './Generation';
 import GridComponent from './GridComponent';
+import ResultsTemplate from './ResultsTemplate';
 import SimResults from './SimResults';
 import LiveCharts from './LiveChart';
 import ChartSelect from './ChartSelect';
@@ -132,7 +133,7 @@ export default function AppHome() {
         );
       case "Generation" :
         return (
-          <Generation />
+          <ResultsTemplate />
         );
       case "simResults" :
         return (

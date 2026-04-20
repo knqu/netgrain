@@ -41,7 +41,7 @@ function App() {
         <Route path="/simRun" element={<SimulationRun />} />
         <Route path="/resultsTemplate" element={<ResultsTemplate />} />
       </Routes>
-    </BrowserRouter>
+    </Router>
   );
 }
 

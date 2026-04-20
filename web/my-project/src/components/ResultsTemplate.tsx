@@ -1,7 +1,8 @@
-import '../styling/SimResults.css'
+import '../styling/ResultsTemplate.css'
 
 import ChartComponent from './Chart';
 import SimulationResultsComponent from './AlgoTable'
+import Metrics from './Metrics';
 
 export default function ResultsTemplate() {
     return (
@@ -11,9 +12,15 @@ export default function ResultsTemplate() {
                     <h5>00 Month 0000</h5>
             </div>
 
-            <div className="Chart_Table_container">
-                <ChartComponent></ChartComponent>
-                <SimulationResultsComponent></SimulationResultsComponent>
+            <div>
+                <div className="Chart_Table_container">
+                    <ChartComponent></ChartComponent>
+                    <SimulationResultsComponent></SimulationResultsComponent>
+                </div>
+
+                <div className="">
+                    <Metrics></Metrics>
+                </div>
             </div>
         </div>
     );

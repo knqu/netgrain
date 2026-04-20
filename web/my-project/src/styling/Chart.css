@@ -8,20 +8,22 @@
 }
 
 .Chart_header_container {
-    width: 880px;
+    width: 300px;
     background-color: #252628;
     padding: 0.76em;
     border-radius: 0.3em;
 }
 
 .Chart_header {
+    width: fit-content;
     display: flex;
     flex-direction: row;
-    justify-content: space-around;
+    justify-content: x-around;
     align-items: center;
 }
 
 .Selector_container {
+    width: fit-content;
     display: flex;
     flex-direction: row;
     justify-content: center;
@@ -51,11 +53,6 @@
     flex-direction: row;
     justify-content: center;
     align-items: center;
-}
-
-.candleChart {
-    width: 800px;
-    height: 440px;
 }
 
 #stockSelector {

@@ -76,8 +76,8 @@ export default function ChartComponent() {
         useEffect(() => {
             if (!containerRef.current) return;
             const chart: IChartApi = createChart(containerRef.current, {
-                width: containerRef.current.clientWidth,
-                height: containerRef.current.clientHeight,
+                width: 520,
+                height: 300,
             })
 
             const candleSeries = chart.addSeries(CandlestickSeries);
@@ -85,15 +85,7 @@ export default function ChartComponent() {
             candleSeries.setData(stockData);
             chart.timeScale().fitContent();
 
-            const resizeObserver = new ResizeObserver(entries => {
-                const { width, height } = entries[0].contentRect;
-                chart.resize(width, height);
-            });
-
-            resizeObserver.observe(containerRef.current);
-
             return () => {
-                resizeObserver.disconnect();
                 chart.remove();
             };
         }, []);

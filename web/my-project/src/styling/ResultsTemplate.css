@@ -1,6 +1,6 @@
 .Analytics_container {
-    width: auto;
-    height: auto;
+    width: 70vw;
+    height: 87vh;
     margin: 0;
     background-color: #3D3F42;
     border-radius: 0.5em;
@@ -8,9 +8,10 @@
 
     display: flex;
     flex-direction: column;
-    justify-content: center;
+    justify-content: start;
     align-items: center;
     gap: 2em;
+    overflow-y: scroll;
 }
 
 .Analytics_header_container {
