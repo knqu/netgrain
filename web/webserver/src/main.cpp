@@ -1,5 +1,7 @@
 #define CROW_ENABLE_SSL
 
+#include <fmt/core.h>
+
 #include <crow.h>
 #include "crow/middlewares/cookie_parser.h"
 #include "crow/middlewares/session.h"
@@ -28,6 +30,8 @@ int main() {
     std::mutex mtx;
 
     std::vector<Generator *> generators;
+
+    std::vector<double> *streamed_points = new std::vector<double>();
 
     Generator global_gen(0.02, 2, 100, 100); // HX
     Data_Transfer parameters;
@@ -97,11 +101,11 @@ int main() {
                 generators.push_back(new_generator);
 
                 fmt::print("[id: {}]: {} {} {} {}\n",
-                  generators.size(),
-                  drift,
-                  volatility,
-                  price,
-                  target
+                    generators.size(),
+                    drift,
+                    volatility,
+                    price,
+                    target
                 );
 
                 /*
@@ -149,6 +153,28 @@ int main() {
             if (data.starts_with("update")) {
                 int index = data.find(":");
                 global_gen.overwrite(stod(data.substr(index + 2)));
+            }
+
+            if (data.starts_with("rewind"))
+            {
+                if (parameters.new_event.load() == 0)
+                {
+                    int rewind_count = std::stoi(data.substr(7), nullptr, 10);
+                    rewind_count = std::min<int>(rewind_count, streamed_points->size());
+                    double last_price_point =
+                        streamed_points->at(streamed_points->size() - rewind_count);
+
+                    streamed_points->erase(
+                        streamed_points->end() - rewind_count,
+                        streamed_points->end()
+                    );
+                    parameters.reset_price.store(last_price_point);
+                    parameters.new_event.store(6);
+                }
+                else if (parameters.new_event.load() == 2)
+                {
+                    fmt::print("rewind is ignored: another event is active\n");
+                }
             }
         });
 
@@ -539,7 +565,7 @@ int main() {
     });
 
     std::thread([&]{
-      global_gen.generate_ws(&parameters);
+      global_gen.generate_ws(&parameters, streamed_points);
     }).detach();
 
     app.bindaddr("127.0.0.1").port(18080);

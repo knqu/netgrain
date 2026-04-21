@@ -302,222 +302,6 @@ public:
   }
 
   // return the number of datapoints generated, if data is not being tested
-  int generate_ws(Data_Transfer *gen_settings) {
-    std::random_device rd{};
-    std::mt19937 gen{rd()};
-    std::normal_distribution<double> norm{0.0, 1.0};
-
-    // Values near the mean are the most likely. Standard deviation
-    // affects the dispersion of generated values from the mean.
-    int tracker = 0;
-    int i = 0;
-    double precede = 0.0;
-    double curr = 0.0;
-    double larger = 0.0;
-    int flash_crash_points = 15;
-    while (gen_settings->gen.load()) {
-      if (gen_settings->pause.load()) {
-        continue;
-      }
-      if (gen_settings->conn.load() == nullptr)
-      {
-        goto skip;
-      }
-
-      if (gen_settings->new_event.load()) {
-        switch (gen_settings->new_event.load())
-        {
-          // flash crash
-          case 1:
-            {
-              if (tracker == 0)
-              {
-                flash_crash_points = 14 + rand() % 11;
-                precede = data_buffer->front();
-                curr = gbm(precede, norm, gen);
-              }
-
-              if (tracker < flash_crash_points)
-              {
-                double offset = (rand() % ((int) ((double) base_price * 0.34)))
-                  + (double) base_price * 0.5436;
-
-                while (offset > curr * 0.8)
-                {
-                  offset *= 0.7891;
-                }
-
-                while (offset < curr * 0.54)
-                {
-                  offset *= 1.2142;
-                }
-
-                if (gen_settings->send_data.load()) {
-                  gen_settings->conn.load()
-                    ->send_text(fmt::format(
-                      "{{\"price\": {}, \"clamped\": {}, \"type\": \"tagged\"}}",
-                      (double) (curr - offset), this->last_was_clamped ? "true" : "false"));
-                }
-
-                precede = curr;
-                curr = gbm(precede, norm, gen);
-              }
-              else {
-                gen_settings->new_event.store(0);
-
-                if (gen_settings->send_data.load()) {
-                  gen_settings->conn.load()
-                    ->send_text(fmt::format(
-                      "{{\"price\": {}, \"clamped\": {}, \"type\": \"normal\"}}",
-                      curr, this->last_was_clamped ? "true" : "false"));
-                }
-
-                tracker = 0;
-                flash_crash_points = 15;
-              }
-
-              tracker += 1;
-
-              break;
-            }
-          case 2:
-            {
-              if (tracker == 0)
-              {
-                larger = data_buffer->front();
-                curr = gbm(larger, norm, gen);
-              }
-
-              if (curr > gen_settings->threshold.load())
-              {
-                fmt::print("threshold reached\n");
-
-                gen_settings->new_event.store(0);
-
-                data_buffer->push(gbm(curr * 0.3213, norm, gen));
-
-                if (gen_settings->send_data.load()) {
-                  gen_settings->conn.load()
-                    ->send_text(fmt::format(
-                      "{{\"price\": {}, \"clamped\": {}, \"type\": \"normal\"}}",
-                      send_price(), this->last_was_clamped ? "true" : "false"));
-                }
-
-                tracker = 0;
-              }
-              else {
-                while (curr < (larger * 0.93481))
-                {
-                  curr *= 1.2435;
-                }
-
-                if (gen_settings->send_data.load()) {
-                  gen_settings->conn.load()
-                    ->send_text(fmt::format(
-                      "{{\"price\": {}, \"clamped\": {}, \"type\": \"tagged\"}}",
-                      curr, this->last_was_clamped ? "true" : "false"));
-                }
-
-                tracker += 1;
-
-                larger = curr > larger ? curr : larger;
-                curr = gbm(larger, norm, gen);
-              }
-
-              break;
-            }
-          case 3: // Ornstein–Uhlenbeck process
-            {
-              this->percent_drift = 0.02;
-              this->percent_volatility = 2;
-              data_buffer->push(ou(data_buffer->front(), norm, gen));
-              if (gen_settings->send_data.load()) {
-                double res = send_price();
-                gen_settings->conn.load()->send_text(fmt::format(
-                  "{{\"price\": {}, \"clamped\": {}, \"type\": \"sideways\"}}",
-                  res, this->last_was_clamped ? "true" : "false"));
-              }
-              break;
-            }
-          case 4: //Bear market
-            {
-              this->percent_drift = -5.0;
-              this->percent_volatility = 0.30;
-
-              data_buffer->push(bear_math(data_buffer->front(), norm, gen));
-
-              if (gen_settings->send_data.load()) {
-                gen_settings->conn.load()->send_text(fmt::format(
-                  "{{\"price\": {}, \"clamped\": {}, \"type\": \"bear\"}}",
-                  send_price(), this->last_was_clamped ? "true" : "false"));
-              }
-              break;
-            }
-
-          case 5: //Bull market
-            {
-              this->percent_drift = 5.0;
-              this->percent_volatility = 0.15;
-
-              data_buffer->push(bull_math(data_buffer->front(), norm, gen));
-
-              if (gen_settings->send_data.load()) {
-                gen_settings->conn.load()->send_text(fmt::format(
-                  "{{\"price\": {}, \"clamped\": {}, \"type\": \"bull\"}}",
-                  send_price(), this->last_was_clamped ? "true" : "false"));
-              }
-              break;
-            }
-
-          case 6: // Reset
-            {
-              (*data_buffer) = {};
-              data_buffer->push(static_cast<double>(gen_settings->reset_price.load()));
-
-              gen_settings->new_event.store(0);
-              gen_settings->pause.store(true);
-
-              break;
-            }
-
-          default:
-            break;
-        }
-
-        /*
-        get_event(
-          gen_settings->n_drift,
-          gen_settings->n_vol,
-          gen_settings->n_price
-        );
-        */
-      }
-      else {
-        // no event
-        // generate the next data point in the weiner process and add it onto
-        // the data buffer, before dequeuing it
-        data_buffer->push(gbm(data_buffer->front(), norm, gen));
-
-        // TODO: way to send data would go here, this could be in the format
-        // of a second queue, extra fields in the Data_Transfer, etc. for now
-        // printing to console will suffice
-        if (gen_settings->send_data.load()) {
-          gen_settings->conn.load()->send_text(fmt::format(
-            "{{\"price\": {}, \"clamped\": {}, \"type\": \"normal\"}}",
-            send_price(), this->last_was_clamped ? "true" : "false"));
-        }
-      }
-
-      // goto
-skip:
-      // goto
-
-      i += 1;
-      std::this_thread::sleep_for(std::chrono::milliseconds(200));
-    }
-    return i;
-  }
-
   int generate_ws(Data_Transfer *gen_settings,
                   std::vector<double> *streamed_points) {
     std::random_device rd{};
@@ -574,6 +358,7 @@ skip:
                     ->send_text(fmt::format(
                       "{{\"price\": {}, \"clamped\": {}, \"type\": \"tagged\"}}",
                       (double) (curr - offset), this->last_was_clamped ? "true" : "false"));
+                  streamed_points->push_back((double) curr - offset);
                 }
 
                 precede = curr;
@@ -587,6 +372,7 @@ skip:
                     ->send_text(fmt::format(
                       "{{\"price\": {}, \"clamped\": {}, \"type\": \"normal\"}}",
                       curr, this->last_was_clamped ? "true" : "false"));
+                  streamed_points->push_back((double) curr);
                 }
 
                 tracker = 0;
@@ -613,11 +399,14 @@ skip:
 
                 data_buffer->push(gbm(curr * 0.3213, norm, gen));
 
+                double price_val = send_price();
+
                 if (gen_settings->send_data.load()) {
                   gen_settings->conn.load()
                     ->send_text(fmt::format(
                       "{{\"price\": {}, \"clamped\": {}, \"type\": \"normal\"}}",
-                      send_price(), this->last_was_clamped ? "true" : "false"));
+                      price_val, this->last_was_clamped ? "true" : "false"));
+                  streamed_points->push_back(price_val);
                 }
 
                 tracker = 0;
@@ -633,6 +422,7 @@ skip:
                     ->send_text(fmt::format(
                       "{{\"price\": {}, \"clamped\": {}, \"type\": \"tagged\"}}",
                       curr, this->last_was_clamped ? "true" : "false"));
+                  streamed_points->push_back(curr);
                 }
 
                 tracker += 1;
@@ -645,14 +435,63 @@ skip:
             }
           case 3: // Ornstein–Uhlenbeck process
             {
+              this->percent_drift = 0.02;
+              this->percent_volatility = 2;
               data_buffer->push(ou(data_buffer->front(), norm, gen));
               if (gen_settings->send_data.load()) {
-                gen_settings->conn.load()
-                  ->send_text(fmt::format(
-                    "{{\"price\": {}, \"clamped\": {}, \"type\": \"sideways\"}}",
-                    send_price(), this->last_was_clamped ? "true" : "false"));
+                double res = send_price();
+                gen_settings->conn.load()->send_text(fmt::format(
+                  "{{\"price\": {}, \"clamped\": {}, \"type\": \"sideways\"}}",
+                  res, this->last_was_clamped ? "true" : "false"));
+                streamed_points->push_back(res);
               }
+              break;
             }
+          case 4: //Bear market
+            {
+              this->percent_drift = -5.0;
+              this->percent_volatility = 0.30;
+
+              data_buffer->push(bear_math(data_buffer->front(), norm, gen));
+
+              if (gen_settings->send_data.load()) {
+                double price_val = send_price();
+                gen_settings->conn.load()->send_text(fmt::format(
+                  "{{\"price\": {}, \"clamped\": {}, \"type\": \"bear\"}}",
+                  price_val, this->last_was_clamped ? "true" : "false"));
+                streamed_points->push_back(price_val);
+              }
+              break;
+            }
+
+          case 5: //Bull market
+            {
+              this->percent_drift = 5.0;
+              this->percent_volatility = 0.15;
+
+              data_buffer->push(bull_math(data_buffer->front(), norm, gen));
+
+              if (gen_settings->send_data.load()) {
+                double price_val = send_price();
+                gen_settings->conn.load()->send_text(fmt::format(
+                  "{{\"price\": {}, \"clamped\": {}, \"type\": \"bull\"}}",
+                  send_price(), this->last_was_clamped ? "true" : "false"));
+                streamed_points->push_back(price_val);
+              }
+              break;
+            }
+
+          case 6: // Reset
+            {
+              (*data_buffer) = {};
+              data_buffer->push(static_cast<double>(gen_settings->reset_price.load()));
+
+              gen_settings->new_event.store(0);
+              gen_settings->pause.store(true);
+
+              break;
+            }
+
           default:
             break;
         }
@@ -675,12 +514,11 @@ skip:
         // of a second queue, extra fields in the Data_Transfer, etc. for now
         // printing to console will suffice
         if (gen_settings->send_data.load()) {
-          double price_point = send_price();
-          gen_settings->conn.load()
-            ->send_text(fmt::format(
-              "{{\"price\": {}, \"clamped\": {}, \"type\": \"normal\"}}",
-              price_point, this->last_was_clamped ? "true" : "false"));
-          streamed_points->push_back(price_point);
+          double price_val = send_price();
+          gen_settings->conn.load()->send_text(fmt::format(
+            "{{\"price\": {}, \"clamped\": {}, \"type\": \"normal\"}}",
+            price_val, this->last_was_clamped ? "true" : "false"));
+          streamed_points->push_back(price_val);
         }
       }
 
@@ -694,3 +532,4 @@ skip:
     return i;
   }
 };
+
