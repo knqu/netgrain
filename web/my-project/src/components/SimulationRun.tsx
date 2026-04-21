@@ -60,7 +60,7 @@ const SimRun: React.FC<{ socketRefs: WebSocket[], activeStock: String, dates: Da
         const time: UTCTimestamp = dates[idx].getTime() / 1000 as UTCTimestamp;
         data[idx].push({ time: time, value: price });
 
-        if (activeStock === '1') {
+        if (Number(activeStock) === idx) {
           seriesRef.current.update({ time: time, value: price });
         }
 
@@ -110,8 +110,7 @@ const SimRun: React.FC<{ socketRefs: WebSocket[], activeStock: String, dates: Da
     });
 
     resizeObserver.observe(containerRef.current);
-    if (activeStock === '1') seriesRef.current.setData(data[0]!);
-    if (activeStock === '2') seriesRef.current.setData(data[1]!);
+    seriesRef.current.setData(data[Number(activeStock)]);
     return () => {
       for (var i = 0; i < socketRefs.length; i++) {
         socketRefs[i].removeEventListener("message", msgarr[i])
@@ -125,9 +124,7 @@ const SimRun: React.FC<{ socketRefs: WebSocket[], activeStock: String, dates: Da
   useEffect(() => {
     if (seriesRef.current) {
       try {
-
-        const temp = activeStock === '1' ? data[0] : data[1];
-        seriesRef.current.setData(temp);
+        seriesRef.current.setData(data[Number(activeStock)]);
       } catch (err) {
         console.error("Chart is probably disposed", err);
       }
@@ -154,37 +151,36 @@ const SimRun: React.FC<{ socketRefs: WebSocket[], activeStock: String, dates: Da
 
 // --- Main Dashboard ---
 export default function SimulationRun() {
+  var num_stocks = 2;
   const [activeStock, setActiveStock] = useState('1');
-  const socketRef1 = useRef<WebSocket>(null);
 
-  const socketRef2 = useRef<WebSocket>(null);
-  if (!socketRef2.current) {
-    socketRef2.current = new WebSocket("ws://localhost:5556/");
+  const socketRefs = useRef<WebSocket[]>(null);
+  if (!socketRefs.current) {
+    socketRefs.current = [];
+    var init_websock = 5555;
+    for (var i = 0; i < num_stocks; i++) {
+      socketRefs.current.push(new WebSocket("ws://localhost:"+init_websock + "/"));
+      init_websock++;
+    }
   }
-  if (!socketRef1.current) {
-    socketRef1.current = new WebSocket("ws://localhost:5555/");
+  const dates = useRef<Date[] | null>(null);
+  if (!dates.current) {
+    dates.current = [];
+    for (i = 0; i < num_stocks; i++) {
+      dates.current.push(new Date(2018, 12, 31, 12, 0, 0));
+    }
   }
 
-
-  const date1 = useRef<Date | null>(null);
-  if (!date1.current) {
-    date1.current = new Date(2018, 12, 31, 12, 0, 0);
-  }
-  const date2 = useRef<Date | null>(null);
-  if (!date2.current) {
-    date2.current = new Date(2018, 12, 31, 12, 0, 0);
-  }
   useEffect(() => {
-    const handleOpen1 = () => console.log("Connected on 1");
-    const handleOpen2 = () => console.log("Connected on 2");
-
-    socketRef1.current!.addEventListener("open", handleOpen1);
-    socketRef2.current!.addEventListener("open", handleOpen2);
-
+    const handleOpen = () => console.log("Connected");
+    for (var i = 0; i < num_stocks; i++) {
+      socketRefs.current!.at(i)?.addEventListener("open", handleOpen);
+    }
 
     return () => {
-      socketRef1.current!.removeEventListener("open", handleOpen1);
-      socketRef2.current!.removeEventListener("open", handleOpen2);
+      for (var i = 0; i < num_stocks; i++) {
+        socketRefs.current!.at(i)?.removeEventListener("open", handleOpen);
+      }
     }
   })
 
@@ -200,34 +196,28 @@ export default function SimulationRun() {
 
 
   function updateChart(str: String) {
-    switch (str) {
-      case '1':
-        setActiveStock('1');
-        //areaSeries.setData(data[0]);
-        break;
-      case '2':
-        setActiveStock('2');
-        //areaSeries.setData(data[1]);
-        break;
-    }
+    setActiveStock(str.trim);
   };
 
   function pause() {
     console.log("send pause signal");
-    socketRef1.current!.send("pause");
-    socketRef2.current!.send("pause");
+    for (var i = 0; i < num_stocks; i++) {
+      socketRefs.current!.at(i)?.send("pause");
+    }
   }
 
   function resume() {
     console.log("send resume signal");
-    socketRef1.current!.send("resume");
-    socketRef2.current!.send("resume");
+    for (var i = 0; i < num_stocks; i++) {
+      socketRefs.current!.at(i)?.send("resume");
+    }
   }
 
   function modify() {
     console.log("modify demo")
-    socketRef1.current!.send("flash_crash");
-    socketRef2.current!.send("flash_crash");
+    for (var i = 0; i < num_stocks; i++) {
+      socketRefs.current!.at(i)?.send("flash_crash");
+    }
   }
 
   async function sleep(ms: number): Promise<void> {
@@ -240,8 +230,9 @@ export default function SimulationRun() {
     const time = (document.getElementById("sleep timer") as HTMLInputElement).value;
     console.log(`sleep for ${time} seconds`);
     await sleep(Number(time) * 1000);
-    socketRef1.current!.send("pause");
-    socketRef2.current!.send("pause");
+    for (var i = 0; i < num_stocks; i++) {
+      socketRefs.current!.at(i)?.send("pause");
+    }
   }
 
   async function sleepOnCondition() {
@@ -278,8 +269,9 @@ export default function SimulationRun() {
 
 
   function endSim() {
-    socketRef1.current!.send("stop");
-    socketRef2.current!.send("stop");
+    for (var i = 0; i < num_stocks; i++) {
+      socketRefs.current!.at(i)?.send("stop");
+    }
     var widgetVal: WidgetInterface[] = [];
     widgetVal.length = 0;
     switch (selectedOption) {
@@ -339,7 +331,7 @@ export default function SimulationRun() {
             <div className="Chart_outer_container">
               <div className="Chart_inner_container">
                 <div className="Chart" >
-                  <SimRun socketRefs={[socketRef1.current!, socketRef2.current!]} activeStock={activeStock} dates={[date1.current!, date2.current!]} />
+                  <SimRun socketRefs={socketRefs.current!} activeStock={activeStock} dates={dates.current!} />
                 </div>
               </div>
             </div>
