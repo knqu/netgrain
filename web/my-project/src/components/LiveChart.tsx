@@ -50,6 +50,8 @@ type chartType =
 
 let chartSeries: chartType;
 
+let paused = false;
+
 let data = [
   { time: '2018-12-22', value: 32.51 },
   { time: '2018-12-23', value: 31.11 },
@@ -123,6 +125,8 @@ const LiveChart: React.FC<LiveChartProps> = ({ws}) => {
     const date = new Date(Date.UTC(2018, 12, 31, 12, 0, 0, 0));
 
     const intervalID = setInterval(() => {
+      if (paused) return;
+
       if (Queue.length === 0) {
         return; 
       }
@@ -181,6 +185,12 @@ export default function ChartComponent() {
       socket.send(newMode);
     }
     setMode(newMode);
+
+    if (newMode === "pause") {
+      paused = true;
+    } else if (newMode === "resume") {
+      paused = false;
+    }
   };
 
   const Form: React.FC = () => {
@@ -198,6 +208,7 @@ export default function ChartComponent() {
       Queue.length = 0;
 
       socket.send(`rewind:${rewindAmount}`);
+      paused = true;
     };
 
     return (
@@ -225,7 +236,7 @@ export default function ChartComponent() {
       <div style={{ padding: '15px', display: 'flex', gap: '10px', justifyContent: 'center' }}>
         <Form></Form>
       </div>
-          
+
       <div className="Chart_outer_container" style={{ flexGrow: 1, width: '100%' }}>
         <div className="Chart_inner_container" style={{ height: '100%', width: '100%'}}>
           <div className="Chart" style={{ height: '500px', width: '100%' }}>
@@ -236,3 +247,4 @@ export default function ChartComponent() {
     </div>
   );
 }
+
