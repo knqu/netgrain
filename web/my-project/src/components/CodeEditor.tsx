@@ -2,8 +2,6 @@ import "../styling/CodeEditor.css"
 import * as monaco from 'monaco-editor';
 import React, { useEffect, useRef } from "react";
 
-
-
 interface Props {
     onMount: (editor: any) => void;
 }
@@ -82,7 +80,6 @@ monaco.languages.registerCompletionItemProvider('python', {
         return { suggestions: suggestions };
     }
 });
-
 
 
 const EditorContainer: React.FC<Props> = ({onMount} : Props) => {

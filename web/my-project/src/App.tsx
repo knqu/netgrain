@@ -13,12 +13,13 @@ import ChartSelect from './components/ChartSelect';
 import SimResults from './components/SimResults';
 import Verification from './components/Verification';
 import ForgotPassword from './components/ForgotPassword';
-import CodeEditor from './components/CodeEditor';
+//import CodeEditor from './components/CodeEditor';
 //import NewSim from './components/newSimPage'
 import SimulationRun from './components/SimulationRun';
 import LiveChartComponent from './components/LiveChart';
 import ResultsTemplate from './components/ResultsTemplate';
 
+//<Route path="/codeEditor" element={<CodeEditor onMount={}/>} />
 function App() {
   return (
     <Router>
@@ -35,7 +36,6 @@ function App() {
         <Route path="/algoTable" element={<AlgoTable />} />
         <Route path="/verification" element={<Verification />} />
         <Route path="/forgot" element={<ForgotPassword />} />
-        <Route path="/codeEditor" element={<CodeEditor />} />
         <Route path="*" element={<Login />} />
         <Route path="/liveChart" element={<LiveChartComponent />} />
         <Route path="/simRun" element={<SimulationRun num_stocks={3}/>} />
