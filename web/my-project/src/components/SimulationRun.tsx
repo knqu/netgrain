@@ -148,18 +148,20 @@ const SimRun: React.FC<{ socketRefs: WebSocket[], activeStock: String, dates: Da
   );
 };
 
+interface simulationRunProps {
+  num_stocks: number;
+}
 
 // --- Main Dashboard ---
-export default function SimulationRun() {
-  var num_stocks = 2;
-  const [activeStock, setActiveStock] = useState('1');
+export default function SimulationRun({num_stocks}: simulationRunProps) {
+  const [activeStock, setActiveStock] = useState('0');
 
   const socketRefs = useRef<WebSocket[]>(null);
   if (!socketRefs.current) {
     socketRefs.current = [];
     var init_websock = 5555;
     for (var i = 0; i < num_stocks; i++) {
-      socketRefs.current.push(new WebSocket("ws://localhost:"+init_websock + "/"));
+      socketRefs.current.push(new WebSocket("ws://localhost:" + init_websock + "/"));
       init_websock++;
     }
   }
@@ -190,13 +192,8 @@ export default function SimulationRun() {
   const [Stats, setWidget] = useState<any>();
 
 
-
-
-
-
-
   function updateChart(str: String) {
-    setActiveStock(str.trim);
+    setActiveStock(String(str));
   };
 
   function pause() {
@@ -325,8 +322,18 @@ export default function SimulationRun() {
               <WidgetForm />
             </div>
             <div style={{ marginBottom: '10px' }}>
-              <button onClick={() => updateChart('1')}>Stock 1</button>
-              <button onClick={() => updateChart('2')}>Stock 2</button>
+              {Array.from({ length: num_stocks }, (_, i) => (
+                <button 
+                key={i} 
+                onClick={() => updateChart(i.toString())}
+                style={{ 
+                marginRight: '5px',
+                fontWeight: activeStock === i.toString() ? 'bold' : 'normal' 
+                }}
+                >
+                  Stock {i + 1}
+                </button>
+              ))}
             </div>
             <div className="Chart_outer_container">
               <div className="Chart_inner_container">

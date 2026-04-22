@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from "react-router-dom";
 import "../styling/newSim.css"
-import CodeEditor from "./CodeEditor"
-import SimResults from "./SimResults";
+import CodeEditor from "./CodeEditor";
+import SimulationRun from './SimulationRun';
 import '../styling/Simulation.css';
 
 function SimulationExec() {
@@ -547,7 +547,7 @@ const Simulation: React.FC = () => {
                     </div>
                 );
                 case "Start":
-                    return (<SimResults />);
+                    return (<SimulationRun num_stocks={stocks.length}/>);
         }
     }
     

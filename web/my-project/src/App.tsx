@@ -38,7 +38,7 @@ function App() {
         <Route path="/codeEditor" element={<CodeEditor />} />
         <Route path="*" element={<Login />} />
         <Route path="/liveChart" element={<LiveChartComponent />} />
-        <Route path="/simRun" element={<SimulationRun />} />
+        <Route path="/simRun" element={<SimulationRun num_stocks={3}/>} />
         <Route path="/resultsTemplate" element={<ResultsTemplate />} />
       </Routes>
     </Router>
