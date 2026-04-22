@@ -4,13 +4,10 @@ import React, { useEffect, useRef } from "react";
 
 
 
-// function test() {
-//     //const val = "test";
-//     const myEditor = monaco.editor.create(DocumentTimeline.getElementById("tester"), {
-//         language: "python",
-//         automaticLayout: true,
-//     });
-// }
+interface Props {
+    onMount: (editor: any) => void;
+}
+
 monaco.languages.registerCompletionItemProvider('python', {
     provideCompletionItems: (model, position) => {
       console.log(model)
@@ -86,7 +83,9 @@ monaco.languages.registerCompletionItemProvider('python', {
     }
 });
 
-const EditorContainer: React.FC = () => {
+
+
+const EditorContainer: React.FC<Props> = ({onMount} : Props) => {
     const containerRef = useRef<HTMLDivElement | null>(null);
     const myEditor = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
 
@@ -99,7 +98,9 @@ const EditorContainer: React.FC = () => {
             automaticLayout: false,
         });
 
-
+        if (onMount) {
+            onMount(myEditor.current);
+        }
         // ensure that layout operates correctly
         const resizeObserver = new ResizeObserver(() => {
             window.requestAnimationFrame(() => {
@@ -119,15 +120,26 @@ const EditorContainer: React.FC = () => {
             if (myEditor.current) {
                 resizeObserver.disconnect();
                 myEditor.current.dispose();
+
+                onMount(null);
             }
         };
-    }, []);
+    }, [onMount]);
 
-        return <div className="EditorContainer" ref={containerRef}/>
+        return (
+          <div className="editor_outer" >
+            <div className="editor_inner"> 
+                <div className="code_editor">
+                    <div className="EditorContainer" ref={containerRef}/>
+                </div>
+            </div>
+        </div>  
+        )
+        
 };
 
-
-export default function CodeEditor() {
+export default EditorContainer;
+/*export default function CodeEditor() {
     return (
         // <h1>
         //      This is the code editing page.
@@ -141,4 +153,4 @@ export default function CodeEditor() {
             </div>
         </div>
         
-    )};
+    )};*/

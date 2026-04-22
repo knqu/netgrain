@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from "react-router-dom";
 import "../styling/newSim.css"
-import CodeEditor from "./CodeEditor";
+import EditorContainer  from "./CodeEditor";
 import SimulationRun from './SimulationRun';
 import '../styling/Simulation.css';
+import * as monaco from 'monaco-editor';
 
 function SimulationExec() {
   const navigate = useNavigate();
@@ -49,6 +50,8 @@ export interface SimulationConfigRequest {
     start_date: string;
     end_date: string;
     trade_fee: number;
+    script: String;
+    // include script
 }
 
 const Simulation: React.FC = () => {
@@ -72,6 +75,7 @@ const Simulation: React.FC = () => {
     const [marketData, setMarketData] = useState<Record<string, string[]>>({});
     const [activeAssetClass, setActiveAssetClass] = useState<string>("Stocks");
 
+    const editorInstanceRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
     // --- SIMULATION STATE ---
     const [initialCapital, setInitialCapital] = useState<number | string>(100000);
     const [stocks, setStocks] = useState<StockParams[]>([
@@ -204,12 +208,15 @@ const Simulation: React.FC = () => {
             return;
         }
 
+        const pythonScript = editorInstanceRef.current?.getValue() || "";
         const payload: SimulationConfigRequest = {
             initial_capital: Number(initialCapital),
             stocks: stocks,
             start_date: startDate,
             end_date: endDate,
-            trade_fee: Number(tradeFee)
+            trade_fee: Number(tradeFee),
+            script: pythonScript,
+            // include script here
         };
 
         setIsRunning(true);
@@ -537,7 +544,7 @@ const Simulation: React.FC = () => {
                     </div>
                     <div className="sim-grid">
                         <div className="grid-item">
-                            <CodeEditor />
+                            <EditorContainer onMount={(editor) => {(editorInstanceRef.current = editor)}} />
                         </div>
                         <div className="grid-item">
                             <ConfigUI />
