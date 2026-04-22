@@ -19,6 +19,7 @@ import SimulationRun from "./components/SimulationRun";
 import LiveChartComponent from "./components/LiveChart";
 import ResultsTemplate from "./components/ResultsTemplate";
 
+//<Route path="/codeEditor" element={<CodeEditor onMount={}/>} />
 function App() {
   const onMount = (editor: any) => {};
 

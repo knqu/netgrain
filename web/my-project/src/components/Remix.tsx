@@ -48,6 +48,7 @@ type chartType =
   >;
 
 let liveChart: IChartApi;
+// @ts-ignore
 let chartSeries: chartType;
 
 const mediumChartOptions: DeepPartial<TimeChartOptions> = {
@@ -63,6 +64,7 @@ const mediumChartOptions: DeepPartial<TimeChartOptions> = {
   }
 };
 
+/*
 const pickerOpts = {
   types: [
     {
@@ -74,15 +76,19 @@ const pickerOpts = {
   ],
   multiple: false,
 };
+*/
 
+// @ts-ignore
 let fileHandle: FileSystemFileHandle;
 
+/*
 async function getFile() {
   [fileHandle] = await (window as any).showOpenFilePicker(pickerOpts);
 
   const fileData = await fileHandle.getFile();
   return fileData;
 }
+*/
 
 const LiveChart: React.FC = () => {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -106,6 +112,11 @@ const LiveChart: React.FC = () => {
 
     liveChart.timeScale().fitContent();
     liveChart.timeScale().scrollToPosition(5, true);
+
+    /*
+    _ = chartSeries;
+    _ = fileHandle;
+    */
 
     return () => {
       liveChart.remove();
