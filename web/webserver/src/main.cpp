@@ -150,6 +150,14 @@ int main() {
                 }
             }
 
+            if (data == "pause") {
+                parameters.pause.store(true);
+            }
+
+            if (data == "resume") {
+                parameters.pause.store(false);
+            }
+
             if (data.starts_with("update")) {
                 int index = data.find(":");
                 global_gen.overwrite(stod(data.substr(index + 2)));

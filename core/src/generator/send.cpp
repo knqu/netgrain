@@ -213,7 +213,7 @@ int main(int argc, const char *argv[])
     app.port(atoi(argv[1])).multithreaded().run();
   }
   else {
-    app.port(5555).multithreaded().run();
+    app.port(18080).multithreaded().run();
   }
 
   parameters.gen.store(false);
