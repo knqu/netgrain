@@ -60,7 +60,7 @@ int main() {
     }};
 
     crow::mustache::set_global_base("../../my-project/dist");
-    
+
     std::unordered_set<crow::websocket::connection *> users;
     std::mutex mtx;
 
@@ -336,14 +336,14 @@ int main() {
                 parameters.new_event.store(3);
             }
 
-            if (data == "bear") { 
+            if (data == "bear") {
                 fmt::print("bear market triggered!\n");
-                parameters.new_event.store(4); 
+                parameters.new_event.store(4);
             }
 
-            if (data == "bull") { 
+            if (data == "bull") {
                 fmt::print("bull market triggered!\n");
-                parameters.new_event.store(5); 
+                parameters.new_event.store(5);
             }
 
             if (data == "stop")
@@ -423,7 +423,7 @@ int main() {
         if (session.get<bool>("loggedIn") == true) {
             return crow::response(200);
         }
-        
+
         return crow::response(400);
     });
 
@@ -436,7 +436,7 @@ int main() {
 
         std::string email = reqBody["login_submitted_email"].s();
         std::string password = reqBody["login_submitted_password"].s();
-        
+
         int dbResponse = ConnectorSingleton::getInstance().login(email, password) ;
 
         if (dbResponse == true) {
@@ -482,7 +482,7 @@ int main() {
             msg.add_recipient(recipient);
             msg.subject("NetGrain Registration");
             msg.content(std::string("You Verifcation Code is: ") + sixDigits);
-        
+
             mailio::smtps conn("smtp.gmail.com", 587);
             conn.authenticate(
                 "burnermonkeyeye@gmail.com",
@@ -567,7 +567,7 @@ int main() {
             msg.add_recipient(recipient);
             msg.subject("NetGrain Registration");
             msg.content(std::string("You Verifcation Code is: ") + sixDigits);
-        
+
             mailio::smtps conn("smtp.gmail.com", 587);
             conn.authenticate(
                 "burnermonkeyeye@gmail.com",
@@ -590,7 +590,7 @@ int main() {
 
         auto reqBody = crow::json::load(req.body);
         try {
-            auto& cookie = app.get_context<crow::CookieParser>(req);            
+            auto& cookie = app.get_context<crow::CookieParser>(req);
             ConnectorSingleton::getInstance().addLeaderboardAttempt(
                 cookie.get_cookie("email"), reqBody["profit"].i(), reqBody["time"].s());
         } catch (...) {
@@ -613,7 +613,7 @@ int main() {
                 res.code = 201;
                 return res;
             }
-            
+
             res.set_header("Access-Control-Allow-Origin", "https://localhost");
             res.set_header("Access-Control-Allow-Credentials", "true");
             res.write(leaderboardJSON);
@@ -638,7 +638,7 @@ int main() {
 
         auto& cookie = app.get_context<crow::CookieParser>(req);
         auto reqBody = crow::json::load(req.body);
-        
+
         try {
             return crow::response(200);
             std::string filePath = ConnectorSingleton::getInstance().fetchSimulation(
@@ -658,8 +658,8 @@ int main() {
 
         auto& cookie = app.get_context<crow::CookieParser>(req);
         std::string email = cookie.get_cookie("email");
-        
-        if (email.empty()) return crow::response(401); 
+
+        if (email.empty()) return crow::response(401);
 
         try {
             ConnectorSingleton::getInstance().linkCustomGUILayout(email, req.body);
@@ -675,7 +675,7 @@ int main() {
 
         auto& cookie = app.get_context<crow::CookieParser>(req);
         std::string email = cookie.get_cookie("email");
-        
+
         if (email.empty()) return crow::response(401);
 
         try {
@@ -692,7 +692,7 @@ int main() {
 
     CROW_ROUTE(app, "/api/simAveraged").methods(
         crow::HTTPMethod::GET,
-        crow::HTTPMethod::Patch)([&](const crow::request& req) { 
+        crow::HTTPMethod::Patch)([&](const crow::request& req) {
 
         auto& cookie = app.get_context<crow::CookieParser>(req);
         std::string email = cookie.get_cookie("email");
@@ -713,11 +713,11 @@ int main() {
 
     CROW_ROUTE(app, "/api/calculateFee").methods(
         crow::HTTPMethod::GET,
-        crow::HTTPMethod::Patch)([&](const crow::request& req) { 
+        crow::HTTPMethod::Patch)([&](const crow::request& req) {
 
         auto& cookie = app.get_context<crow::CookieParser>(req);
         std::string email = cookie.get_cookie("email");
-        
+
         if (email.empty()) return crow::response(401);
 
         try {
