@@ -76,7 +76,7 @@ int main() {
     parameters.new_event.store(0);
     parameters.send_data.store(false);
 
-    CROW_ROUTE(app, "/api/market").methods( // TODO:Complete
+    CROW_ROUTE(app, "/api/market").methods(
         crow::HTTPMethod::GET)([&](const crow::request& req) {
 
         string json = data_manager.get_market_state_json();
@@ -87,7 +87,7 @@ int main() {
         return res;
     });
 
-    CROW_ROUTE(app, "/api/upload").methods( // TODO: Complete
+    CROW_ROUTE(app, "/api/upload").methods(
         crow::HTTPMethod::POST,
         crow::HTTPMethod::PATCH)([&](const crow::request& req) {
 
@@ -158,7 +158,6 @@ int main() {
         return res;
     });
 
-    // TODO:
     CROW_ROUTE(app, "/api/simulate").methods(
         crow::HTTPMethod::POST,
         crow::HTTPMethod::PATCH,
@@ -173,22 +172,18 @@ int main() {
             return res;
         }
 
-        crow::response res;
-        res.set_header("Access-Control-Allow-Origin", "*");
-        res.set_header("Access-Control-Allow-Methods", "POST, OPTIONS");
-        res.set_header("Access-Control-Allow-Headers", "Content-Type");
-
         auto reqBody = crow::json::load(req.body);
 
         njson j;
+
         try {
             j = njson::parse(req.body); //HACK:
         } catch (const njson::parse_error& e) {
             std::cout << "ERROR\n";
+            crow::response res(R"({"error": "Invalid JSON"})");
             res.set_header("Access-Control-Allow-Origin", "*");
             res.set_header("Content-Type", "application/json");
-            res.end(R"({"error": "Invalid JSON"})");
-            res.code = 205;
+            res.code = 500;
             return res;
         }
 
@@ -207,10 +202,10 @@ int main() {
         std::vector<TickerEntry> ticker_entries;
 
         if (!j.contains("stocks") || !j["stocks"].is_array()) {
+            crow::response res(R"({"error": "No tickers provided"})");
             res.set_header("Access-Control-Allow-Origin", "*");
             res.set_header("Content-Type", "application/json");
-            res.end(R"({"error": "No tickers provided"})");
-            res.code = 204;
+            res.code = 500;
             return res;
         }
 
@@ -225,10 +220,10 @@ int main() {
         }
 
         if (ticker_entries.empty()) {
+            crow::response res(R"({"error": "No tickers provided"})");
             res.set_header("Access-Control-Allow-Origin", "*");
             res.set_header("Content-Type", "application/json");
-            res.end(R"({"error": "No tickers provided"})");
-            res.code = 203;
+            res.code = 500;
             return res;
         }
 
@@ -252,10 +247,10 @@ int main() {
             for (const auto& entry : ticker_entries) {
                 // verify all tickers are loaded
                 if (!data_manager.has_ticker(entry.name)) {
+                    crow::response res("{\"error\": \"Ticker data not found: " + entry.name + "\"}");
                     res.set_header("Access-Control-Allow-Origin", "*");
                     res.set_header("Content-Type", "application/json");
-                    res.end("{\"error\": \"Ticker data not found: " + entry.name + "\"}");
-                    res.code = 202;
+                    res.code = 500;
                     return res;
                 }
                 tickers.push_back(entry.name);
@@ -264,11 +259,10 @@ int main() {
         }
 
         std::string output = serialize_simulation_result(result);
+        crow::response res(output);
         res.set_header("Access-Control-Allow-Origin", "*");
         res.set_header("Content-Type", "application/json");
-        res.end(output);
-        res.code = 201;
-
+        res.code = 200;
         return res;
     });
 
