@@ -159,9 +159,9 @@ export default function SimulationRun({num_stocks}: simulationRunProps) {
   const socketRefs = useRef<WebSocket[]>(null);
   if (!socketRefs.current) {
     socketRefs.current = [];
-    var init_websock = 5555;
+    var init_websock = 18080;
     for (var i = 0; i < num_stocks; i++) {
-      socketRefs.current.push(new WebSocket("ws://localhost:" + init_websock + "/"));
+      socketRefs.current.push(new WebSocket("ws://localhost:" + init_websock + "/websocket"));
       init_websock++;
     }
   }

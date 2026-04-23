@@ -1,12 +1,15 @@
 #define CROW_ENABLE_SSL
 
-#include <fmt/core.h>
+// HEADERS
 
+#include <fmt/core.h>
 #include <crow.h>
 #include "crow/middlewares/cookie_parser.h"
 #include "crow/middlewares/session.h"
 #include "../../../database/connector.cpp"
+#include "../../../lib/nlohmann/json.hpp"
 #include "../../../core/src/generator/generator.hpp"
+#include "../../../core/src/simulator/simulator.hpp"
 #include <mailio/message.hpp>
 #include <mailio/smtp.hpp>
 
@@ -15,8 +18,40 @@
 #include <string>
 #include <fstream>
 #include <iostream>
+#include <memory>
+#include <string_view>
+#include <algorithm>
+#include <cstdio>
+#include <filesystem>
+
+using njson = nlohmann::json; // HACK:
+MarketDataManager data_manager;
+
+void load_ticker_data() {
+    string default_dir = "../../../data/";  // NOTE: assumes program is run from root directory
+
+    if (std::filesystem::exists(default_dir) && std::filesystem::is_directory(default_dir)) {    
+        for (const auto& entry : filesystem::recursive_directory_iterator(default_dir)) { //recursive bc I changed to have subfolders for asset classes
+            if (entry.is_regular_file()) {
+                std::string file_path = entry.path().string();
+                std::string file_name = entry.path().filename().string();
+                //name of the folder is assect class
+                std::string asset_class = entry.path().parent_path().filename().string();
+                if (asset_class == "data") asset_class = "Stocks";
+
+                std::string ticker = file_name.substr(0, file_name.find('.'));
+                transform(ticker.begin(), ticker.end(), ticker.begin(), [](unsigned char c){ return toupper(c); });
+                data_manager.load_ticker_data(ticker, file_path, asset_class);
+            }
+        }
+        cout << "Success Loading in stored data\n";
+    } else {
+        cout << "Data directory not found: " << default_dir << "\n";
+    }
+}
 
 int main() {
+    load_ticker_data();
     using Session = crow::SessionMiddleware<crow::InMemoryStore>;
     crow::App<crow::CookieParser, Session> app{Session{
         crow::CookieParser::Cookie("session").max_age(129600).path("/"),
@@ -40,7 +75,188 @@ int main() {
     parameters.new_event.store(0);
     parameters.send_data.store(false);
 
-    // MERGE ATTEMPT
+    CROW_ROUTE(app, "/api/market").methods( // TODO: i think i'm done
+        crow::HTTPMethod::GET,
+        crow::HTTPMethod::PATCH)([&](const crow::request& req) {
+        string json = data_manager.get_market_state_json();
+        crow::response res;
+        res.set_header("Access-Control-Allow-Origin", "*");
+        res.set_header("Content-Type", "application/json");
+        res.end(json);
+        return res;
+    });
+
+    CROW_ROUTE(app, "/api/upload").methods( // TODO: i think i'm done
+        crow::HTTPMethod::POST,
+        crow::HTTPMethod::PATCH)([&](const crow::request& req) {
+        crow::response res;
+
+        res.set_header("Access-Control-Allow-Origin", "*");
+        res.set_header("Access-Control-Allow-Methods", "POST, OPTIONS");
+        res.set_header("Access-Control-Allow-Headers", "Content-Type, X-File-Name, X-Asset-Class");
+
+        string filename(req.get_header_value("x-file-name"));
+        string asset_class(req.get_header_value("x-asset-class"));
+
+        if (filename.empty()) {
+            filename = "unknown_upload.csv";
+        }
+
+        if (asset_class.empty()) {
+            asset_class = "Custom";
+        }
+
+        /*
+        res->onAborted([]() { // HACK:
+                cout << "Upload aborted by client.\n";
+                });
+        */
+
+        string save_path = "temp_data/" + filename;
+        ofstream out_file(save_path, ios::binary);
+
+        if (out_file.is_open()) {
+            out_file << req.body;
+            out_file.close();
+            cout << "Saved file: " << save_path << " (" << req.body.size() << " bytes)\n";
+            string ticker = filename.substr(0, filename.find('.'));
+            transform(ticker.begin(), ticker.end(), ticker.begin(), [](unsigned char c){ return toupper(c); });
+
+            // DUPLICATE HANDLING
+            if (data_manager.has_ticker(ticker)) {
+                cout << "Duplicate " << ticker << " already in map.\n";
+                remove(save_path.c_str());
+                res.set_header("Access-Control-Allow-Origin", "*");
+                res.code = 409;
+                res.end("Error: " + ticker + " already exists.");
+                return res;
+            }
+
+            //CHANGED TO BOOLEAN TO PROPOGATE CHANGES TO SIMULATION.TSX
+            bool load_success = data_manager.load_ticker_data(ticker, save_path, asset_class);
+
+            if (load_success) {
+                data_manager.print_first_row(ticker);
+            }
+
+            if (remove(save_path.c_str()) == 0) {
+                cout << "Removed File after loading (save it in temp, read, delete): " << save_path << "\n";
+            } else {
+                cout << "Error in removing file: " << save_path << "\n";
+            }
+
+            //message based on load_success
+            res.set_header("Access-Control-Allow-Origin", "*");
+            if (load_success) {
+                res.end(ticker);
+            } else {
+                res.code = 400;
+                res.end("Invalid or corrupted CSV data");
+            }
+        } else {
+            res.set_header("Access-Control-Allow-Origin", "*");
+            res.code = 500;
+            res.end("Failed to save to disk.");
+        }
+        return res;
+    });
+
+    CROW_ROUTE(app, "/api/simulate").methods( // TODO: post
+        crow::HTTPMethod::POST,
+        crow::HTTPMethod::PATCH)([&](const crow::request& req) {
+
+        crow::response res;
+        res.set_header("Access-Control-Allow-Origin", "*");
+        res.set_header("Access-Control-Allow-Methods", "POST, OPTIONS");
+        res.set_header("Access-Control-Allow-Headers", "Content-Type");
+
+        //possibly put these parsing functions in a different file later on, but for now this is fine for testing purposes?
+        njson j;
+        try {
+            j = njson::parse(res.body); //HACK:
+        } catch (const njson::parse_error& e) {
+            res.set_header("Access-Control-Allow-Origin", "*");
+            res.set_header("Content-Type", "application/json");
+            res.end(R"({"error": "Invalid JSON"})");
+            return res;
+        }
+
+        std::string mode = j.value("mode", "csv");
+        i64 initial_capital = static_cast<i64>(j.value("initial_capital", 10000.0) * PRICE_SCALE_FACTOR);
+        int num_bars = j.value("num_bars", 252);
+
+        struct TickerEntry {
+            std::string name;
+            int base_price = 100;
+            int volatility = 20;
+            int liquidity = 1000;
+            int market_cap = 5000;
+        };
+
+        std::vector<TickerEntry> ticker_entries;
+
+        if (!j.contains("stocks") || !j["stocks"].is_array()) {
+            res.set_header("Access-Control-Allow-Origin", "*");
+            res.set_header("Content-Type", "application/json");
+            res.end(R"({"error": "No tickers provided"})");
+            return res;
+        }
+
+        for (auto& stock : j["stocks"]) {
+            TickerEntry entry;
+            entry.name       = stock.at("ticker").get<std::string>();
+            entry.base_price = stock.value("base_price", 100);
+            entry.liquidity  = stock.value("liquidity", 1000);
+            entry.volatility = stock.value("volatility", 20);
+            entry.market_cap = stock.value("market_cap", 5000);
+            ticker_entries.push_back(entry);
+        }
+
+        if (ticker_entries.empty()) {
+            res.set_header("Access-Control-Allow-Origin", "*");
+            res.set_header("Content-Type", "application/json");
+            res.end(R"({"error": "No tickers provided"})");
+            return res;
+        }
+
+        Engine engine(initial_capital);
+        SimulationResult result;
+
+        if (mode == "generated") {
+            std::vector<Generator> generators;
+            for (const auto& entry : ticker_entries) {
+                generators.emplace_back(
+                    entry.name,
+                    entry.base_price,
+                    entry.volatility,
+                    entry.liquidity,
+                    entry.market_cap
+                );
+            }
+            result = run_generated_simulation(engine, generators, num_bars);
+        } else {  // csv mode
+            std::vector<std::string> tickers;
+            for (const auto& entry : ticker_entries) {
+                // verify all tickers are loaded
+                if (!data_manager.has_ticker(entry.name)) {
+                    res.set_header("Access-Control-Allow-Origin", "*");
+                    res.set_header("Content-Type", "application/json");
+                    res.end("{\"error\": \"Ticker data not found: " + entry.name + "\"}");
+                    return res;
+                }
+                tickers.push_back(entry.name);
+            }
+            result = run_csv_simulation(engine, data_manager, tickers);
+        }
+
+        std::string output = serialize_simulation_result(result);
+        res.set_header("Access-Control-Allow-Origin", "*");
+        res.set_header("Content-Type", "application/json");
+        res.end(output);
+
+        return res;
+    });
+
     CROW_WEBSOCKET_ROUTE(app, "/websocket")
         .onopen([&](crow::websocket::connection &conn) {
             fmt::print("new websocket connection from {}!\n", conn.get_remote_ip());
@@ -228,7 +444,8 @@ int main() {
             cookie.set_cookie("email", email).max_age(129600).path("/");
             session.set("loggedIn", true);
             crow::response res;
-            res.code = 200;return res;
+            res.code = 200;
+            return res;
         }
         else {
             return crow::response(400);

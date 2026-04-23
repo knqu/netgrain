@@ -12,7 +12,7 @@ function SimulationExec() {
   async function saveSim() {
     try {
       const response = await fetch(
-        "http://localhost:18080/api/saveSim",
+        "/api/saveSim",
         {
           method: "GET",
         }
@@ -59,7 +59,7 @@ const Simulation: React.FC = () => {
 
     const saveSim = async () => {
         try {
-            const response = await fetch("http://localhost:18080/api/saveSim", {
+            const response = await fetch("/api/saveSim", {
                 method: "GET",
             });
             if (response.status === 200) {
@@ -99,7 +99,7 @@ const Simulation: React.FC = () => {
     useEffect(() => {
         const fetchMarketData = async () => {
             try {
-                const response = await fetch("http://localhost:8080/api/market");
+                const response = await fetch("/api/market");
                 if (response.ok) {
                     const data = await response.json();
                     setMarketData(data);
@@ -160,7 +160,7 @@ const Simulation: React.FC = () => {
         setUploadStatus("Uploading...");
 
         try {
-            const response = await fetch("http://localhost:8080/api/upload", {
+            const response = await fetch("/api/upload", {
                 method: "POST",
                 headers: {
                     "x-file-name": uploadFile.name,
@@ -174,7 +174,7 @@ const Simulation: React.FC = () => {
                 setUploadStatus(`Success! ${ticker} loaded into ${activeAssetClass}.`);
                 
                 // Re-fetch the market data so the new ticker instantly appears in the dropdown
-                const marketRes = await fetch("http://localhost:8080/api/market");
+                const marketRes = await fetch("/api/market");
                 if (marketRes.ok) {
                     setMarketData(await marketRes.json());
                 }
@@ -223,11 +223,12 @@ const Simulation: React.FC = () => {
         setEngineStatus("Sending configuration to engine...");
 
         try {
-            const response = await fetch("http://localhost:8080/api/simulate", {
+            const response = await fetch("/api/simulate", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(payload)
             });
+            console.log(JSON.stringify(payload));
 
             if (response.ok) {
                 const resultText = await response.text(); 
