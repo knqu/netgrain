@@ -666,6 +666,21 @@ skip:
     (*data_buffer) = {};
     data_buffer->push(static_cast<double>(streamed_points->back()));
   }
+
+  void set_fields(
+    int base_price, double percent_drift, double percent_volatility,
+    int market_cap, int target_price
+  )
+  {
+    this->base_price = base_price;
+    this->percent_drift = percent_drift;
+    this->percent_volatility = percent_volatility;
+    this->market_cap = market_cap;
+    this->target_price = target_price;
+
+    (*data_buffer) = {};
+    data_buffer->push(static_cast<double>(base_price));
+  }
 };
 
 

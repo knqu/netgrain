@@ -30,7 +30,8 @@ void load_ticker_data() {
     string default_dir = "../../../data/";  // NOTE: assumes program is run from root directory
 
     if (std::filesystem::exists(default_dir) && std::filesystem::is_directory(default_dir)) {    
-        for (const auto& entry : filesystem::recursive_directory_iterator(default_dir)) { //recursive bc I changed to have subfolders for asset classes
+        for (const auto& entry : filesystem::recursive_directory_iterator(default_dir)) {
+        // recursive bc I changed to have subfolders for asset classes
             if (entry.is_regular_file()) {
                 std::string file_path = entry.path().string();
                 std::string file_name = entry.path().filename().string();
@@ -39,7 +40,10 @@ void load_ticker_data() {
                 if (asset_class == "data") asset_class = "Stocks";
 
                 std::string ticker = file_name.substr(0, file_name.find('.'));
-                transform(ticker.begin(), ticker.end(), ticker.begin(), [](unsigned char c){ return toupper(c); });
+                transform(
+                    ticker.begin(), ticker.end(),
+                    ticker.begin(), [](unsigned char c){ return toupper(c); }
+                );
                 data_manager.load_ticker_data(ticker, file_path, asset_class);
             }
         }
@@ -109,7 +113,10 @@ int main() {
             out_file.close();
             cout << "Saved file: " << save_path << " (" << req.body.size() << " bytes)\n";
             string ticker = filename.substr(0, filename.find('.'));
-            transform(ticker.begin(), ticker.end(), ticker.begin(), [](unsigned char c){ return toupper(c); });
+            transform(
+                ticker.begin(), ticker.end(),
+                ticker.begin(), [](unsigned char c){ return toupper(c); }
+            );
 
             // DUPLICATE HANDLING
             if (data_manager.has_ticker(ticker)) {
@@ -131,7 +138,8 @@ int main() {
             }
 
             if (remove(save_path.c_str()) == 0) {
-                std::cout << "Removed File after loading (save it in temp, read, delete): " << save_path << "\n";
+                std::cout << "Removed File after loading (save it in temp, read, delete): "
+                          << save_path << "\n";
             } else {
                 std::cout << "Error in removing file: " << save_path << "\n";
             }
@@ -187,7 +195,9 @@ int main() {
         }
 
         std::string mode = j.value("mode", "csv");
-        i64 initial_capital = static_cast<i64>(j.value("initial_capital", 10000.0) * PRICE_SCALE_FACTOR);
+        i64 initial_capital = static_cast<i64>(
+            j.value("initial_capital", 10000.0) * PRICE_SCALE_FACTOR);
+
         int num_bars = j.value("num_bars", 252);
 
         struct TickerEntry {
@@ -246,7 +256,8 @@ int main() {
             for (const auto& entry : ticker_entries) {
                 // verify all tickers are loaded
                 if (!data_manager.has_ticker(entry.name)) {
-                    crow::response res("{\"error\": \"Ticker data not found: " + entry.name + "\"}");
+                    crow::response res(
+                        "{\"error\": \"Ticker data not found: " + entry.name + "\"}");
                     res.set_header("Access-Control-Allow-Origin", "*");
                     res.set_header("Content-Type", "application/json");
                     res.code = 500;
@@ -407,6 +418,34 @@ int main() {
                 {
                     fmt::print("rewind is ignored: another event is active\n");
                 }
+            }
+
+            if (data.starts_with("set_fields"))
+            {
+                std::string fields_str = data.substr(11);
+
+                int find_pos = fields_str.find_first_of("~");
+                int base_price = std::stoi(fields_str.substr(0, find_pos));
+
+                fields_str = fields_str.substr(find_pos + 1);
+                find_pos = fields_str.find_first_of("~");
+                double percent_drift =
+                    std::stod(fields_str.substr(0, find_pos));
+
+                fields_str = fields_str.substr(find_pos + 1);
+                find_pos = fields_str.find_first_of("~");
+                double percent_volatility =
+                    std::stod(fields_str.substr(0, find_pos));
+
+                fields_str = fields_str.substr(find_pos + 1);
+                find_pos = fields_str.find_first_of("~");
+                int market_cap = std::stoi(fields_str.substr(0, find_pos));
+
+                fields_str = fields_str.substr(find_pos + 1);
+                int target_price = std::stoi(fields_str);
+
+                global_gen.set_fields(base_price, percent_drift, percent_volatility,
+                        market_cap, target_price);
             }
         });
 
@@ -685,6 +724,12 @@ int main() {
         crow::json::wvalue json_array;
         json_array["data"] = data_points;
 
+        json_array["fields"]["base_price"] = global_gen.base_price;
+        json_array["fields"]["percent_drift"] = global_gen.percent_drift;
+        json_array["fields"]["percent_volatility"] = global_gen.percent_volatility;
+        json_array["fields"]["market_cap"] = global_gen.market_cap;
+        json_array["fields"]["target_price"] = global_gen.target_price;
+
         return crow::response(json_array);
     });
 
@@ -692,9 +737,15 @@ int main() {
         crow::HTTPMethod::GET,
         crow::HTTPMethod::Patch)([&](const crow::request& req) {
 
+        char *streamed_length = req.url_params.get("length");
+        int streamed_len = stoi(streamed_length);
+
+        std::vector streamed_subset(streamed_points->begin(),
+                                    streamed_points->begin() + streamed_len);
+
         parameters.pause.store(true);
         std::vector<char> file_buf;
-        file_buf = global_gen.save_simulation(&parameters, streamed_points);
+        file_buf = global_gen.save_simulation(&parameters, &streamed_subset);
         std::string file_binary(file_buf.begin(), file_buf.end());
         
         crow::response res;
