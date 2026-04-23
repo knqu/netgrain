@@ -57,8 +57,16 @@ const SimRun: React.FC<{ socketRef: WebSocket, activeStock: String, dates: Date[
           setClampedTicks(prev => prev + 1);
         }
 
-        dates[idx].setUTCDate(dates[idx].getUTCDate() + 1);
-        const time: UTCTimestamp = dates[idx].getTime() / 1000 as UTCTimestamp;
+        //dates[idx].setUTCDate(dates[idx].getUTCDate() + 1);
+        var time;
+        if (data[idx].length === 0) {
+          time = new Date(2018, 12, 31, 12, 0, 0)
+          time = time.getTime() / 1000 as UTCTimestamp;
+        }
+        else {
+          time = (data[idx][-1].time + 1000) / 1000 as UTCTimestamp;
+        }
+        //const time: UTCTimestamp = (data[idx][-1].time + 1000) / 1000 as UTCTimestamp;
         data[idx].push({ time: time, value: price });
 
         if (Number(activeStock) === idx) {
@@ -167,6 +175,7 @@ export default function SimulationRun({num_stocks}: simulationRunProps) {
     }
   }
 
+  
   useEffect(() => {
     const handleOpen = () => console.log("Connected");
     socketRef.current!.addEventListener("open", handleOpen);
