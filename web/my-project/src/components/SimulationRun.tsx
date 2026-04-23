@@ -64,7 +64,7 @@ const SimRun: React.FC<{ socketRef: WebSocket, activeStock: String, dates: Date[
           time = time.getTime() / 1000 as UTCTimestamp;
         }
         else {
-          time = (data[idx][-1].time + 1000) / 1000 as UTCTimestamp;
+          time = (data[idx][data[idx].length - 1].time + 1000) / 1000 as UTCTimestamp;
         }
         //const time: UTCTimestamp = (data[idx][-1].time + 1000) / 1000 as UTCTimestamp;
         data[idx].push({ time: time, value: price });
