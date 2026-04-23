@@ -30,6 +30,8 @@ public:
   double percent_volatility;
   double dt;
 
+  std::vector<double> *streamed_points;
+
   // queue for streaming data
   // Queue<double> *data_buffer;
   std::queue<double> *data_buffer;
@@ -46,12 +48,15 @@ public:
   int market_cap;
   int target_price;
 
+  int id;
+  Data_Transfer gen_settings;
+
   double last_bar_close = 0.0;
   bool has_bar_state = false;
   bool last_was_clamped = false; // Tracks if the very last tick was an outlier correction
 
   // constructor and destructor
-  Generator(double drift, double volatility, int price, int target) {
+  Generator(double drift, double volatility, int price, int target, int id) {
     this->percent_drift = drift;
     this->percent_volatility = volatility;
     this->base_price = price;
@@ -59,6 +64,14 @@ public:
     this->dt = 0.01;
     this->data_buffer = new std::queue<double>;
     this->data_buffer->push(price);
+    this->streamed_points = new std::vector<double>;
+    this->id = id;
+
+    // initialize Data Transfer
+    this->gen_settings.conn.store(nullptr);
+    this->gen_settings.gen.store(true);
+    this->gen_settings.new_event.store(0);
+    this->gen_settings.send_data.store(false);
   }
 
   Generator(
@@ -66,7 +79,8 @@ public:
     int base_price,
     int volatility,
     int liquidity,
-    int market_cap) {
+    int market_cap,
+    int id) {
 
     this->ticker = ticker;
     this->base_price = base_price;
@@ -79,12 +93,23 @@ public:
     this->target_price = base_price;
     this->data_buffer = new std::queue<double>;
     this->data_buffer->push(static_cast<double>(base_price));
+    this->streamed_points = new std::vector<double>;
+    this->id = id;
+
+    this->gen_settings.conn.store(nullptr);
+    this->gen_settings.gen.store(true);
+    this->gen_settings.new_event.store(0);
+    this->gen_settings.send_data.store(false);
     // NOTE: even though the simulator passes in an int scaled by 100,
     // the gbm math looks to be scale invariant
   }
 
   ~Generator() {
+      delete data_buffer;
+      delete streamed_points;
   }
+
+  Generator(const Generator& ) = delete;
 
   std::string get_ticker() const {
     return ticker;
@@ -298,8 +323,7 @@ public:
   }
 
   // return the number of datapoints generated, if data is not being tested
-  int generate_ws(Data_Transfer *gen_settings,
-                  std::vector<double> *streamed_points) {
+  int generate_ws() {
     std::random_device rd{};
     std::mt19937 gen{rd()};
     std::normal_distribution<double> norm{0.0, 1.0};
@@ -312,18 +336,18 @@ public:
     double curr = 0.0;
     double larger = 0.0;
     int flash_crash_points = 15;
-    while (gen_settings->gen.load()) {
-      if (gen_settings->pause.load()) {
+    while (gen_settings.gen.load()) {
+      if (gen_settings.pause.load()) {
         continue;
       }
 
-      if (gen_settings->conn.load() == nullptr)
+      if (gen_settings.conn.load() == nullptr)
       {
         goto skip;
       }
 
-      if (gen_settings->new_event.load()) {
-        switch (gen_settings->new_event.load())
+      if (gen_settings.new_event.load()) {
+        switch (gen_settings.new_event.load())
         {
           // flash crash
           case 1:
@@ -350,26 +374,26 @@ public:
                   offset *= 1.2142;
                 }
 
-                if (gen_settings->send_data.load()) {
-                  gen_settings->conn.load()
+                if (gen_settings.send_data.load()) {
+                  gen_settings.conn.load()
                     ->send_text(fmt::format(
-                      "{{\"price\": {}, \"clamped\": {}, \"type\": \"tagged\"}}",
-                      (double) (curr - offset), this->last_was_clamped ? "true" : "false"));
-                  streamed_points->push_back((double) curr - offset);
+                      "{{\"price\": {}, \"clamped\": {}, \"type\": \"tagged\", \"id\": {}}}",
+                      (double) (curr - offset), this->last_was_clamped ? "true" : "false", this->id));
+                  this->streamed_points->push_back((double) curr - offset);
                 }
 
                 precede = curr;
                 curr = gbm(precede, norm, gen);
               }
               else {
-                gen_settings->new_event.store(0);
+                gen_settings.new_event.store(0);
 
-                if (gen_settings->send_data.load()) {
-                  gen_settings->conn.load()
+                if (gen_settings.send_data.load()) {
+                  gen_settings.conn.load()
                     ->send_text(fmt::format(
-                      "{{\"price\": {}, \"clamped\": {}, \"type\": \"normal\"}}",
-                      curr, this->last_was_clamped ? "true" : "false"));
-                  streamed_points->push_back((double) curr);
+                      "{{\"price\": {}, \"clamped\": {}, \"type\": \"normal\", \"id\": {}}}",
+                      curr, this->last_was_clamped ? "true" : "false", this->id));
+                  this->streamed_points->push_back((double) curr);
                 }
 
                 tracker = 0;
@@ -388,22 +412,22 @@ public:
                 curr = gbm(larger, norm, gen);
               }
 
-              if (curr > gen_settings->threshold.load())
+              if (curr > gen_settings.threshold.load())
               {
                 fmt::print("threshold reached\n");
 
-                gen_settings->new_event.store(0);
+                gen_settings.new_event.store(0);
 
                 data_buffer->push(gbm(curr * 0.3213, norm, gen));
 
                 double price_val = send_price();
 
-                if (gen_settings->send_data.load()) {
-                  gen_settings->conn.load()
+                if (gen_settings.send_data.load()) {
+                  gen_settings.conn.load()
                     ->send_text(fmt::format(
-                      "{{\"price\": {}, \"clamped\": {}, \"type\": \"normal\"}}",
-                      price_val, this->last_was_clamped ? "true" : "false"));
-                  streamed_points->push_back(price_val);
+                      "{{\"price\": {}, \"clamped\": {}, \"type\": \"normal\", \"id\": {}}}",
+                      price_val, this->last_was_clamped ? "true" : "false", this->id));
+                  this->streamed_points->push_back(price_val);
                 }
 
                 tracker = 0;
@@ -414,12 +438,12 @@ public:
                   curr *= 1.2435;
                 }
 
-                if (gen_settings->send_data.load()) {
-                  gen_settings->conn.load()
+                if (gen_settings.send_data.load()) {
+                  gen_settings.conn.load()
                     ->send_text(fmt::format(
-                      "{{\"price\": {}, \"clamped\": {}, \"type\": \"tagged\"}}",
-                      curr, this->last_was_clamped ? "true" : "false"));
-                  streamed_points->push_back(curr);
+                      "{{\"price\": {}, \"clamped\": {}, \"type\": \"tagged\", \"id\": {}}}",
+                      curr, this->last_was_clamped ? "true" : "false", this->id));
+                  this->streamed_points->push_back(curr);
                 }
 
                 tracker += 1;
@@ -435,12 +459,12 @@ public:
               this->percent_drift = 0.02;
               this->percent_volatility = 2;
               data_buffer->push(ou(data_buffer->front(), norm, gen));
-              if (gen_settings->send_data.load()) {
+              if (gen_settings.send_data.load()) {
                 double res = send_price();
-                gen_settings->conn.load()->send_text(fmt::format(
-                  "{{\"price\": {}, \"clamped\": {}, \"type\": \"sideways\"}}",
-                  res, this->last_was_clamped ? "true" : "false"));
-                streamed_points->push_back(res);
+                gen_settings.conn.load()->send_text(fmt::format(
+                  "{{\"price\": {}, \"clamped\": {}, \"type\": \"sideways\", \"id\": {}}}",
+                  res, this->last_was_clamped ? "true" : "false", this->id));
+                this->streamed_points->push_back(res);
               }
               break;
             }
@@ -451,12 +475,12 @@ public:
 
               data_buffer->push(bear_math(data_buffer->front(), norm, gen));
 
-              if (gen_settings->send_data.load()) {
+              if (gen_settings.send_data.load()) {
                 double price_val = send_price();
-                gen_settings->conn.load()->send_text(fmt::format(
-                  "{{\"price\": {}, \"clamped\": {}, \"type\": \"bear\"}}",
-                  price_val, this->last_was_clamped ? "true" : "false"));
-                streamed_points->push_back(price_val);
+                gen_settings.conn.load()->send_text(fmt::format(
+                  "{{\"price\": {}, \"clamped\": {}, \"type\": \"bear\", \"id\": {}}}",
+                  price_val, this->last_was_clamped ? "true" : "false", this->id));
+                this->streamed_points->push_back(price_val);
               }
               break;
             }
@@ -468,12 +492,12 @@ public:
 
               data_buffer->push(bull_math(data_buffer->front(), norm, gen));
 
-              if (gen_settings->send_data.load()) {
+              if (gen_settings.send_data.load()) {
                 double price_val = send_price();
-                gen_settings->conn.load()->send_text(fmt::format(
-                  "{{\"price\": {}, \"clamped\": {}, \"type\": \"bull\"}}",
-                  send_price(), this->last_was_clamped ? "true" : "false"));
-                streamed_points->push_back(price_val);
+                gen_settings.conn.load()->send_text(fmt::format(
+                  "{{\"price\": {}, \"clamped\": {}, \"type\": \"bull\", \"id\": {}}}",
+                  send_price(), this->last_was_clamped ? "true" : "false", this->id));
+                this->streamed_points->push_back(price_val);
               }
               break;
             }
@@ -481,10 +505,10 @@ public:
           case 6: // Reset
             {
               (*data_buffer) = {};
-              data_buffer->push(static_cast<double>(gen_settings->reset_price.load()));
+              data_buffer->push(static_cast<double>(gen_settings.reset_price.load()));
 
-              gen_settings->new_event.store(0);
-              gen_settings->pause.store(true);
+              gen_settings.new_event.store(0);
+              gen_settings.pause.store(true);
 
               break;
             }
@@ -492,14 +516,6 @@ public:
           default:
             break;
         }
-
-        /*
-        get_event(
-          gen_settings->n_drift,
-          gen_settings->n_vol,
-          gen_settings->n_price
-        );
-        */
       }
       else {
         // no event
@@ -510,12 +526,12 @@ public:
         // TODO: way to send data would go here, this could be in the format
         // of a second queue, extra fields in the Data_Transfer, etc. for now
         // printing to console will suffice
-        if (gen_settings->send_data.load()) {
+        if (gen_settings.send_data.load()) {
           double price_val = send_price();
-          gen_settings->conn.load()->send_text(fmt::format(
-            "{{\"price\": {}, \"clamped\": {}, \"type\": \"normal\"}}",
-            price_val, this->last_was_clamped ? "true" : "false"));
-          streamed_points->push_back(price_val);
+          gen_settings.conn.load()->send_text(fmt::format(
+            "{{\"price\": {}, \"clamped\": {}, \"type\": \"normal\", \"id\": {}}}",
+            price_val, this->last_was_clamped ? "true" : "false", this->id));
+          this->streamed_points->push_back(price_val);
         }
       }
 
@@ -545,8 +561,7 @@ skip:
     *curr_size += sizeof(T);
   }
 
-  std::vector<char> save_simulation(Data_Transfer *params, std::vector<double> *streamed_points)
-  {
+  std::vector<char> save_simulation() {
     std::vector<char> buffer;
     size_t curr_size = 0;
 
@@ -575,13 +590,13 @@ skip:
     write_to_buffer(&buffer, market_cap, &curr_size);
     write_to_buffer(&buffer, target_price, &curr_size);
 
-    int rate_per_second = params->rate_per_second.load();
-    int new_event = params->new_event.load();
-    double n_vol = params->n_vol.load();
-    double n_drift = params->n_drift.load();
-    int n_price = params->n_price.load();
-    int threshold = params->threshold.load();
-    bool pause = params->threshold.load();
+    int rate_per_second = this->gen_settings.rate_per_second.load();
+    int new_event = this->gen_settings.new_event.load();
+    double n_vol = this->gen_settings.n_vol.load();
+    double n_drift = this->gen_settings.n_drift.load();
+    int n_price = this->gen_settings.n_price.load();
+    int threshold = this->gen_settings.threshold.load();
+    bool pause = this->gen_settings.threshold.load();
 
     write_to_buffer(&buffer, rate_per_second, &curr_size);
     write_to_buffer(&buffer, new_event, &curr_size);
@@ -591,21 +606,19 @@ skip:
     write_to_buffer(&buffer, threshold, &curr_size);
     write_to_buffer(&buffer, pause, &curr_size);
 
-    size_t buffer_len = streamed_points->size();
+    size_t buffer_len = this->streamed_points->size();
     fmt::print("streamed_data_len: {}\n", buffer_len);
     write_to_buffer(&buffer, buffer_len, &curr_size);
     for (int i = 0; i < buffer_len; i++)
     {
-      write_to_buffer(&buffer, streamed_points->at(i), &curr_size);
+      write_to_buffer(&buffer, this->streamed_points->at(i), &curr_size);
     }
 
     fmt::print("binary buffer length: {} = {}\n", curr_size, buffer.size());
     return buffer;
   }
 
-  void load_simulation(std::string buffer, Data_Transfer *params,
-                       std::vector<double> *streamed_points)
-  {
+  void load_simulation(std::string buffer) {
     std::vector<char> char_buffer(buffer.begin(), buffer.end());
 
     size_t curr_size = 0;
@@ -642,30 +655,42 @@ skip:
     read_from_buffer(&char_buffer, &threshold, &curr_size);
     read_from_buffer(&char_buffer, &pause, &curr_size);
 
-    params->rate_per_second.store(rate_per_second);
-    params->new_event.store(new_event);
-    params->n_vol.store(n_vol);
-    params->n_drift.store(n_drift);
-    params->n_price.store(n_price);
-    params->threshold.store(threshold);
-    params->pause.store(pause);
+    this->gen_settings.rate_per_second.store(rate_per_second);
+    this->gen_settings.new_event.store(new_event);
+    this->gen_settings.n_vol.store(n_vol);
+    this->gen_settings.n_drift.store(n_drift);
+    this->gen_settings.n_price.store(n_price);
+    this->gen_settings.threshold.store(threshold);
+    this->gen_settings.pause.store(pause);
 
     size_t buffer_len;
     read_from_buffer(&char_buffer, &buffer_len, &curr_size);
-    streamed_points->clear();
+    this->streamed_points->clear();
     for (int i = 0; i < buffer_len; i++)
     {
       double point;
       read_from_buffer(&char_buffer, &point, &curr_size);
-      streamed_points->push_back(point);
+      this->streamed_points->push_back(point);
     }
   }
 
-  void refresh(std::vector<double> *streamed_points)
-  {
+  void refresh() {
     (*data_buffer) = {};
-    data_buffer->push(static_cast<double>(streamed_points->back()));
+    data_buffer->push(static_cast<double>(this->streamed_points->back()));
+  }
+
+  void set_fields(
+    int base_price, double percent_drift, double percent_volatility,
+    int market_cap, int target_price
+  )
+  {
+    this->base_price = base_price;
+    this->percent_drift = percent_drift;
+    this->percent_volatility = percent_volatility;
+    this->market_cap = market_cap;
+    this->target_price = target_price;
+
+    (*data_buffer) = {};
+    data_buffer->push(static_cast<double>(base_price));
   }
 };
-
-

@@ -14,5 +14,5 @@ struct SimulationResult {
 };
 
 SimulationResult run_csv_simulation(Engine& engine, MarketDataManager& data, const std::vector<std::string>& tickers);
-SimulationResult run_generated_simulation(Engine& engine, std::vector<Generator>& generators, int num_bars);
+SimulationResult run_generated_simulation(Engine& engine, std::vector<std::unique_ptr<Generator>>& generators, int num_bars);
 std::string serialize_simulation_result(const SimulationResult& result);

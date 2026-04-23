@@ -140,7 +140,7 @@ const LiveChart: React.FC<LiveChartProps> = ({ws}) => {
         toParse = toParse.split(":")[1].trim();
       }
 
-      const newDate = date.getFullYear().toString() + "-" + date.getMonth().toString().padStart(2, "0") + "-" + date.getDate().toString().padStart(2, "0");
+      const newDate = date.getFullYear().toString() + "-" + (date.getMonth() + 1).toString().padStart(2, "0") + "-" + date.getDate().toString().padStart(2, "0");
 
       chartSeries.update({
         time: newDate, 

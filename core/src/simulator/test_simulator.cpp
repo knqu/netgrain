@@ -7,7 +7,7 @@
 #include "../generator/generator.hpp"
 
 void test_generated_bar_ohlcv_invariants() {
-    Generator gen("AAPL", 150, 10, 1000, 1000000);
+    Generator gen("AAPL", 150, 10, 1000, 1000000, 1);
 
     for (int i = 0; i < 100; i++) {
         auto bar = gen.generate_bar(20260101 + i);
@@ -23,7 +23,7 @@ void test_generated_bar_ohlcv_invariants() {
 }
 
 void test_generated_bar_continuity() {
-    Generator gen("AAPL", 150, 10, 1000, 1000000);
+    Generator gen("AAPL", 150, 10, 1000, 1000000, 1);
 
     auto bar1 = gen.generate_bar(20260101);
     for (int i = 1; i < 50; i++) {
@@ -36,7 +36,7 @@ void test_generated_bar_continuity() {
 }
 
 void test_market_buy_with_generated_bar() {
-    Generator gen("AAPL", 150, 10, 1000, 1000000);
+    Generator gen("AAPL", 150, 10, 1000, 1000000, 1);
     Engine engine(100000);
 
     engine.place_order("AAPL", 10, 0, Side::BUY, OrderType::MARKET);
@@ -56,7 +56,7 @@ void test_market_buy_with_generated_bar() {
 }
 
 void test_market_sell_with_generated_bars() {
-    Generator gen("AAPL", 150, 10, 1000, 1000000);
+    Generator gen("AAPL", 150, 10, 1000, 1000000, 1);
     Engine engine(100000);
     std::unordered_map<std::string, MarketDataRow> bars;
 
@@ -79,8 +79,8 @@ void test_market_sell_with_generated_bars() {
 }
 
 void test_multi_ticker_generated() {
-    Generator aapl("AAPL", 150, 10, 1000, 1000000);
-    Generator goog("GOOG", 2800, 15, 500, 2000000);
+    Generator aapl("AAPL", 150, 10, 1000, 1000000, 1);
+    Generator goog("GOOG", 2800, 15, 500, 2000000, 1);
     Engine engine(1000000);
     std::unordered_map<std::string, MarketDataRow> bars;
 
@@ -101,7 +101,7 @@ void test_multi_ticker_generated() {
 }
 
 void test_limit_buy_fills_within_generated_range() {
-    Generator gen("AAPL", 150, 10, 1000, 1000000);
+    Generator gen("AAPL", 150, 10, 1000, 1000000, 1);
     Engine engine(100000);
     std::unordered_map<std::string, MarketDataRow> bars;
 
@@ -119,7 +119,7 @@ void test_limit_buy_fills_within_generated_range() {
 }
 
 void test_limit_buy_misses_outside_generated_range() {
-    Generator gen("AAPL", 150, 10, 1000, 1000000);
+    Generator gen("AAPL", 150, 10, 1000, 1000000, 1);
     Engine engine(100000);
     std::unordered_map<std::string, MarketDataRow> bars;
 
@@ -137,7 +137,7 @@ void test_limit_buy_misses_outside_generated_range() {
 }
 
 void test_stop_sell_triggers_within_generated_range() {
-    Generator gen("AAPL", 150, 10, 1000, 1000000);
+    Generator gen("AAPL", 150, 10, 1000, 1000000, 1);
     Engine engine(100000);
     std::unordered_map<std::string, MarketDataRow> bars;
 
@@ -159,7 +159,7 @@ void test_stop_sell_triggers_within_generated_range() {
 }
 
 void test_balance_conservation_round_trip() {
-    Generator gen("AAPL", 150, 10, 1000, 1000000);
+    Generator gen("AAPL", 150, 10, 1000, 1000000, 1);
     Engine engine(100000);
     engine.set_config("AAPL", {0.0, 0.0, 0.0, {0.0, 0.0}});
     std::unordered_map<std::string, MarketDataRow> bars;
@@ -184,7 +184,7 @@ void test_balance_conservation_round_trip() {
 }
 
 void test_multi_bar_position_accumulation() {
-    Generator gen("AAPL", 150, 10, 1000, 1000000);
+    Generator gen("AAPL", 150, 10, 1000, 1000000, 1);
     Engine engine(1000000);
     std::unordered_map<std::string, MarketDataRow> bars;
 

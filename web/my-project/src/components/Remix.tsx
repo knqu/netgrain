@@ -59,16 +59,6 @@ interface DataEntry {
 };
 
 let data: DataEntry[] = [
-  { time: '2018-12-22', value: 32.51 },
-  { time: '2018-12-23', value: 31.11 },
-  { time: '2018-12-24', value: 27.02 },
-  { time: '2018-12-25', value: 27.32 },
-  { time: '2018-12-26', value: 25.17 },
-  { time: '2018-12-27', value: 28.89 },
-  { time: '2018-12-28', value: 25.46 },
-  { time: '2018-12-29', value: 23.92 },
-  { time: '2018-12-30', value: 22.68 },
-  { time: '2018-12-31', value: 22.67 },
 ];
 
 interface LiveChartProps {
@@ -202,6 +192,11 @@ const LiveChart: React.FC<LiveChartProps> = ({ws}) => {
 
 export default function Remix() {
   const [mode, setMode] = useState("sideways");
+  const [basePrice, setBasePrice] = useState(0);
+  const [percentDrift, setPercentDrift] = useState(0);
+  const [percentVolatility, setPercentVolatility] = useState(0);
+  const [marketCap, setMarketCap] = useState(0);
+  const [targetPrice, setTargetPrice] = useState(0);
   console.log(mode);
 
   const [uploadFile, setUploadFile] = useState<File | null>(null);
@@ -302,15 +297,33 @@ export default function Remix() {
       data = newData;
       Queue.length = 0;
 
+      setBasePrice(json.fields.base_price);
+      setPercentDrift(json.fields.percent_drift);
+      setPercentVolatility(json.fields.percent_volatility);
+      setMarketCap(json.fields.market_cap);
+      setTargetPrice(json.fields.target_price);
+
       paused = true;
     }
+  }
+
+  function fieldChanges() {
+    socket.send(
+      `set_fields:${basePrice}~${percentDrift}~${percentVolatility}~\
+        ${marketCap}~${targetPrice}`)
+
+    Queue.length = 0;
   }
 
   async function downloadSimulation() {
     paused = true;
 
+    const parameters = new URLSearchParams({
+      length: `${data.length}`,
+    });
+
     const response = await fetch(
-      "/api/serializeSim",
+      `/api/serializeSim?${parameters.toString()}`,
       {
         method: "GET",
       }
@@ -334,15 +347,9 @@ export default function Remix() {
       style={{ display: 'flex', flexDirection: 'column', height: '100vh', width: '100%' }}>
 
       <div style={{ padding: '15px', display: 'flex', gap: '10px', justifyContent: 'center' }}>
-        <button onClick={() => changeMode("bull")}>Bull</button>
-        <button onClick={() => changeMode("bear")}>Bear</button>
-        <button onClick={() => changeMode("sideways")}>Sideways</button>
+        <Form></Form>
         <button onClick={() => changeMode("pause")}>Pause</button>
         <button onClick={() => changeMode("resume")}>Resume</button>
-      </div>
-
-      <div style={{ padding: '15px', display: 'flex', gap: '10px', justifyContent: 'center' }}>
-        <Form></Form>
       </div>
 
       <button onClick={downloadSimulation}>
@@ -363,6 +370,47 @@ export default function Remix() {
           disabled={!uploadFile}
         >
           Upload
+        </button>
+      </div>
+
+      <div className="field_editor" style={{ display: 'flex', gap: '10px' }}>
+        <input
+          type="number"
+          value={basePrice}
+          className="base_price_input"
+          onChange={(e) => { setBasePrice(parseInt(e.target.value)) }}
+        />
+        <input
+          type="number"
+          value={percentDrift}
+          className="percent_drift_input"
+          onChange={(e) => { setPercentDrift(parseFloat(e.target.value)) }}
+        />
+        <input
+          type="number"
+          value={percentVolatility}
+          className="percent_volatility_input"
+          onChange={(e) => { setPercentVolatility(parseFloat(e.target.value)) }}
+        />
+        <input
+          type="number"
+          value={marketCap}
+          className="market_cap_input"
+          onChange={(e) => { setMarketCap(parseInt(e.target.value)) }}
+        />
+        <input
+          type="number"
+          value={targetPrice}
+          className="target_price_input"
+          onChange={(e) => { setTargetPrice(parseInt(e.target.value)) }}
+        />
+        <button
+          className="sim-btn-secondary"
+          style={{ marginTop: '0', whiteSpace: 'nowrap' }}
+          onClick={fieldChanges}
+          // disabled={!uploadFile}
+        >
+          Set Fields
         </button>
       </div>
 

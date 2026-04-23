@@ -11,9 +11,6 @@ import { type WidgetInterface } from "./EndSimulation"
 import EndSimulation from "./EndSimulation"
 //import type LiveChartProps from './LiveChart';
 
-
-
-
 interface pointData {
   time: UTCTimestamp;
   value: number;
@@ -48,6 +45,8 @@ const SimRun: React.FC<{ socketRef: WebSocket, activeStock: String, dates: Date[
   function addMsg(curSocket: WebSocket) {
     const onMsgTemp = (e: MessageEvent) => {
       try {
+          console.log(e.data);
+        
         const payload = JSON.parse(e.data);
         const price = Number(payload.price);
         const idx = Number(payload.id);
@@ -64,7 +63,7 @@ const SimRun: React.FC<{ socketRef: WebSocket, activeStock: String, dates: Date[
           time = nd.getTime() / 1000 as UTCTimestamp;
         }
         else {
-          time = (data[idx][data[idx].length - 1].time + 1000) / 1000 as UTCTimestamp;
+          time = (data[idx][data[idx].length - 1].time + 1) as UTCTimestamp;
         }
         //const time: UTCTimestamp = (data[idx][-1].time + 1000) / 1000 as UTCTimestamp;
         data[idx].push({ time: time, value: price });
@@ -283,14 +282,14 @@ export default function SimulationRun({num_stocks}: simulationRunProps) {
         widgetVal.push({ lowVal: lows[1], highVal: null });
         break;
     }
-    console.log(widgetVal);
+    //console.log(widgetVal);
     setWidget(widgetVal);
     setPage("End");
     // determine what data is saved from the simulation for the widget
   };
 
   const renderPage = () => {
-    console.log(Stats);
+    //console.log(Stats);
     switch (currentPage) {
       case "Run":
         return (
