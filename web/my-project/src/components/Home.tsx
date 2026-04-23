@@ -8,12 +8,14 @@ import SimResults from './SimResults';
 import LiveCharts from './LiveChart';
 import ChartSelect from './ChartSelect';
 import Simulation from './Simulation';
+import Remix from './Remix';
 import type { Widget } from './GridComponent';
 
 import '../styling/Home.css'
 
 import '/node_modules/react-grid-layout/css/styles.css';
 import '/node_modules/react-resizable/css/styles.css';
+import ResultsTemplate from './ResultsTemplate';
 //import NewSim from './newSimPage';
 
 export default function AppHome() {
@@ -49,6 +51,7 @@ export default function AppHome() {
       <DashboardButton button="simResults"></DashboardButton>
       <DashboardButton button="liveCharts"></DashboardButton>
       <DashboardButton button="chartSelect"></DashboardButton>
+      <DashboardButton button="Remix"></DashboardButton>
       <DashboardButton button="Add Widget" onClickOverride={() => { onAdd("") }}></DashboardButton>
       </div>
       </div>
@@ -132,7 +135,7 @@ export default function AppHome() {
         );
       case "Generation" :
         return (
-          <Generation />
+          <ResultsTemplate />
         );
       case "simResults" :
         return (
@@ -141,6 +144,10 @@ export default function AppHome() {
       case "liveCharts" :
         return (
           <LiveCharts />
+        );
+      case "Remix" :
+        return (
+          <Remix />
         );
       case "chartSelect" :
         return (

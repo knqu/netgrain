@@ -28,7 +28,7 @@ type seriesType =
     DeepPartial<AreaStyleOptions & SeriesOptionsCommon>
   >
 */
-var data: pointData[][] = [[], []];
+var data: pointData[][] = [];
 var lowerBound: number;
 var upperBound: number;
 
@@ -37,12 +37,61 @@ var lows: number[] = [1000, 1000];
 
 // -- Sim Run component
 
-const SimRun: React.FC<{ socketRef1: WebSocket, socketRef2: WebSocket, activeStock: String, date1: Date, date2: Date }> = ({ socketRef1, socketRef2, activeStock, date1, date2 }) => {
+const SimRun: React.FC<{ socketRef: WebSocket, activeStock: String, dates: Date[] }> = ({ socketRef, activeStock, dates }) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const seriesRef = useRef<any>(null);
   const [totalTicks, setTotalTicks] = useState(0);
   const [clampedTicks, setClampedTicks] = useState(0);
+
+  // TODO: modify so this works with one socket
+  function addMsg(curSocket: WebSocket) {
+    const onMsgTemp = (e: MessageEvent) => {
+      try {
+        const payload = JSON.parse(e.data);
+        const price = Number(payload.price);
+        const idx = Number(payload.id);
+
+        setTotalTicks(prev => prev + 1);
+        if (payload.clamped) {
+          setClampedTicks(prev => prev + 1);
+        }
+
+        //dates[idx].setUTCDate(dates[idx].getUTCDate() + 1);
+        var time: UTCTimestamp;
+        if (data[idx].length === 0) {
+          const nd = new Date(2018, 12, 31, 12, 0, 0)
+          time = nd.getTime() / 1000 as UTCTimestamp;
+        }
+        else {
+          time = (data[idx][data[idx].length - 1].time + 1000) / 1000 as UTCTimestamp;
+        }
+        //const time: UTCTimestamp = (data[idx][-1].time + 1000) / 1000 as UTCTimestamp;
+        data[idx].push({ time: time, value: price });
+
+        if (Number(activeStock) === idx) {
+          seriesRef.current.update({ time: time, value: price });
+        }
+
+        if (data[idx].at(-1)!.value > highs[idx]) {
+          highs[idx] = data[0].at(-1)!.value;
+        }
+        if (data[idx].at(-1)!.value < lows[idx]) {
+          lows[idx] = data[idx].at(-1)!.value;
+        }
+
+        if (data[idx].at(-1)!.value < lowerBound || data[idx].at(-1)!.value > upperBound) {
+          lowerBound = Number.MIN_VALUE;
+          upperBound = Number.MAX_VALUE;
+          socketRef.send("multiple: pause");
+        }
+      } catch (err) {
+        console.error("Error parsing WS message:", err);
+      }
+    }
+    curSocket.addEventListener("message", onMsgTemp);
+    return onMsgTemp;
+  } 
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -55,91 +104,9 @@ const SimRun: React.FC<{ socketRef1: WebSocket, socketRef2: WebSocket, activeSto
     const areaSeries = chart.addSeries(AreaSeries);
     seriesRef.current = areaSeries;
 
-
-    var counter = 0;
-    var counter2 = 0;
-
-
-
-
-
-
-    const onMsg1 = (e: MessageEvent) => {
-      try {
-        const payload = JSON.parse(e.data);
-        const price = Number(payload.price);
-
-        setTotalTicks(prev => prev + 1);
-        if (payload.clamped) {
-          setClampedTicks(prev => prev + 1);
-        }
-
-        date1.setUTCDate(date1.getUTCDate() + 1);
-        const time: UTCTimestamp = date1.getTime() / 1000 as UTCTimestamp;
-        counter++;
-        data[0].push({ time: time, value: price });
-
-        if (activeStock === '1') {
-          seriesRef.current.update({ time: time, value: price });
-        }
-
-        if (data[0].at(-1)!.value > highs[0]) {
-          highs[0] = data[0].at(-1)!.value;
-        }
-        if (data[0].at(-1)!.value < lows[0]) {
-          lows[0] = data[0].at(-1)!.value;
-        }
-
-        if (data[0].at(-1)!.value < lowerBound || data[0].at(-1)!.value > upperBound) {
-          lowerBound = Number.MIN_VALUE;
-          upperBound = Number.MAX_VALUE;
-          socketRef1.send("pause");
-          socketRef2.send("pause");
-        }
-      } catch (err) {
-        console.error("Error parsing WS message:", err);
-      }
-    }
-
-    const onMsg2 = (e: MessageEvent) => {
-      try {
-        const payload = JSON.parse(e.data);
-        const price = Number(payload.price);
-
-        setTotalTicks(prev => prev + 1);
-        if (payload.clamped) {
-          setClampedTicks(prev => prev + 1);
-        }
-
-        date2.setUTCDate(date2.getUTCDate() + 1);
-        const time: UTCTimestamp = date2.getTime() / 1000 as UTCTimestamp;
-        counter2++;
-        data[1].push({ time: time, value: price });
-        if (activeStock === '2') {
-          seriesRef.current.update({ time: time, value: price });
-        }
-
-        if (data[1].at(-1)!.value > highs[1]) {
-          highs[1] = data[1].at(-1)!.value;
-        }
-        if (data[1].at(-1)!.value < lows[1]) {
-          lows[1] = data[1].at(-1)!.value;
-        }
-
-        if (data[1].at(-1)!.value < lowerBound || data[1].at(-1)!.value > upperBound) {
-          lowerBound = Number.MIN_VALUE;
-          upperBound = Number.MAX_VALUE;
-          socketRef1.send("pause");
-          socketRef2.send("pause");
-        }
-      } catch (err) {
-        console.error("Error parsing WS message:", err);
-      }
-    }
-
-    socketRef1.addEventListener("message", onMsg1);
-    socketRef2.addEventListener("message", onMsg2);
-
+    var msg: ((e: MessageEvent)=> void) = addMsg(socketRef);
+    
+  
     chart.timeScale().fitContent();
 
     const resizeObserver = new ResizeObserver(entries => {
@@ -148,11 +115,9 @@ const SimRun: React.FC<{ socketRef1: WebSocket, socketRef2: WebSocket, activeSto
     });
 
     resizeObserver.observe(containerRef.current);
-    if (activeStock === '1') seriesRef.current.setData(data[0]!);
-    if (activeStock === '2') seriesRef.current.setData(data[1]!);
+    seriesRef.current.setData(data[Number(activeStock)]);
     return () => {
-      socketRef1.removeEventListener("message", onMsg1);
-      socketRef2.removeEventListener("message", onMsg2);
+      socketRef.removeEventListener("message", msg)
       resizeObserver.disconnect();
       chart.remove();
 
@@ -162,9 +127,7 @@ const SimRun: React.FC<{ socketRef1: WebSocket, socketRef2: WebSocket, activeSto
   useEffect(() => {
     if (seriesRef.current) {
       try {
-
-        const temp = activeStock === '1' ? data[0] : data[1];
-        seriesRef.current.setData(temp);
+        seriesRef.current.setData(data[Number(activeStock)]);
       } catch (err) {
         console.error("Chart is probably disposed", err);
       }
@@ -188,40 +151,37 @@ const SimRun: React.FC<{ socketRef1: WebSocket, socketRef2: WebSocket, activeSto
   );
 };
 
+interface simulationRunProps {
+  num_stocks: number;
+}
 
 // --- Main Dashboard ---
-export default function SimulationRun() {
-  const [activeStock, setActiveStock] = useState('1');
-  const socketRef1 = useRef<WebSocket>(null);
+export default function SimulationRun({num_stocks}: simulationRunProps) {
+  for (var i = 0; i < num_stocks; i++) {
+    data.push([]);
+  }
+  
+  const [activeStock, setActiveStock] = useState('0');
 
-  const socketRef2 = useRef<WebSocket>(null);
-  if (!socketRef2.current) {
-    socketRef2.current = new WebSocket("ws://localhost:5556/");
+  const socketRef = useRef<WebSocket>(null);
+  if (!socketRef.current) {
+    socketRef.current = new WebSocket("ws://localhost:18080/websocket");
   }
-  if (!socketRef1.current) {
-    socketRef1.current = new WebSocket("ws://localhost:5555/");
+  const dates = useRef<Date[] | null>(null);
+  if (!dates.current) {
+    dates.current = [];
+    for (var i = 0; i < num_stocks; i++) {
+      dates.current.push(new Date(2018, 12, 31, 12, 0, 0));
+    }
   }
 
-
-  const date1 = useRef<Date | null>(null);
-  if (!date1.current) {
-    date1.current = new Date(2018, 12, 31, 12, 0, 0);
-  }
-  const date2 = useRef<Date | null>(null);
-  if (!date2.current) {
-    date2.current = new Date(2018, 12, 31, 12, 0, 0);
-  }
+  
   useEffect(() => {
-    const handleOpen1 = () => console.log("Connected on 1");
-    const handleOpen2 = () => console.log("Connected on 2");
-
-    socketRef1.current!.addEventListener("open", handleOpen1);
-    socketRef2.current!.addEventListener("open", handleOpen2);
-
+    const handleOpen = () => console.log("Connected");
+    socketRef.current!.addEventListener("open", handleOpen);
 
     return () => {
-      socketRef1.current!.removeEventListener("open", handleOpen1);
-      socketRef2.current!.removeEventListener("open", handleOpen2);
+      socketRef.current!.removeEventListener("open", handleOpen);
     }
   })
 
@@ -231,40 +191,23 @@ export default function SimulationRun() {
   const [Stats, setWidget] = useState<any>();
 
 
-
-
-
-
-
   function updateChart(str: String) {
-    switch (str) {
-      case '1':
-        setActiveStock('1');
-        //areaSeries.setData(data[0]);
-        break;
-      case '2':
-        setActiveStock('2');
-        //areaSeries.setData(data[1]);
-        break;
-    }
+    setActiveStock(String(str));
   };
 
   function pause() {
     console.log("send pause signal");
-    socketRef1.current!.send("pause");
-    socketRef2.current!.send("pause");
+    socketRef.current!.send("multiple: pause");
   }
 
   function resume() {
     console.log("send resume signal");
-    socketRef1.current!.send("resume");
-    socketRef2.current!.send("resume");
+    socketRef.current!.send("resume");
   }
 
   function modify() {
-    console.log("modify demo")
-    socketRef1.current!.send("flash_crash");
-    socketRef2.current!.send("flash_crash");
+    console.log("multiple: modify demo")
+    socketRef.current!.send("multiple: flash_crash");
   }
 
   async function sleep(ms: number): Promise<void> {
@@ -277,8 +220,7 @@ export default function SimulationRun() {
     const time = (document.getElementById("sleep timer") as HTMLInputElement).value;
     console.log(`sleep for ${time} seconds`);
     await sleep(Number(time) * 1000);
-    socketRef1.current!.send("pause");
-    socketRef2.current!.send("pause");
+    socketRef.current!.send("multiple: pause");
   }
 
   async function sleepOnCondition() {
@@ -315,8 +257,8 @@ export default function SimulationRun() {
 
 
   function endSim() {
-    socketRef1.current!.send("stop");
-    socketRef2.current!.send("stop");
+    data = []
+    socketRef.current!.send("multiple: stop");
     var widgetVal: WidgetInterface[] = [];
     widgetVal.length = 0;
     switch (selectedOption) {
@@ -370,13 +312,23 @@ export default function SimulationRun() {
               <WidgetForm />
             </div>
             <div style={{ marginBottom: '10px' }}>
-              <button onClick={() => updateChart('1')}>Stock 1</button>
-              <button onClick={() => updateChart('2')}>Stock 2</button>
+              {Array.from({ length: num_stocks }, (_, i) => (
+                <button 
+                key={i} 
+                onClick={() => updateChart(i.toString())}
+                style={{ 
+                marginRight: '5px',
+                fontWeight: activeStock === i.toString() ? 'bold' : 'normal' 
+                }}
+                >
+                  Stock {i + 1}
+                </button>
+              ))}
             </div>
             <div className="Chart_outer_container">
               <div className="Chart_inner_container">
                 <div className="Chart" >
-                  <SimRun socketRef1={socketRef1.current!} socketRef2={socketRef2.current!} activeStock={activeStock} date1={date1.current!} date2={date2.current!} />
+                  <SimRun socketRef={socketRef.current!} activeStock={activeStock} dates={dates.current!} />
                 </div>
               </div>
             </div>

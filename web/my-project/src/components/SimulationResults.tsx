@@ -29,7 +29,7 @@ const SimulationResults: React.FC = () => {
     useEffect(() => {
         const fetchHardcodedRun = async () => {
             try {
-                const response = await fetch("http://localhost:8080/api/results");
+                const response = await fetch("http://localhost:18080/api/results");
                 if (response.ok) {
                     // FIX 1: Read as raw text first
                     const text = await response.text();

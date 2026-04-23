@@ -103,7 +103,6 @@ export default function ChartComponent() {
 
     function ChartHeader() {
         return (
-            <div className="Chart_header_container">
                 <div className="Chart_header">
                     <div className="Selector_container">
                         <h5>Select Stocks</h5>
@@ -114,7 +113,6 @@ export default function ChartComponent() {
                         </select>
                     </div>
                 </div>
-            </div>
         );
     }
 

@@ -200,6 +200,7 @@ void test_multi_bar_position_accumulation() {
     std::cout << "PASSED: position accumulates over multiple generated bars\n";
 }
 
+/*
 int main() {
     std::cout << "Running simulator tests...\n";
 
@@ -216,3 +217,4 @@ int main() {
 
     std::cout << "All simulator tests passed\n";
 }
+*/

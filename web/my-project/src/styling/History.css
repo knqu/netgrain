@@ -1,8 +1,8 @@
 .history-parent-container {
     background-color: #3D3F42;
     border-radius: 0.3em;
-    height: 87.5vh;
-    width: 95vw;
+    height: 91%;
+    width: 98.75%;
 
     display: grid;
     grid-template-columns: 3fr 90fr 3fr;

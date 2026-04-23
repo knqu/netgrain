@@ -1,20 +1,12 @@
-.ChartContainer {
-    display: flex;
-    flex: 1;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    gap: 1.5em;
-}
 
-.Chart_header_container {
-    width: 880px;
-    background-color: #252628;
-    padding: 0.76em;
-    border-radius: 0.3em;
-}
 
 .Chart_header {
+    width: fit-content;
+
+    background-color: #252628;
+    padding: 0.5em;
+    border-radius: 0.3em;
+
     display: flex;
     flex-direction: row;
     justify-content: space-around;

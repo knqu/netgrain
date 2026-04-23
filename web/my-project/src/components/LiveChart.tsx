@@ -6,7 +6,53 @@ import {
     type IChartApi,
 } from "lightweight-charts";
 
-let initialData = [
+import {
+  type DeepPartial,
+} from 'lightweight-charts';
+import type {
+  AreaData,
+  AreaSeriesOptions,
+  AreaStyleOptions,
+  CandlestickData,
+  CandlestickSeriesOptions,
+  CandlestickStyleOptions,
+  ISeriesApi,
+  LineData,
+  LineSeriesOptions,
+  LineStyleOptions,
+  SeriesOptionsCommon,
+  Time,
+  WhitespaceData,
+} from 'lightweight-charts';
+
+type chartType =
+  ISeriesApi<
+    "Candlestick",
+    Time,
+    WhitespaceData<Time> | CandlestickData<Time>,
+    CandlestickSeriesOptions,
+    DeepPartial<CandlestickStyleOptions & SeriesOptionsCommon>
+  > |
+  ISeriesApi<
+    "Line",
+    Time,
+    LineData<Time> | WhitespaceData<Time>,
+    LineSeriesOptions,
+    DeepPartial<LineStyleOptions & SeriesOptionsCommon>
+  > |
+  ISeriesApi<
+    "Area",
+    Time,
+    AreaData<Time> | WhitespaceData<Time>,
+    AreaSeriesOptions,
+    DeepPartial<AreaStyleOptions & SeriesOptionsCommon>
+  >;
+
+let chartSeries: chartType;
+
+let paused = false;
+
+let data = [
   { time: '2018-12-22', value: 32.51 },
   { time: '2018-12-23', value: 31.11 },
   { time: '2018-12-24', value: 27.02 },
@@ -23,6 +69,8 @@ interface LiveChartProps {
   ws: WebSocket;
 }
 
+let Queue: string[];
+
 const LiveChart: React.FC<LiveChartProps> = ({ws}) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
 
@@ -34,31 +82,29 @@ const LiveChart: React.FC<LiveChartProps> = ({ws}) => {
       height: containerRef.current.clientHeight,
     })
 
-    const candleSeries = chart.addSeries(AreaSeries);
+    chartSeries = chart.addSeries(AreaSeries);
 
     var counter = 0;
-    var Queue: string[]= [];
+    Queue = [];
 
     chart.subscribeDblClick(param => {
       if (param.seriesData && param.seriesData.size > 0) {
-        const clickedPoint = param.seriesData.get(candleSeries); 
+        const clickedPoint = param.seriesData.get(chartSeries); 
 
         if (clickedPoint) {
-          const clickedIndex = initialData.findIndex(d => d.time === clickedPoint.time);
+          const clickedIndex = data.findIndex(d => d.time === clickedPoint.time);
 
           if (clickedIndex !== -1) {
-            const newData = initialData.slice(0, clickedIndex);
+            const newData = data.slice(0, clickedIndex);
             ws.send("update: " + newData[newData.length - 1].value.toString());
 
-            candleSeries.setData(newData);
-            initialData = newData;
+            chartSeries.setData(newData);
+            data = newData;
             Queue.length = 0;
-
           }
         }
       }
     });
-
 
     const handleOpen = () => {
       ws.send("sideways");
@@ -74,11 +120,13 @@ const LiveChart: React.FC<LiveChartProps> = ({ws}) => {
     ws.addEventListener("open", handleOpen);
     ws.addEventListener("message", handleMessage);
 
-    candleSeries.setData(initialData);
+    chartSeries.setData(data);
     chart.timeScale().fitContent();
     const date = new Date(Date.UTC(2018, 12, 31, 12, 0, 0, 0));
 
     const intervalID = setInterval(() => {
+      if (paused) return;
+
       if (Queue.length === 0) {
         return; 
       }
@@ -94,12 +142,12 @@ const LiveChart: React.FC<LiveChartProps> = ({ws}) => {
 
       const newDate = date.getFullYear().toString() + "-" + date.getMonth().toString().padStart(2, "0") + "-" + date.getDate().toString().padStart(2, "0");
 
-      candleSeries.update({
+      chartSeries.update({
         time: newDate, 
         value: Number(toParse)
       });
 
-      initialData.push({
+      data.push({
         time: newDate, 
         value: Number(toParse)
       });
@@ -127,34 +175,76 @@ const LiveChart: React.FC<LiveChartProps> = ({ws}) => {
 };
 
 export default function ChartComponent() {
-    const [mode, setMode] = useState("sideways");
-    console.log(mode);
+  const [mode, setMode] = useState("sideways");
+  console.log(mode);
 
-    const socket = useMemo(() => new WebSocket("ws://localhost:18080/websocket"), []);
+  const socket = useMemo(() => new WebSocket("ws://localhost:18080/websocket"), []);
 
-    const changeMode = (newMode: string) => {
-      if (socket.readyState === WebSocket.OPEN) {
-        socket.send(newMode);
-      }
-      setMode(newMode);
+  const changeMode = (newMode: string) => {
+    if (socket.readyState === WebSocket.OPEN) {
+      socket.send(newMode);
+    }
+    setMode(newMode);
+
+    if (newMode === "pause") {
+      paused = true;
+    } else if (newMode === "resume") {
+      paused = false;
+    }
+  };
+
+  const Form: React.FC = () => {
+    const [rewindAmount, setRewindAmount] = useState(0);
+    const handleSubmit = (e: React.SubmitEvent<HTMLFormElement>) => {
+      e.preventDefault();
+
+      let rewindCount = Math.min(rewindAmount, data.length);
+      let remainingSize = data.length - rewindCount;
+
+      let newData = data.slice(0, remainingSize);
+
+      chartSeries.setData(newData);
+      data = newData;
+      Queue.length = 0;
+
+      socket.send(`rewind:${rewindAmount}`);
+      paused = true;
     };
 
     return (
-        <div className="ChartContainer" style={{ display: 'flex', flexDirection: 'column', height: '100vh', width: '100%' }}>
-            
-            <div style={{ padding: '15px', display: 'flex', gap: '10px', justifyContent: 'center' }}>
-              <button onClick={() => changeMode("bull")}>Bull</button>
-              <button onClick={() => changeMode("bear")}>Bear</button>
-              <button onClick={() => changeMode("sideways")}>Sideways</button>
-            </div>
-            
-            <div className="Chart_outer_container" style={{ flexGrow: 1, width: '100%' }}>
-                <div className="Chart_inner_container" style={{ height: '100%', width: '100%'}}>
-                    <div className="Chart" style={{ height: '500px', width: '100%' }}>
-                        <LiveChart ws={socket} />
-                    </div>
-                </div>
-            </div>
-        </div>
+      <form onSubmit={handleSubmit}>
+        <input
+          type="number"
+          onChange={(e) => setRewindAmount(parseInt(e.target.value))}
+        ></input>
+        <button type='submit'>Revert</button>
+      </form>
     );
+  }
+
+  return (
+    <div className="ChartContainer" style={{ display: 'flex', flexDirection: 'column', height: '100vh', width: '100%' }}>
+          
+      <div style={{ padding: '15px', display: 'flex', gap: '10px', justifyContent: 'center' }}>
+        <button onClick={() => changeMode("bull")}>Bull</button>
+        <button onClick={() => changeMode("bear")}>Bear</button>
+        <button onClick={() => changeMode("sideways")}>Sideways</button>
+        <button onClick={() => changeMode("pause")}>Pause</button>
+        <button onClick={() => changeMode("resume")}>Resume</button>
+      </div>
+
+      <div style={{ padding: '15px', display: 'flex', gap: '10px', justifyContent: 'center' }}>
+        <Form></Form>
+      </div>
+
+      <div className="Chart_outer_container" style={{ flexGrow: 1, width: '100%' }}>
+        <div className="Chart_inner_container" style={{ height: '100%', width: '100%'}}>
+          <div className="Chart" style={{ height: '500px', width: '100%' }}>
+            <LiveChart ws={socket} />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
+

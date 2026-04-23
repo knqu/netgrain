@@ -1,3 +1,4 @@
+.session
 .env
 .cache
 *.exe
@@ -12,3 +13,6 @@ core/src/simulator/temp_data
 web/webserver/src/my_crow_app
 ou-run.txt
 **/my_crow_app
+database/dbData
+node_modules
+web/webserver/perms2

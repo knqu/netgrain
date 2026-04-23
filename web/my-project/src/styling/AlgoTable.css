@@ -1,4 +1,5 @@
 .SimResult_table_container {
+    width: 100%;
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -7,7 +8,7 @@
 }
 
 .SimResult_table_head_row_container {
-    width: 900px;
+    width: 100%;
     background-color: #252628;
     border-radius: 0.3em;
     padding: 0.76em;
