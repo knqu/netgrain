@@ -45,7 +45,7 @@ function App() {
         <Route path="/resultsTemplate" element={<ResultsTemplate />} />
         <Route path="/remix" element={<Remix />} />
       </Routes>
-    </BrowserRouter>
+    </Router>
   );
 }
 
