@@ -1,3 +1,5 @@
+#pragma once
+
 #include <string>
 #include <vector>
 #include <unordered_map>
@@ -7,8 +9,8 @@
 #include "persistence_queue.hpp"
 
 class Engine {
-    int init_balance;
-    int balance;
+    i64 init_balance;
+    i64 balance;
     std::unordered_map<std::string, Position> positions;
 
     int next_order_id = 0;
@@ -22,43 +24,43 @@ class Engine {
 
     PersistenceQueue *pq;
 
-    int apply_slippage(int price, int fill_qty, u64 bar_volume, double volatility, Side side) {
+    i64 apply_slippage(i64 price, i64 fill_qty, u64 bar_volume, double volatility, Side side) {
         double half_spread = price * volatility;
         double volume_ratio = (bar_volume > 0) ? static_cast<double>(fill_qty) / static_cast<double>(bar_volume) : 1.0;
         double slippage = half_spread * (1.0 + volume_ratio);
-        return (side == Side::BUY) ? price + static_cast<int>(slippage) : price - static_cast<int>(slippage);
+        return (side == Side::BUY) ? price + static_cast<i64>(slippage) : price - static_cast<i64>(slippage);
     }
 
 public:
-    Engine(int starting_balance, PersistenceQueue *pq = nullptr) {
+    Engine(i64 starting_balance, PersistenceQueue *pq = nullptr) {
         init_balance = starting_balance;
         balance = starting_balance;
         this->pq = pq;
     }
 
-    int get_balance() {
+    i64 get_balance() {
         return balance;
     }
 
-    std::unordered_map<std::string, Position> get_positions() {
+    const std::unordered_map<std::string, Position>& get_positions() const {
         return positions;
     }
 
-    std::vector<Order> get_pending_orders() {
+    const std::vector<Order>& get_pending_orders() const {
         return pending_orders;
     }
 
-    std::vector<Order> get_cancelled_orders() {
+    const std::vector<Order>& get_cancelled_orders() const {
         return cancelled_orders;
     }
 
-    std::vector<Fill> get_fill_log() {
+    const std::vector<Fill>& get_fill_log() const {
         return fill_log;
     }
     
-    int get_final_balance() { // returns post-short-term-tax 
+    i64 get_final_balance() {  // returns post-short-term-tax
       if (balance > init_balance) {
-        return static_cast<int>(balance * (1 - default_config.short_term_tax));
+        return static_cast<i64>(balance * (1 - default_config.short_term_tax));
       }
       return balance;
     }
@@ -70,10 +72,9 @@ public:
 
     void set_config(const std::string& ticker, TickerConfig config) {
         ticker_configs[ticker] = config;
-        if (pq) pq->push(TickerConfigEvent{ticker, config});
     }
 
-    int place_order(const std::string& ticker, int quantity, int target_price, Side side, OrderType type) {
+    int place_order(const std::string& ticker, i64 quantity, i64 target_price, Side side, OrderType type) {
         int id = next_order_id++;
         Order order = {id, ticker, quantity, target_price, side, type, OrderStatus::PENDING};
         pending_orders.push_back(order);
@@ -86,7 +87,7 @@ public:
             if (order->id == order_id) {
                 order->status = OrderStatus::CANCELLED;
                 cancelled_orders.push_back(*order);
-                order = pending_orders.erase(order);
+                pending_orders.erase(order);
                 if (pq) pq->push(OrderCancelledEvent{order_id});
                 return true;
             }
@@ -94,11 +95,11 @@ public:
         return false;
     }
 
-    int calculate_fee(TickerConfig* conf, int fill_quantity, int trade_value) { // HX
+    i64 calculate_fee(TickerConfig* conf, i64 fill_quantity, i64 trade_value) {  // HX
       double total_fee = 0.0;
-      total_fee += (!conf->fees_and_taxes.flat_fee_comm_per_share) ? conf->fees_and_taxes.flat_fee_comm_per_share * fill_quantity: 0.0;
-      total_fee += (!conf->fees_and_taxes.percentage_comm_per_share) ? conf->fees_and_taxes.percentage_comm_per_share * trade_value : 0.0;
-      return static_cast<int>(total_fee);
+      total_fee += conf->fees_and_taxes.flat_fee_comm_per_share * fill_quantity;
+      total_fee += conf->fees_and_taxes.percentage_comm_per_share * trade_value;
+      return static_cast<i64>(total_fee);
     }
 
     std::vector<Fill> process_bar(std::unordered_map<std::string, MarketDataRow> bars) {
@@ -115,7 +116,7 @@ public:
             auto& config = get_config(order->ticker);
 
             bool should_fill = false;
-            int fill_price = 0;
+            i64 fill_price = 0;
 
             if (order->order_type == OrderType::MARKET) {
                 should_fill = true;
@@ -139,21 +140,21 @@ public:
             }
 
             if (should_fill) {
-                fill_price = apply_slippage(fill_price, fill_quantity, bar.volume, config.volatility, order->side);
-
-                int fill_quantity = std::min(order->quantity, static_cast<int>(bar.volume));
+                i64 fill_quantity = std::min(order->quantity, static_cast<i64>(bar.volume));
                 bar.volume -= fill_quantity;
+
+                fill_price = apply_slippage(fill_price, fill_quantity, bar.volume, config.volatility, order->side);
 
                 fills.push_back({order->id, order->ticker, fill_quantity, fill_price, order->side, bar.date});
 
-                int trade_value = fill_price * fill_quantity;
-                int fee = static_cast<int>(trade_value * config.trade_fee);
+                i64 trade_value = fill_price * fill_quantity;
+                i64 fee = static_cast<i64>(trade_value * config.trade_fee);
 
                 auto& pos = positions[order->ticker];  // get reference to position (or create if it doesn't exist)
                 pos.ticker = order->ticker;  // set ticker in case new position was created
 
                 if (order->side == Side::BUY) {
-                    int total_cost = trade_value + fee;
+                    i64 total_cost = trade_value + fee;
                     if (balance < total_cost) {
                         ++order;
                         continue;
@@ -171,11 +172,11 @@ public:
                     balance += trade_value - fee;
 
                     pos.quantity -= fill_quantity;
-                    int remaining = fill_quantity;
+                    i64 remaining = fill_quantity;
                     
                     auto lot = pos.lots.begin();  // default to fifo disposal (todo: add other methods in the future)
                     while (remaining > 0 && lot != pos.lots.end()) {
-                        int taken = std::min(remaining, lot->quantity);
+                        i64 taken = std::min(remaining, lot->quantity);
                         pos.cost_basis -= lot->fill_price * taken;
                         lot->quantity -= taken;
                         remaining -= taken;
@@ -194,8 +195,8 @@ public:
                     order->status = OrderStatus::PARTIAL;
                     ++order;
                 } else {
-                    order = pending_orders.erase(order);
                     order->status = OrderStatus::FILLED;
+                    order = pending_orders.erase(order);
                 }
             } else {
                 ++order;

@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from "react-router-dom";
 import "../styling/newSim.css"
-import CodeEditor from "./CodeEditor"
-import SimResults from "./SimResults";
+import EditorContainer  from "./CodeEditor";
+import SimulationRun from './SimulationRun';
 import '../styling/Simulation.css';
+import * as monaco from 'monaco-editor';
 
 function SimulationExec() {
   const navigate = useNavigate();
@@ -11,7 +12,7 @@ function SimulationExec() {
   async function saveSim() {
     try {
       const response = await fetch(
-        "http://localhost:18080/api/saveSim",
+        "/api/saveSim",
         {
           method: "GET",
         }
@@ -49,6 +50,8 @@ export interface SimulationConfigRequest {
     start_date: string;
     end_date: string;
     trade_fee: number;
+    script: String;
+    // include script
 }
 
 const Simulation: React.FC = () => {
@@ -56,7 +59,7 @@ const Simulation: React.FC = () => {
 
     const saveSim = async () => {
         try {
-            const response = await fetch("http://localhost:18080/api/saveSim", {
+            const response = await fetch("/api/saveSim", {
                 method: "GET",
             });
             if (response.status === 200) {
@@ -72,6 +75,7 @@ const Simulation: React.FC = () => {
     const [marketData, setMarketData] = useState<Record<string, string[]>>({});
     const [activeAssetClass, setActiveAssetClass] = useState<string>("Stocks");
 
+    const editorInstanceRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
     // --- SIMULATION STATE ---
     const [initialCapital, setInitialCapital] = useState<number | string>(100000);
     const [stocks, setStocks] = useState<StockParams[]>([
@@ -95,7 +99,7 @@ const Simulation: React.FC = () => {
     useEffect(() => {
         const fetchMarketData = async () => {
             try {
-                const response = await fetch("http://localhost:8080/api/market");
+                const response = await fetch("/api/market");
                 if (response.ok) {
                     const data = await response.json();
                     setMarketData(data);
@@ -156,7 +160,7 @@ const Simulation: React.FC = () => {
         setUploadStatus("Uploading...");
 
         try {
-            const response = await fetch("http://localhost:8080/api/upload", {
+            const response = await fetch("/api/upload", {
                 method: "POST",
                 headers: {
                     "x-file-name": uploadFile.name,
@@ -170,7 +174,7 @@ const Simulation: React.FC = () => {
                 setUploadStatus(`Success! ${ticker} loaded into ${activeAssetClass}.`);
                 
                 // Re-fetch the market data so the new ticker instantly appears in the dropdown
-                const marketRes = await fetch("http://localhost:8080/api/market");
+                const marketRes = await fetch("/api/market");
                 if (marketRes.ok) {
                     setMarketData(await marketRes.json());
                 }
@@ -204,23 +208,27 @@ const Simulation: React.FC = () => {
             return;
         }
 
+        const pythonScript = editorInstanceRef.current?.getValue() || "";
         const payload: SimulationConfigRequest = {
             initial_capital: Number(initialCapital),
             stocks: stocks,
             start_date: startDate,
             end_date: endDate,
-            trade_fee: Number(tradeFee)
+            trade_fee: Number(tradeFee),
+            script: pythonScript,
+            // include script here
         };
 
         setIsRunning(true);
         setEngineStatus("Sending configuration to engine...");
 
         try {
-            const response = await fetch("http://localhost:8080/api/simulate", {
+            const response = await fetch("/api/simulate", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(payload)
             });
+            console.log(JSON.stringify(payload));
 
             if (response.ok) {
                 const resultText = await response.text(); 
@@ -537,7 +545,7 @@ const Simulation: React.FC = () => {
                     </div>
                     <div className="sim-grid">
                         <div className="grid-item">
-                            <CodeEditor />
+                            <EditorContainer onMount={(editor) => {(editorInstanceRef.current = editor)}} />
                         </div>
                         <div className="grid-item">
                             <ConfigUI />
@@ -547,7 +555,7 @@ const Simulation: React.FC = () => {
                     </div>
                 );
                 case "Start":
-                    return (<SimResults />);
+                    return (<SimulationRun num_stocks={stocks.length}/>);
         }
     }
     
