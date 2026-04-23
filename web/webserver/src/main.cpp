@@ -13,7 +13,6 @@
 #include <mailio/message.hpp>
 #include <mailio/smtp.hpp>
 
-#include <map>
 #include <random>
 #include <string>
 #include <fstream>
@@ -667,6 +666,44 @@ int main() {
         }
     });
 
+    CROW_ROUTE(app, "/api/loadSim").methods(
+        crow::HTTPMethod::POST,
+        crow::HTTPMethod::Patch)([&](const crow::request& req) {
+
+        std::string body = req.body;
+        parameters.pause.store(true);
+        global_gen.load_simulation(body, &parameters,
+                                   streamed_points);
+        parameters.pause.store(true);
+
+        global_gen.refresh(streamed_points);
+        
+        fmt::print("Loaded simulation!\n");
+
+        std::vector<double> data_points = *streamed_points;
+
+        crow::json::wvalue json_array;
+        json_array["data"] = data_points;
+
+        return crow::response(json_array);
+    });
+
+    CROW_ROUTE(app, "/api/serializeSim").methods(
+        crow::HTTPMethod::GET,
+        crow::HTTPMethod::Patch)([&](const crow::request& req) {
+
+        parameters.pause.store(true);
+        std::vector<char> file_buf;
+        file_buf = global_gen.save_simulation(&parameters, streamed_points);
+        std::string file_binary(file_buf.begin(), file_buf.end());
+        
+        crow::response res;
+        res.set_header("Content-Type", "application/octet-stream");
+        res.body = file_binary;
+
+        return res;
+    });
+
     CROW_ROUTE(app, "/api/saveLayout").methods(
         crow::HTTPMethod::POST,
         crow::HTTPMethod::Patch)([&](const crow::request& req) {
@@ -805,7 +842,7 @@ int main() {
     });
 
     std::thread([&]{
-      global_gen.generate_ws(&parameters, streamed_points);
+        global_gen.generate_ws(&parameters, streamed_points);
     }).detach();
 
     app.bindaddr("127.0.0.1").port(18080);
@@ -813,3 +850,4 @@ int main() {
 
     app.run();
 }
+

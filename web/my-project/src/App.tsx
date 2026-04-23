@@ -17,9 +17,9 @@ import CodeEditor from "./components/CodeEditor";
 //import NewSim from './components/newSimPage'
 import SimulationRun from "./components/SimulationRun";
 import LiveChartComponent from "./components/LiveChart";
+import Remix from "./components/Remix";
 import ResultsTemplate from "./components/ResultsTemplate";
 
-//<Route path="/codeEditor" element={<CodeEditor onMount={}/>} />
 function App() {
   const onMount = (editor: any) => {};
 
@@ -43,9 +43,11 @@ function App() {
         <Route path="/liveChart" element={<LiveChartComponent />} />
         <Route path="/simRun" element={<SimulationRun num_stocks={3} />} />
         <Route path="/resultsTemplate" element={<ResultsTemplate />} />
+        <Route path="/remix" element={<Remix />} />
       </Routes>
     </Router>
   );
 }
 
 export default App;
+

@@ -11,8 +11,6 @@
 #include <fmt/core.h>
 
 #include "def.hpp"
-#include "queue.hpp"
-#include "blocking_queue.hpp"
 #include "data_transfer.hpp"
 #include "../simulator/historicalData.hpp"
 #include <cmath>
@@ -20,8 +18,6 @@
 #include <iostream>
 #include <ostream>
 #include <random>
-#include <unordered_set>
-#include <map>
 #include <string>
 #include <stdlib.h>
 #include <queue>
@@ -320,6 +316,7 @@ public:
       if (gen_settings->pause.load()) {
         continue;
       }
+
       if (gen_settings->conn.load() == nullptr)
       {
         goto skip;
@@ -531,5 +528,144 @@ skip:
     }
     return i;
   }
+
+  template<typename T>
+  void write_to_buffer(std::vector<char> *buffer, T value, size_t *curr_size)
+  {
+    size_t prev_size = buffer->size();
+    buffer->resize(prev_size + sizeof(T));
+    memcpy(buffer->data() + prev_size, &value, sizeof(T));
+    *curr_size += sizeof(T);
+  }
+
+  template<typename T>
+  void read_from_buffer(std::vector<char> *buffer, T *value, size_t *curr_size)
+  {
+    memcpy(value, buffer->data() + *curr_size, sizeof(T));
+    *curr_size += sizeof(T);
+  }
+
+  std::vector<char> save_simulation(Data_Transfer *params, std::vector<double> *streamed_points)
+  {
+    std::vector<char> buffer;
+    size_t curr_size = 0;
+
+    double percent_drift = this->get_percent_drift();
+    double percent_volatility = this->get_percent_volatility();
+    double dt = this->get_dt();
+    std::string ticker = this->get_ticker();
+    size_t ticker_len = ticker.size();
+    int base_price = this->base_price;
+    int volatility = this->volatility;
+    int liquidity = this->liquidity;
+    int market_cap = this->market_cap;
+    int target_price = this->target_price;
+
+    write_to_buffer(&buffer, percent_drift, &curr_size);
+    write_to_buffer(&buffer, percent_volatility, &curr_size);
+    write_to_buffer(&buffer, dt, &curr_size);
+    write_to_buffer(&buffer, ticker_len, &curr_size);
+    for (int i = 0; i < ticker_len; i++)
+    {
+      write_to_buffer(&buffer, ticker.at(i), &curr_size);
+    }
+    write_to_buffer(&buffer, base_price, &curr_size);
+    write_to_buffer(&buffer, volatility, &curr_size);
+    write_to_buffer(&buffer, liquidity, &curr_size);
+    write_to_buffer(&buffer, market_cap, &curr_size);
+    write_to_buffer(&buffer, target_price, &curr_size);
+
+    int rate_per_second = params->rate_per_second.load();
+    int new_event = params->new_event.load();
+    double n_vol = params->n_vol.load();
+    double n_drift = params->n_drift.load();
+    int n_price = params->n_price.load();
+    int threshold = params->threshold.load();
+    bool pause = params->threshold.load();
+
+    write_to_buffer(&buffer, rate_per_second, &curr_size);
+    write_to_buffer(&buffer, new_event, &curr_size);
+    write_to_buffer(&buffer, n_vol, &curr_size);
+    write_to_buffer(&buffer, n_drift, &curr_size);
+    write_to_buffer(&buffer, n_price, &curr_size);
+    write_to_buffer(&buffer, threshold, &curr_size);
+    write_to_buffer(&buffer, pause, &curr_size);
+
+    size_t buffer_len = streamed_points->size();
+    fmt::print("streamed_data_len: {}\n", buffer_len);
+    write_to_buffer(&buffer, buffer_len, &curr_size);
+    for (int i = 0; i < buffer_len; i++)
+    {
+      write_to_buffer(&buffer, streamed_points->at(i), &curr_size);
+    }
+
+    fmt::print("binary buffer length: {} = {}\n", curr_size, buffer.size());
+    return buffer;
+  }
+
+  void load_simulation(std::string buffer, Data_Transfer *params,
+                       std::vector<double> *streamed_points)
+  {
+    std::vector<char> char_buffer(buffer.begin(), buffer.end());
+
+    size_t curr_size = 0;
+    read_from_buffer(&char_buffer, &this->percent_drift, &curr_size);
+    read_from_buffer(&char_buffer, &this->percent_volatility, &curr_size);
+    read_from_buffer(&char_buffer, &this->dt, &curr_size);
+
+    size_t ticker_len;
+    read_from_buffer(&char_buffer, &ticker_len, &curr_size);
+    char *ticker_buf = (char *) calloc(ticker_len, sizeof(char));
+    memcpy(ticker_buf, char_buffer.data() + curr_size, ticker_len);
+    curr_size += ticker_len;
+    this->ticker = std::string(ticker_buf);
+
+    read_from_buffer(&char_buffer, &this->base_price, &curr_size);
+    read_from_buffer(&char_buffer, &this->volatility, &curr_size);
+    read_from_buffer(&char_buffer, &this->liquidity, &curr_size);
+    read_from_buffer(&char_buffer, &this->market_cap, &curr_size);
+    read_from_buffer(&char_buffer, &this->target_price, &curr_size);
+
+    int rate_per_second;
+    int new_event;
+    double n_vol;
+    double n_drift;
+    int n_price;
+    int threshold;
+    bool pause;
+
+    read_from_buffer(&char_buffer, &rate_per_second, &curr_size);
+    read_from_buffer(&char_buffer, &new_event, &curr_size);
+    read_from_buffer(&char_buffer, &n_vol, &curr_size);
+    read_from_buffer(&char_buffer, &n_drift, &curr_size);
+    read_from_buffer(&char_buffer, &n_price, &curr_size);
+    read_from_buffer(&char_buffer, &threshold, &curr_size);
+    read_from_buffer(&char_buffer, &pause, &curr_size);
+
+    params->rate_per_second.store(rate_per_second);
+    params->new_event.store(new_event);
+    params->n_vol.store(n_vol);
+    params->n_drift.store(n_drift);
+    params->n_price.store(n_price);
+    params->threshold.store(threshold);
+    params->pause.store(pause);
+
+    size_t buffer_len;
+    read_from_buffer(&char_buffer, &buffer_len, &curr_size);
+    streamed_points->clear();
+    for (int i = 0; i < buffer_len; i++)
+    {
+      double point;
+      read_from_buffer(&char_buffer, &point, &curr_size);
+      streamed_points->push_back(point);
+    }
+  }
+
+  void refresh(std::vector<double> *streamed_points)
+  {
+    (*data_buffer) = {};
+    data_buffer->push(static_cast<double>(streamed_points->back()));
+  }
 };
+
 
