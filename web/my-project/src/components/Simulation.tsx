@@ -430,7 +430,6 @@ const Simulation: React.FC = () => {
                                         </button>
                                     )}
                                 </div>
-                                
                                 ))}
                             </div>
                             <button className="sim-btn-secondary" onClick={addStock} style={{ marginBottom: '20px' }}>
@@ -521,7 +520,6 @@ const Simulation: React.FC = () => {
                     </button>
                 </div>
             )}
-
         </div>
     );
     }
@@ -530,7 +528,15 @@ const Simulation: React.FC = () => {
         handleStart();
         setPage("Start");
     };    
-    
+
+    const handleLangChange = (event: any) => {
+        if (editorInstanceRef.current != null)
+        {
+            const target = event.target! as HTMLSelectElement;
+            const model = editorInstanceRef.current!.getModel()!;
+            monaco.editor.setModelLanguage(model, target.value);
+        }
+    };
 
     function renderPage() {
         switch (currentPage) {
@@ -538,28 +544,30 @@ const Simulation: React.FC = () => {
                 return (
                     <div className="outer-sim">
                         <div className="action-board">
-                        <button className="startSim"
-                        onClick={startSim}>
-                        Start Simulation
-                        </button>
-                    </div>
-                    <div className="sim-grid">
-                        <div className="grid-item">
-                            <EditorContainer onMount={(editor) => {(editorInstanceRef.current = editor)}} />
+                            <select name="type" id="type-select" onChange={handleLangChange}>
+                                <option value="python" selected>Python</option>
+                                <option value="cpp">C++</option>
+                            </select>
+                            <button
+                                className="startSim"
+                                onClick={startSim}>
+                                Start Simulation
+                            </button>
                         </div>
-                        <div className="grid-item">
-                            <ConfigUI />
+                        <div className="sim-grid">
+                            <div className="grid-item">
+                                <EditorContainer onMount={(editor) => {(editorInstanceRef.current = editor)}} />
+                            </div>
+                            <div className="grid-item">
+                                <ConfigUI />
+                            </div>
                         </div>
-                    </div>
-            
                     </div>
                 );
                 case "Start":
                     return (<SimulationRun num_stocks={stocks.length}/>);
         }
     }
-    
-
 
     return(
         <>

@@ -186,16 +186,10 @@ int main() {
             return res;
         }
 
-<<<<<<< Updated upstream
-        std::string mode = j.value("mode", "csv");
-        i64 initial_capital = static_cast<i64>(
-            j.value("initial_capital", 10000.0) * PRICE_SCALE_FACTOR);
-
-=======
         // Grab values from a few parameters (default to second parameter of .value() if not found)
         std::string mode = j.value("mode", "generated");
-        i64 initial_capital = static_cast<i64>(j.value("initial_capital", 10000.0) * PRICE_SCALE_FACTOR);
->>>>>>> Stashed changes
+        i64 initial_capital = static_cast<i64>(
+                j.value("initial_capital", 10000.0) * PRICE_SCALE_FACTOR);
         int num_bars = j.value("num_bars", 252);
 
         struct TickerEntry {
@@ -218,7 +212,23 @@ int main() {
         }
 
         // For each ticker, add to ticker_entries
-        // Example: {"initial_capital":100000,"stocks":[{"ticker":"GOOGL","base_price":135,"liquidity":50,"volatility":2,"market_cap":3}],"start_date":"","end_date":"","trade_fee":1.5,"script":""}
+        // Example:
+        // {
+        //   "initial_capital":100000,
+        //   "stocks":[
+        //     {
+        //       "ticker":"GOOGL",
+        //       "base_price":135,
+        //       "liquidity":50,
+        //       "volatility":2,
+        //       "market_cap":3
+        //     }
+        //   ],
+        //   "start_date":"",
+        //   "end_date":"",
+        //   "trade_fee":1.5,
+        //   "script":""
+        // }
         for (auto& stock : j["stocks"]) {
             TickerEntry entry;
             entry.name       = stock.at("ticker").get<std::string>();
@@ -244,12 +254,15 @@ int main() {
         int id = 0;
 
         // Generate Mode: convert ticker entries to generators
-        // NOTE: run_generated_simulation() seems to basically call gbm() for num_bars (finite) and outputs SimulationResult
+        // NOTE: run_generated_simulation() seems to basically call gbm()
+        // for num_bars (finite) and outputs SimulationResult
         if (mode == "generated") {
             //std::vector<Generator> generators;
             for (const auto& entry : ticker_entries) {
                 std::cout << id << " ============" << std::endl;
-                generators.push_back(std::make_unique<Generator>(entry.name, entry.base_price, entry.volatility, entry.liquidity, entry.market_cap, id++));
+                generators.push_back(std::make_unique<Generator>(
+                            entry.name, entry.base_price, entry.volatility,
+                            entry.liquidity, entry.market_cap, id++));
 
                 // for each stock, automatically begin generation
                 std::thread([&]{
@@ -325,8 +338,10 @@ int main() {
 
             std::lock_guard<std::mutex> _(mtx);
 
-            //NOTE: to avoid drastic changes, only websocket connections with "event (X)", where X is the ID will be processed different, all others will still use global_gen
-            //NOTE: after /api/simulate, let generators vector be filled and be a separate case
+            // NOTE: to avoid drastic changes, only websocket connections with
+            // "event (X)", where X is the ID will be processed different, all
+            // others will still use global_gen
+            // NOTE: after /api/simulate, let generators vector be filled and be a separate case
 
             // <<<<<<<<< EVENTS >>>>>>>>>>>>
             if (data.starts_with("sim")) {
@@ -346,7 +361,8 @@ int main() {
                 sim_args_str = sim_args_str.substr(find_pos + 1);
                 int target = std::stoi(sim_args_str);
 
-                generators.push_back(std::make_unique<Generator>(drift, volatility, price, target, 1));
+                generators.push_back(
+                    std::make_unique<Generator>(drift, volatility, price, target, 1));
 
                 fmt::print("[id: {}]: {} {} {} {}\n",
                     generators.size(),
@@ -407,7 +423,8 @@ int main() {
                     int rewind_count = std::stoi(data.substr(7), nullptr, 10);
                     rewind_count = std::min<int>(rewind_count, global_gen.streamed_points->size());
                     double last_price_point =
-                        global_gen.streamed_points->at(global_gen.streamed_points->size() - rewind_count);
+                        global_gen.streamed_points->at(
+                            global_gen.streamed_points->size() - rewind_count);
 
                     global_gen.streamed_points->erase(
                         global_gen.streamed_points->end() - rewind_count,
@@ -420,9 +437,7 @@ int main() {
                     fmt::print("rewind is ignored: another event is active\n");
                 }
             }
-<<<<<<< Updated upstream
-
-            if (data.starts_with("set_fields"))
+            else if (data.starts_with("set_fields"))
             {
                 std::string fields_str = data.substr(11);
 
@@ -448,11 +463,10 @@ int main() {
 
                 global_gen.set_fields(base_price, percent_drift, percent_volatility,
                         market_cap, target_price);
-=======
+            }
             else if (data.starts_with("multiple")) {
                 int index = data.find("(");
                 // TODO:
->>>>>>> Stashed changes
             }
         });
 
@@ -743,21 +757,11 @@ int main() {
         crow::HTTPMethod::GET,
         crow::HTTPMethod::Patch)([&](const crow::request& req) {
 
-<<<<<<< Updated upstream
         char *streamed_length = req.url_params.get("length");
         int streamed_len = stoi(streamed_length);
 
-        std::vector streamed_subset(streamed_points->begin(),
-                                    streamed_points->begin() + streamed_len);
-
-        parameters.pause.store(true);
         std::vector<char> file_buf;
-        file_buf = global_gen.save_simulation(&parameters, &streamed_subset);
-=======
-        global_gen.gen_settings.pause.store(true);
-        std::vector<char> file_buf;
-        file_buf = global_gen.save_simulation();
->>>>>>> Stashed changes
+        file_buf = global_gen.save_simulation(streamed_len);
         std::string file_binary(file_buf.begin(), file_buf.end());
         
         crow::response res;
