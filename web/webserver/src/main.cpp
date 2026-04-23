@@ -45,6 +45,7 @@ void load_ticker_data() {
             }
         }
         cout << "Success Loading in stored data\n";
+        cout << "Hi\n";
     } else {
         cout << "Data directory not found: " << default_dir << "\n";
     }
@@ -75,25 +76,20 @@ int main() {
     parameters.new_event.store(0);
     parameters.send_data.store(false);
 
-    CROW_ROUTE(app, "/api/market").methods( // TODO: i think i'm done
-        crow::HTTPMethod::GET,
-        crow::HTTPMethod::PATCH)([&](const crow::request& req) {
+    CROW_ROUTE(app, "/api/market").methods( // TODO:Complete
+        crow::HTTPMethod::GET)([&](const crow::request& req) {
+
         string json = data_manager.get_market_state_json();
-        crow::response res;
+        crow::response res(json);
+        res.code = 200;
         res.set_header("Access-Control-Allow-Origin", "*");
         res.set_header("Content-Type", "application/json");
-        res.end(json);
         return res;
     });
 
-    CROW_ROUTE(app, "/api/upload").methods( // TODO: i think i'm done
+    CROW_ROUTE(app, "/api/upload").methods( // TODO: Complete
         crow::HTTPMethod::POST,
         crow::HTTPMethod::PATCH)([&](const crow::request& req) {
-        crow::response res;
-
-        res.set_header("Access-Control-Allow-Origin", "*");
-        res.set_header("Access-Control-Allow-Methods", "POST, OPTIONS");
-        res.set_header("Access-Control-Allow-Headers", "Content-Type, X-File-Name, X-Asset-Class");
 
         string filename(req.get_header_value("x-file-name"));
         string asset_class(req.get_header_value("x-asset-class"));
@@ -106,13 +102,7 @@ int main() {
             asset_class = "Custom";
         }
 
-        /*
-        res->onAborted([]() { // HACK:
-                cout << "Upload aborted by client.\n";
-                });
-        */
-
-        string save_path = "temp_data/" + filename;
+        std::string save_path = "temp_data/" + filename;
         ofstream out_file(save_path, ios::binary);
 
         if (out_file.is_open()) {
@@ -124,11 +114,13 @@ int main() {
 
             // DUPLICATE HANDLING
             if (data_manager.has_ticker(ticker)) {
-                cout << "Duplicate " << ticker << " already in map.\n";
+                std::cout << "D" << std::endl;
+                std::cout << "Duplicate " << ticker << " already in map.\n";
                 remove(save_path.c_str());
+
+                crow::response res("Error: " + ticker + " already exists.");
                 res.set_header("Access-Control-Allow-Origin", "*");
                 res.code = 409;
-                res.end("Error: " + ticker + " already exists.");
                 return res;
             }
 
@@ -140,44 +132,63 @@ int main() {
             }
 
             if (remove(save_path.c_str()) == 0) {
-                cout << "Removed File after loading (save it in temp, read, delete): " << save_path << "\n";
+                std::cout << "Removed File after loading (save it in temp, read, delete): " << save_path << "\n";
             } else {
-                cout << "Error in removing file: " << save_path << "\n";
+                std::cout << "Error in removing file: " << save_path << "\n";
             }
 
             //message based on load_success
-            res.set_header("Access-Control-Allow-Origin", "*");
             if (load_success) {
-                res.end(ticker);
+                crow::response res(ticker);
+                res.set_header("Access-Control-Allow-Origin", "*");
+                res.code = 200;
+                return res;
             } else {
+                crow::response res("Invalid or corrupted CSV data");
                 res.code = 400;
-                res.end("Invalid or corrupted CSV data");
+                return res;
             }
         } else {
+            crow::response res("Failed to save to disk.");
             res.set_header("Access-Control-Allow-Origin", "*");
             res.code = 500;
-            res.end("Failed to save to disk.");
+            return res;
         }
+        crow::response res("Error");
         return res;
     });
 
-    CROW_ROUTE(app, "/api/simulate").methods( // TODO: post
+    // TODO:
+    CROW_ROUTE(app, "/api/simulate").methods(
         crow::HTTPMethod::POST,
-        crow::HTTPMethod::PATCH)([&](const crow::request& req) {
+        crow::HTTPMethod::PATCH,
+        crow::HTTPMethod::OPTIONS
+        )([&](const crow::request& req) {
+
+        if (req.method == crow::HTTPMethod::OPTIONS) {
+            crow::response res(200);
+            res.set_header("Access-Control-Allow-Origin", "*");
+            res.set_header("Access-Control-Allow-Methods", "POST, PATCH, OPTIONS");
+            res.set_header("Access-Control-Allow-Headers", "Content-Type");
+            return res;
+        }
 
         crow::response res;
         res.set_header("Access-Control-Allow-Origin", "*");
         res.set_header("Access-Control-Allow-Methods", "POST, OPTIONS");
         res.set_header("Access-Control-Allow-Headers", "Content-Type");
 
-        //possibly put these parsing functions in a different file later on, but for now this is fine for testing purposes?
+        auto reqBody = crow::json::load(req.body);
+
         njson j;
         try {
-            j = njson::parse(res.body); //HACK:
+            j = njson::parse(req.body); //HACK:
         } catch (const njson::parse_error& e) {
+            std::cout << "ERROR\n";
             res.set_header("Access-Control-Allow-Origin", "*");
             res.set_header("Content-Type", "application/json");
             res.end(R"({"error": "Invalid JSON"})");
+            res.code = 205;
             return res;
         }
 
@@ -199,6 +210,7 @@ int main() {
             res.set_header("Access-Control-Allow-Origin", "*");
             res.set_header("Content-Type", "application/json");
             res.end(R"({"error": "No tickers provided"})");
+            res.code = 204;
             return res;
         }
 
@@ -216,6 +228,7 @@ int main() {
             res.set_header("Access-Control-Allow-Origin", "*");
             res.set_header("Content-Type", "application/json");
             res.end(R"({"error": "No tickers provided"})");
+            res.code = 203;
             return res;
         }
 
@@ -242,6 +255,7 @@ int main() {
                     res.set_header("Access-Control-Allow-Origin", "*");
                     res.set_header("Content-Type", "application/json");
                     res.end("{\"error\": \"Ticker data not found: " + entry.name + "\"}");
+                    res.code = 202;
                     return res;
                 }
                 tickers.push_back(entry.name);
@@ -253,6 +267,7 @@ int main() {
         res.set_header("Access-Control-Allow-Origin", "*");
         res.set_header("Content-Type", "application/json");
         res.end(output);
+        res.code = 201;
 
         return res;
     });
@@ -402,11 +417,17 @@ int main() {
             }
         });
 
-    CROW_ROUTE(app, "/assets/index-<string>")([](std::string file) {
+    CROW_ROUTE(app, "/assets/<string>")([](std::string filename) {
         crow::response res;
-        res.set_static_file_info_unsafe("../../my-project/dist/assets/index-" + file);
-        res.set_header("Access-Control-Allow-Origin", "https://localhost");
-        res.set_header("Access-Control-Allow-Credentials", "true");
+
+        std::string path = "../../my-project/dist/assets/" + filename;
+        res.set_static_file_info_unsafe(path);
+
+        if (filename.ends_with(".js")) res.set_header("Content-Type", "application/javascript");
+        else if (filename.ends_with(".css")) res.set_header("Content-Type", "text/css");
+        else if (filename.ends_with(".svg")) res.set_header("Content-Type", "image/svg+xml");
+
+        res.set_header("Access-Control-Allow-Origin", "*");
         return res;
     });
 
