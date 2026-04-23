@@ -15,6 +15,7 @@ import '../styling/Home.css'
 
 import '/node_modules/react-grid-layout/css/styles.css';
 import '/node_modules/react-resizable/css/styles.css';
+import ResultsTemplate from './ResultsTemplate';
 //import NewSim from './newSimPage';
 
 export default function AppHome() {
@@ -134,7 +135,7 @@ export default function AppHome() {
         );
       case "Generation" :
         return (
-          <Generation />
+          <ResultsTemplate />
         );
       case "simResults" :
         return (
