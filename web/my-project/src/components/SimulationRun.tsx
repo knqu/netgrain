@@ -58,10 +58,10 @@ const SimRun: React.FC<{ socketRef: WebSocket, activeStock: String, dates: Date[
         }
 
         //dates[idx].setUTCDate(dates[idx].getUTCDate() + 1);
-        var time;
+        var time: UTCTimestamp;
         if (data[idx].length === 0) {
-          time = new Date(2018, 12, 31, 12, 0, 0)
-          time = time.getTime() / 1000 as UTCTimestamp;
+          const nd = new Date(2018, 12, 31, 12, 0, 0)
+          time = nd.getTime() / 1000 as UTCTimestamp;
         }
         else {
           time = (data[idx][data[idx].length - 1].time + 1000) / 1000 as UTCTimestamp;
