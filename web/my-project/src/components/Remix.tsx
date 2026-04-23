@@ -77,19 +77,6 @@ interface LiveChartProps {
 
 let Queue: string[];
 
-/*
-const pickerOpts = {
-  types: [
-    {
-      description: "Simulations",
-      accept: {
-        "application/octet-stream": [ ".sim" ],
-      },
-    }
-  ],
-  multiple: false,
-};
-
 const LiveChart: React.FC<LiveChartProps> = ({ws}) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
 
