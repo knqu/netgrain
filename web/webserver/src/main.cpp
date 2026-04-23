@@ -48,7 +48,6 @@ void load_ticker_data() {
             }
         }
         cout << "Success Loading in stored data\n";
-        cout << "Hi\n";
     } else {
         cout << "Data directory not found: " << default_dir << "\n";
     }
@@ -68,16 +67,9 @@ int main() {
     std::unordered_set<crow::websocket::connection *> users;
     std::mutex mtx;
 
-    std::vector<Generator *> generators;
+    std::vector<std::unique_ptr<Generator>> generators;
 
-    std::vector<double> *streamed_points = new std::vector<double>();
-
-    Generator global_gen(0.02, 2, 100, 100); // HX
-    Data_Transfer parameters;
-    parameters.conn.store(nullptr);
-    parameters.gen.store(true);
-    parameters.new_event.store(0);
-    parameters.send_data.store(false);
+    Generator global_gen(0.02, 2, 100, 100, 0);
 
     CROW_ROUTE(app, "/api/market").methods(
         crow::HTTPMethod::GET)([&](const crow::request& req) {
@@ -171,6 +163,7 @@ int main() {
         crow::HTTPMethod::OPTIONS
         )([&](const crow::request& req) {
 
+        // CORS Preflight
         if (req.method == crow::HTTPMethod::OPTIONS) {
             crow::response res(200);
             res.set_header("Access-Control-Allow-Origin", "*");
@@ -179,8 +172,7 @@ int main() {
             return res;
         }
 
-        auto reqBody = crow::json::load(req.body);
-
+        // Parse input JSON data
         njson j;
 
         try {
@@ -194,10 +186,16 @@ int main() {
             return res;
         }
 
+<<<<<<< Updated upstream
         std::string mode = j.value("mode", "csv");
         i64 initial_capital = static_cast<i64>(
             j.value("initial_capital", 10000.0) * PRICE_SCALE_FACTOR);
 
+=======
+        // Grab values from a few parameters (default to second parameter of .value() if not found)
+        std::string mode = j.value("mode", "generated");
+        i64 initial_capital = static_cast<i64>(j.value("initial_capital", 10000.0) * PRICE_SCALE_FACTOR);
+>>>>>>> Stashed changes
         int num_bars = j.value("num_bars", 252);
 
         struct TickerEntry {
@@ -210,6 +208,7 @@ int main() {
 
         std::vector<TickerEntry> ticker_entries;
 
+        // Error check: if no tickers are found
         if (!j.contains("stocks") || !j["stocks"].is_array()) {
             crow::response res(R"({"error": "No tickers provided"})");
             res.set_header("Access-Control-Allow-Origin", "*");
@@ -218,6 +217,8 @@ int main() {
             return res;
         }
 
+        // For each ticker, add to ticker_entries
+        // Example: {"initial_capital":100000,"stocks":[{"ticker":"GOOGL","base_price":135,"liquidity":50,"volatility":2,"market_cap":3}],"start_date":"","end_date":"","trade_fee":1.5,"script":""}
         for (auto& stock : j["stocks"]) {
             TickerEntry entry;
             entry.name       = stock.at("ticker").get<std::string>();
@@ -228,6 +229,7 @@ int main() {
             ticker_entries.push_back(entry);
         }
 
+        // Error Check: if no tickers were parsed into array
         if (ticker_entries.empty()) {
             crow::response res(R"({"error": "No tickers provided"})");
             res.set_header("Access-Control-Allow-Origin", "*");
@@ -239,22 +241,27 @@ int main() {
         Engine engine(initial_capital);
         SimulationResult result;
 
+        int id = 0;
+
+        // Generate Mode: convert ticker entries to generators
+        // NOTE: run_generated_simulation() seems to basically call gbm() for num_bars (finite) and outputs SimulationResult
         if (mode == "generated") {
-            std::vector<Generator> generators;
+            //std::vector<Generator> generators;
             for (const auto& entry : ticker_entries) {
-                generators.emplace_back(
-                    entry.name,
-                    entry.base_price,
-                    entry.volatility,
-                    entry.liquidity,
-                    entry.market_cap
-                );
+                std::cout << id << " ============" << std::endl;
+                generators.push_back(std::make_unique<Generator>(entry.name, entry.base_price, entry.volatility, entry.liquidity, entry.market_cap, id++));
+
+                // for each stock, automatically begin generation
+                std::thread([&]{
+                    generators.at(generators.size() - 1)->generate_ws();
+                }).detach();
             }
             result = run_generated_simulation(engine, generators, num_bars);
         } else {  // csv mode
             std::vector<std::string> tickers;
             for (const auto& entry : ticker_entries) {
-                // verify all tickers are loaded
+
+                // Error Check: verify all tickers are loaded
                 if (!data_manager.has_ticker(entry.name)) {
                     crow::response res(
                         "{\"error\": \"Ticker data not found: " + entry.name + "\"}");
@@ -269,6 +276,7 @@ int main() {
         }
 
         std::string output = serialize_simulation_result(result);
+
         crow::response res(output);
         res.set_header("Access-Control-Allow-Origin", "*");
         res.set_header("Content-Type", "application/json");
@@ -281,8 +289,19 @@ int main() {
             fmt::print("new websocket connection from {}!\n", conn.get_remote_ip());
             std::lock_guard<std::mutex> _(mtx);
             users.insert(&conn);
-            parameters.conn.store(&conn);
-            parameters.send_data.store(true);
+
+            global_gen.gen_settings.conn.store(&conn);
+            global_gen.gen_settings.send_data.store(true);
+
+            if (generators.size()) {
+                for (const auto& x : generators) {
+                    std::cout << x->id << std::endl;
+                    x->gen_settings.conn.store(&conn);
+                    x->gen_settings.send_data.store(true);
+                }
+            }
+
+            std::cout << "generators size is " << generators.size() << std::endl;
         })
         .onclose([&]( // need to reset
             crow::websocket::connection &conn,
@@ -291,8 +310,9 @@ int main() {
 
             fmt::print("websocket connection closed: {}\n", reason);
             std::lock_guard<std::mutex> _(mtx);
-            parameters.send_data.store(false);
-            parameters.conn.store(nullptr);
+
+            global_gen.gen_settings.send_data.store(false);
+            global_gen.gen_settings.conn.store(nullptr);
             global_gen.reset();
             users.erase(&conn);
         })
@@ -304,17 +324,12 @@ int main() {
             fmt::print("data received {}\n", data);
 
             std::lock_guard<std::mutex> _(mtx);
-            if (data == "flash_crash")
-            {
-                if (parameters.new_event.load() == 0)
-                {
-                    parameters.new_event.store(1);
-                    fmt::print("flash crash!\n");
-                }
-            }
 
-            if (data.starts_with("sim"))
-            {
+            //NOTE: to avoid drastic changes, only websocket connections with "event (X)", where X is the ID will be processed different, all others will still use global_gen
+            //NOTE: after /api/simulate, let generators vector be filled and be a separate case
+
+            // <<<<<<<<< EVENTS >>>>>>>>>>>>
+            if (data.starts_with("sim")) {
                 std::string sim_args_str = data.substr(5);
 
                 int find_pos = sim_args_str.find_first_of("!");
@@ -331,9 +346,7 @@ int main() {
                 sim_args_str = sim_args_str.substr(find_pos + 1);
                 int target = std::stoi(sim_args_str);
 
-                Generator *new_generator =
-                  new Generator(drift, volatility, price, target);
-                generators.push_back(new_generator);
+                generators.push_back(std::make_unique<Generator>(drift, volatility, price, target, 1));
 
                 fmt::print("[id: {}]: {} {} {} {}\n",
                     generators.size(),
@@ -343,82 +356,71 @@ int main() {
                     target
                 );
 
-                /*
                 std::thread([&]{
-                  new_generator->generate_ws(&parameters);
+                    global_gen.generate_ws();
                 }).detach();
-                */
             }
-
-            if (data == "sideways") { // HX
+            else if (data == "flash_crash") {
+                if (global_gen.gen_settings.new_event.load() == 0) {
+                    global_gen.gen_settings.new_event.store(1);
+                    fmt::print("flash crash!\n");
+                }
+            }
+            else if (data == "sideways") { 
                 fmt::print("sideways!\n");
-                parameters.new_event.store(3);
+                global_gen.gen_settings.new_event.store(3);
             }
-
-            if (data == "bear") {
+            else if (data == "bear") {
                 fmt::print("bear market triggered!\n");
-                parameters.new_event.store(4);
+                global_gen.gen_settings.new_event.store(4);
             }
-
-            if (data == "bull") {
+            else if (data == "bull") {
                 fmt::print("bull market triggered!\n");
-                parameters.new_event.store(5);
+                global_gen.gen_settings.new_event.store(5);
             }
-
-            if (data == "stop")
-            {
-                parameters.send_data.store(false);
+            else if (data == "stop") {
+                global_gen.gen_settings.send_data.store(false);
             }
-
-            if (data.starts_with("bubble"))
-            {
-                if (parameters.new_event.load() == 0)
-                {
+            else if (data.starts_with("bubble")) {
+                if (global_gen.gen_settings.new_event.load() == 0) {
                     int threshold = std::stoi(data.substr(7), nullptr, 10);
-                    parameters.new_event.store(2);
-                    parameters.threshold.store(threshold);
+                    global_gen.gen_settings.new_event.store(2);
+                    global_gen.gen_settings.threshold.store(threshold);
                     fmt::print("bubble! {}\n", threshold);
                 }
-                else if (parameters.new_event.load() == 2)
-                {
+                else if (global_gen.gen_settings.new_event.load() == 2) {
                     fmt::print("bubble is ignored: called consecutively when another is active!\n");
                 }
             }
-
-            if (data == "pause") {
-                parameters.pause.store(true);
+            else if (data == "pause") {
+                global_gen.gen_settings.pause.store(true);
             }
-
-            if (data == "resume") {
-                parameters.pause.store(false);
+            else if (data == "resume") {
+                global_gen.gen_settings.pause.store(false);
             }
-
-            if (data.starts_with("update")) {
+            else if (data.starts_with("update")) {
                 int index = data.find(":");
                 global_gen.overwrite(stod(data.substr(index + 2)));
             }
-
-            if (data.starts_with("rewind"))
-            {
-                if (parameters.new_event.load() == 0)
-                {
+            else if (data.starts_with("rewind")) {
+                if (global_gen.gen_settings.new_event.load() == 0) {
                     int rewind_count = std::stoi(data.substr(7), nullptr, 10);
-                    rewind_count = std::min<int>(rewind_count, streamed_points->size());
+                    rewind_count = std::min<int>(rewind_count, global_gen.streamed_points->size());
                     double last_price_point =
-                        streamed_points->at(streamed_points->size() - rewind_count);
+                        global_gen.streamed_points->at(global_gen.streamed_points->size() - rewind_count);
 
-                    streamed_points->erase(
-                        streamed_points->end() - rewind_count,
-                        streamed_points->end()
+                    global_gen.streamed_points->erase(
+                        global_gen.streamed_points->end() - rewind_count,
+                        global_gen.streamed_points->end()
                     );
-                    parameters.reset_price.store(last_price_point);
-                    parameters.new_event.store(6);
+                    global_gen.gen_settings.reset_price.store(last_price_point);
+                    global_gen.gen_settings.new_event.store(6);
                 }
-                else if (parameters.new_event.load() == 2)
-                {
+                else if (global_gen.gen_settings.new_event.load() == 2) {
                     fmt::print("rewind is ignored: another event is active\n");
                 }
             }
+<<<<<<< Updated upstream
 
             if (data.starts_with("set_fields"))
             {
@@ -446,6 +448,11 @@ int main() {
 
                 global_gen.set_fields(base_price, percent_drift, percent_volatility,
                         market_cap, target_price);
+=======
+            else if (data.starts_with("multiple")) {
+                int index = data.find("(");
+                // TODO:
+>>>>>>> Stashed changes
             }
         });
 
@@ -710,16 +717,15 @@ int main() {
         crow::HTTPMethod::Patch)([&](const crow::request& req) {
 
         std::string body = req.body;
-        parameters.pause.store(true);
-        global_gen.load_simulation(body, &parameters,
-                                   streamed_points);
-        parameters.pause.store(true);
+        global_gen.gen_settings.pause.store(true);
+        global_gen.load_simulation(body);
+        global_gen.gen_settings.pause.store(true);
 
-        global_gen.refresh(streamed_points);
+        global_gen.refresh();
         
         fmt::print("Loaded simulation!\n");
 
-        std::vector<double> data_points = *streamed_points;
+        std::vector<double> data_points = *(global_gen.streamed_points);
 
         crow::json::wvalue json_array;
         json_array["data"] = data_points;
@@ -737,6 +743,7 @@ int main() {
         crow::HTTPMethod::GET,
         crow::HTTPMethod::Patch)([&](const crow::request& req) {
 
+<<<<<<< Updated upstream
         char *streamed_length = req.url_params.get("length");
         int streamed_len = stoi(streamed_length);
 
@@ -746,6 +753,11 @@ int main() {
         parameters.pause.store(true);
         std::vector<char> file_buf;
         file_buf = global_gen.save_simulation(&parameters, &streamed_subset);
+=======
+        global_gen.gen_settings.pause.store(true);
+        std::vector<char> file_buf;
+        file_buf = global_gen.save_simulation();
+>>>>>>> Stashed changes
         std::string file_binary(file_buf.begin(), file_buf.end());
         
         crow::response res;
@@ -843,6 +855,7 @@ int main() {
         std::string email = cookie.get_cookie("email");
 
         if (email.empty()) return crow::response(401);
+
         try {
             std::vector<int> hist = ConnectorSingleton::getInstance().fetchAllSims(email);
 
@@ -893,12 +906,20 @@ int main() {
     });
 
     std::thread([&]{
+        global_gen.generate_ws();
+    }).detach();
+
+    app.bindaddr("127.0.0.1").port(18080).multithreaded().run();
+
+
+    /* Original Code prior to multithreading attempt
+    std::thread([&]{
         global_gen.generate_ws(&parameters, streamed_points);
     }).detach();
 
     app.bindaddr("127.0.0.1").port(18080);
     //parameters.gen.store(false);
-
     app.run();
+    */
 }
 

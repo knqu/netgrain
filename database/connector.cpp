@@ -375,6 +375,7 @@ try
     }
 
     // Let sOne be current, and sTwo be the relative
+    //
     std::vector<double> comparativeAnalytics(int sOne, int sTwo) {
       pqxx::work tx(*conn);
 

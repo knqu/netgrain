@@ -99,4 +99,3 @@ int main()
 
   parameters.gen.store(false);
 }
-

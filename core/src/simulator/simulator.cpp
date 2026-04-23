@@ -24,14 +24,14 @@ SimulationResult run_csv_simulation(Engine& engine, MarketDataManager& data, con
     return {engine.get_balance(), engine.get_fill_log(), engine.get_positions()};
 }
 
-SimulationResult run_generated_simulation(Engine& engine, std::vector<Generator>& generators, int num_bars) {
+SimulationResult run_generated_simulation(Engine& engine, std::vector<std::unique_ptr<Generator>>& generators, int num_bars) {
     for (int i = 0; i < num_bars; i++) {
         u32 date = static_cast<u32>(i);
 
         // generate bars for each generator
         std::unordered_map<std::string, MarketDataRow> bar_map;
         for (auto& gen : generators) {
-            bar_map[gen.get_ticker()] = gen.generate_bar(date);
+            bar_map[gen->get_ticker()] = gen->generate_bar(date);
         }
         engine.process_bar(bar_map);
     }
