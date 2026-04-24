@@ -7,82 +7,45 @@ import {
     HistogramSeries,
     type HistogramData,
 } from "lightweight-charts";
-import { useState, useRef, useEffect, type ReactElement } from 'react';
+import { useState, useRef, useEffect, type ReactElement, use } from 'react';
 import nextArrow from "../assets/next.png";
 import pause from "../assets/pause.png"
 
+/*
+const equityTest: LineData<number>[] =  [{ "time" : 1, "value" : 101500},{ "time" : 2, "value" : 101780},{ "time" : 3, "value" : 100085},{ "time" : 3, "value" : 102185},{ "time" : 4, "value" : 105635},{ "time" : 4, "value" : 107555},{ "time" : 5, "value" : 106444},{ "time" : 6, "value" : 107274},{ "time" : 7, "value" : 105829},{ "time" : 8, "value" : 108455}];
+
+const ddTest : LineData<number>[] =  [{ "time" : 1, "value" : 0 },{ "time" : 2, "value" : 0 },{ "time" : 3, "value" : -0.016654 },{ "time" : 3, "value" : 0 },{ "time" : 4, "value" : 0 },{ "time" : 4, "value" : 0 },{ "time" : 5, "value" : -0.010330 },{ "time" : 6, "value" : -0.002613 },{ "time" : 7, "value" : -0.016048 },{ "time" : 8, "value" : 0 }];
+
 type TableEntry = {
-    "timestamp" : number;
-    "orderType" : string;
-    "amountOfStock": number;
-    "moneyGained": number;
-    "totalMoney": number;
-  }
+        "timestamp": number;
+        "orderType": string;
+        "amountOfStock": number;
+        "moneyGained": number;
+        "totalMoney": number;
+    }
 
-const data: LineData<number>[] = [
-    { time: 0, value: 1100 },
-    { time: 1, value: 1090 },
-    { time: 2, value: 1150 },
-    { time: 3, value: 1130 },
-    { time: 4, value: 1170 },
-    { time: 5, value: 1205 },
-    { time: 6, value: 1268 },
-    { time: 7, value: 1352 },
-    { time: 8, value: 1300 },
-    { time: 9, value: 1280 },
-    { time: 10, value: 1299 },
-    { time: 11, value: 1305 },
-    { time: 12, value: 1353 },
-    { time: 13, value: 1352 },
-    { time: 14, value: 1398 },
-    { time: 15, value: 1400 },
-];
-
-const testData : TableEntry[] = [
-  {timestamp : 0, orderType : "N/A", amountOfStock : 0, moneyGained : 0, totalMoney : 200},
-  {timestamp : 1, orderType : "Buy", amountOfStock : 2, moneyGained : -6, totalMoney : 194},
-  {timestamp : 2, orderType : "Buy", amountOfStock : 5, moneyGained : -10, totalMoney : 184},
-  {timestamp : 5, orderType : "Sell", amountOfStock : 3, moneyGained : 20, totalMoney : 164},
-  {timestamp : 7, orderType : "Sell", amountOfStock : 1, moneyGained : 3, totalMoney : 167},
-  {timestamp : 10, orderType : "Buy", amountOfStock : 10, moneyGained : -5, totalMoney : 162},
-  {timestamp : 13, orderType : "Sell", amountOfStock : 7, moneyGained : -15, totalMoney : 147},
-  {timestamp : 15, orderType : "Buy", amountOfStock : 27, moneyGained : -58, totalMoney : 89},
-  {timestamp : 20, orderType : "Sell", amountOfStock : 9, moneyGained : 60, totalMoney : 149},
-  {timestamp : 24, orderType : "Sell", amountOfStock : 1, moneyGained : 1, totalMoney : 150},
-  {timestamp : 24, orderType : "Sell", amountOfStock : 1, moneyGained : 1, totalMoney : 150},
-  {timestamp : 24, orderType : "Sell", amountOfStock : 1, moneyGained : 1, totalMoney : 150},
-  {timestamp : 24, orderType : "Sell", amountOfStock : 1, moneyGained : 1, totalMoney : 150},
-  {timestamp : 24, orderType : "Sell", amountOfStock : 1, moneyGained : 1, totalMoney : 150},
-  {timestamp : 24, orderType : "Sell", amountOfStock : 1, moneyGained : 1, totalMoney : 150},
-];
-
-const HistData: HistogramData<number>[] = [
-    { time: 1, value: 50, color: "green" },
-    { time: 2, value: -20, color: "red" },
-    { time: 3, value: 30, color: "green" },
-    { time: 4, value: -10, color: "red" },
-    { time: 5, value: 40, color: "green" },
-    { time: 6, value: -5, color: "red" },
-    { time: 7, value: 60, color: "green" },
-    { time: 8, value: -15, color: "red" },
-    { time: 9, value: 25, color: "green" },
-    { time: 10, value: -30, color: "red" },
-    { time: 11, value: 35, color: "green" },
-    { time: 12, value: -10, color: "red" },
-    { time: 13, value: 20, color: "green" },
-    { time: 14, value: -5, color: "red" },
-    { time: 15, value: 50, color: "green" },
-  ];
-
+const tableTest: TableEntry[] = [{"timestamp" : 1, "orderType" : "BUY", "amountOfStock" : 10, "moneyGained" : -1500, "totalMoney" : 100000},{"timestamp" : 2, "orderType" : "BUY", "amountOfStock" : 5, "moneyGained" : -760, "totalMoney" : 99500},{"timestamp" : 3, "orderType" : "SELL", "amountOfStock" : 8, "moneyGained" : 1240, "totalMoney" : 99000},{"timestamp" : 3, "orderType" : "BUY", "amountOfStock" : 3, "moneyGained" : -2100, "totalMoney" : 99000},{"timestamp" : 4, "orderType" : "BUY", "amountOfStock" : 2, "moneyGained" : -1420, "totalMoney" : 101000},{"timestamp" : 4, "orderType" : "BUY", "amountOfStock" : 6, "moneyGained" : -1920, "totalMoney" : 101000},{"timestamp" : 5, "orderType" : "SELL", "amountOfStock" : 4, "moneyGained" : 632, "totalMoney" : 100500},{"timestamp" : 6, "orderType" : "SELL", "amountOfStock" : 1, "moneyGained" : 720, "totalMoney" : 102000},{"timestamp" : 7, "orderType" : "SELL", "amountOfStock" : 3, "moneyGained" : 975, "totalMoney" : 101500},{"timestamp" : 8, "orderType" : "BUY", "amountOfStock" : 7, "moneyGained" : -1120, "totalMoney" : 103000}];
+const plTest: HistogramData<number>[] = [{"time" : 3, "value" : 40, "color" : "green"},{"time" : 5, "value" : 28, "color" : "green"},{"time" : 6, "value" : 20, "color" : "green"},{"time" : 7, "value" : 15, "color" : "green"}];
+*/
 export default function ResultsTemplate() {
-    const [timeTitle, setTimeTitle] = useState<string>("Equity Curve over Time");
-    const [tradeTitle, setTradeTitle] = useState<string>("Profit and Loss Curve");
+    type TableEntry = {
+        "timestamp": number;
+        "orderType": string;
+        "amountOfStock": number;
+        "moneyGained": number;
+        "totalMoney": number;
+    }
 
-    const [timeIndex, setTimeIndex] = useState<number>(0);
-    const [tradeIndex, setTradeIndex] = useState<number>(3);
-    
-    const [timeTimer, setTimeTimer] = useState<number | null>(null);
-    const [tradeTimer, setTradeTimer] = useState<number | null>(null);
+    const [sim, setSim] = useState<string>("0");
+    const [title, setTitle] = useState<string>("Equity Curve over Time");
+
+    const [chartIndex, setChartIndex] = useState<number>(0);
+    const timer = useRef<number | null>(null);
+
+    const [tableData, setTableData] = useState<TableEntry[]>([]);
+    const [equityData, setEquityData] = useState<LineData<number>[]>([]);
+    const [plData, setPlData] = useState<HistogramData<number>[]>([]);
+    const [ddData, setDdData] = useState<LineData<number>[]>([]);
 
     const [taxes, setTaxes] = useState<number>(0);
     const [comm, setComm] = useState<number>(0);
@@ -94,76 +57,51 @@ export default function ResultsTemplate() {
     const [EV, setEV] = useState<number>(0);
     const [maxDD, setMaxDD] = useState<number>(0);
 
-    useEffect(() => {
+    useEffect(() => {  
         const fetchMetrics = async () => {
-            try {
-                const response = await fetch('/api/resultsTemplate', {
-                    method: 'GET'
-                });
+        try {
+            const response = await fetch(
+            "/api/resultsTemplate",
+            {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ simID: Number(sessionStorage.getItem("simID")) })
+            });
+            console.log(response);
+            sessionStorage.clear();
 
-                if (response.ok) {
-                    const data = await response.json();
-                    setComm(data.percent);
-                    setFee(data.flat);
-                    setTaxes(data.taxes);
-                } else {
-                    setComm(-1);
-                    setFee(-1);
-                    setTaxes(-1);
-                }
-            } catch (error) {
-                setComm(-1);
-                setFee(-1);
-                setTaxes(-1);
+            if (response.ok) {
+                const data = await response.json();
+                console.log(response);
+                setTableData(data["table"]);
+                setEquityData(data["equity"]);
+                setPlData(data["pl"]);
+                setDdData(data["drawdown"]);
             }
-        };
+        } catch (err) {
+            console.log(err);
+        }};
 
         fetchMetrics();
     }, []);
 
-    function handleTimer(index : number) {
-      if (index < 3) {
-        if (timeTimer != null) {
-          clearInterval(timeTimer);
-          setTimeTimer(null);
+    function handleTimer() {
+        if (timer.current != null) {
+          clearInterval(timer.current);
+          timer.current = null;
         } else {
-          setTimeTimer(setInterval(() => setTimeIndex(timeIndex => {
-            timeIndex++;
-            timeIndex = timeIndex % 3;
-            return timeIndex;
-          }), 2000));
-        }
-      }
-      else {
-        if (tradeTimer != null) {
-          clearInterval(tradeTimer);
-          setTradeTimer(null);
-        } else {
-          setTradeTimer(setInterval(() => setTradeIndex(tradeIndex => {
-            tradeIndex++;
-            tradeIndex = (tradeIndex % 3) + 3;
-            return tradeIndex;
-          }), 2000));
-        }
-      }
-    }
-
-    function pauseTimer(index : number) {
-        if (index < 3) {
-            if (timeTimer != null) {
-                clearInterval(timeTimer);
-                setTimeTimer(null);
-            }
-        }
-        else {
-            if (tradeTimer != null) {
-                clearInterval(tradeTimer);
-                setTradeTimer(null);
-            }
+            timer.current = setInterval(() => setChartIndex(chartIndex => (chartIndex + 1) % 3), 2000);
         }
     }
 
-    function CreateChart({ index } : { index : number}) {
+    function pauseTimer () {
+        if (timer.current != null) {
+          clearInterval(timer.current);
+          timer.current = null;
+        } 
+    }
+
+    function CreateChart() {
         const containerRef = useRef<HTMLDivElement | null>(null);
         const chartRef = useRef<IChartApi | null>(null);
         const seriesRef = useRef<any | null>(null);
@@ -197,122 +135,112 @@ export default function ResultsTemplate() {
             });
 
             resizeObserver.observe(containerRef.current);
-            if (index == 0) {
+            if (chartIndex == 0) {
                 seriesRef.current = chartRef.current.addSeries(LineSeries);
-                seriesRef.current.setData(data);
-                setTimeTitle("Equity Curve over Time");
+                seriesRef.current.setData(equityData);
+                setTitle("Equity Curve");
 
             }
-            else if (index == 1) {
+            else if (chartIndex == 1) {
+                seriesRef.current = chartRef.current.addSeries(HistogramSeries);
+                seriesRef.current.setData(plData);
+                setTitle("Profit and Loss Curve");
+            }
+            else if (chartIndex == 2) {
                 seriesRef.current = chartRef.current.addSeries(LineSeries);
-                seriesRef.current.setData(data);
-                setTimeTitle("Drawdown Curve");
+                seriesRef.current.setData(ddData);
+                setTitle("Drawdown Curve");
             }
-            else if (index == 2) {
-                seriesRef.current = chartRef.current.addSeries(HistogramSeries);
-                seriesRef.current.setData(HistData);
-                setTimeTitle("Rolling Sharpe");
-            }
-            else if (index == 3) {
-                seriesRef.current = chartRef.current.addSeries(HistogramSeries);
-                seriesRef.current.setData(HistData);
-                setTradeTitle("Profit and Loss Curve");
-            }
-            else if (index == 4) {
-                seriesRef.current = chartRef.current.addSeries(LineSeries);
-                seriesRef.current.setData(data);
-                setTradeTitle("Equity Curve over Trade");
-            }
-            else if (index == 5) {
-                seriesRef.current = chartRef.current.addSeries(HistogramSeries);
-                seriesRef.current.setData(HistData);
-                setTradeTitle("MFE");
-            }
-            
+
             chartRef.current.timeScale().fitContent();
 
             return () => {
                 resizeObserver.disconnect();
                 chartRef.current?.remove();
             };
-        }, []);
+        }, [chartIndex]);
 
         return <div className="chart" ref={containerRef}></div>
     }
 
-  function TableRow({ algo_entry } : {algo_entry : TableEntry}) {
-    return(
-      <div className='SimResult_row_container'>
-        <div className="table-row-content">
-          <h5>{algo_entry.timestamp}</h5>
-          <h5>{algo_entry.orderType}</h5>
-          <h5>{algo_entry.amountOfStock}</h5>
-          <h5 style={{color: algo_entry.moneyGained > 0 ? 'rgb(9, 215, 23)' : 'rgb(215, 9, 23)'}}>
-            {algo_entry.moneyGained}
-          </h5>
-          <h5>${algo_entry.totalMoney}</h5>
-        </div>
-      </div>
-    );
-  }
+    function TableRow({ algo_entry }: { algo_entry: TableEntry }) {
+        return (
+            <div className='SimResult_row_container'>
+                <div className="table-row-content">
+                    <h5>{algo_entry.timestamp}</h5>
+                    <h5>{algo_entry.orderType}</h5>
+                    <h5>{algo_entry.amountOfStock}</h5>
+                    <h5 style={{ color: algo_entry.moneyGained > 0 ? 'rgb(9, 215, 23)' : 'rgb(215, 9, 23)' }}>
+                        {algo_entry.moneyGained}
+                    </h5>
+                    <h5>${algo_entry.totalMoney}</h5>
+                </div>
+            </div>
+        );
+    }
 
-  function AlgoTable( {TableEntryList } : { TableEntryList : TableEntry[]}) {
-    let tableRows : ReactElement[] = [];
-    TableEntryList.forEach((row) => {
-        tableRows.push(
-            <TableRow algo_entry={row}></TableRow>
-        )
-    });
+    function AlgoTable({ TableEntryList }: { TableEntryList: TableEntry[] }) {
+        let tableRows: ReactElement[] = [];
+        TableEntryList.forEach((row) => {
+            tableRows.push(
+                <TableRow algo_entry={row}></TableRow>
+            )
+        });
 
-    return (
-        <>{ tableRows } </>
-    );
-  }
+        return (
+            <>{tableRows} </>
+        );
+    }
+
+    function download() {
+        const json = JSON.stringify(tableData, null, 2);
+
+        const blob = new Blob([json], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "metrics.json";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+
+        URL.revokeObjectURL(url);
+    }
 
     return (
         <div className="analytics-parent-container">
             <div className="analytics-container">
                 <div className="top-container">
                     <div className="header-container">
-                        <h5>Simulation Name</h5>
-                        <h5>00 Month 0000</h5>
+                        <h5>Simulation {sim}</h5>
                     </div>
 
-                    <button className="export">Export</button>
+                    <button className="export" onClick={() => download()}>Export</button>
                 </div>
 
                 <div className="charts-table-metric-container">
                     <div className="charts-parent-container">
-                        <h2 className="chart-title">{timeTitle}</h2>
+                        <h2 className="chart-title">{title}</h2>
                         <div className="charts-container">
-                            <CreateChart index={timeIndex}></CreateChart>
+                            <CreateChart></CreateChart>
                         </div>
 
                         <div className="button-group">
                             <button onClick={() => {
-                                setTimeIndex(timeIndex => {
-                                    timeIndex++;
-                                    timeIndex = timeIndex % 3;
-                                    return timeIndex;
-                                });
-                                handleTimer(timeIndex);
+                                setChartIndex(prev => prev == 2 ? prev = 0 : ++prev);
+                                pauseTimer()
                             }}>
                                 <img src={nextArrow} style={{ transform: "rotate(-90deg)" }}></img>
                             </button>
 
-                            <button onClick={() => pauseTimer(timeIndex)}>
+                            <button onClick={handleTimer}>
                                 <img src={pause}></img>
                             </button>
 
                             <button onClick={() => {
-                                setTimeIndex(timeIndex => {
-                                    timeIndex--;
-                                    if (timeIndex < 0) {
-                                        timeIndex = 2;
-                                    }
-                                    return timeIndex;
-                                });
-                                handleTimer(timeIndex);
+                                setChartIndex(prev => prev == 0 ? prev = 2 : --prev);
+                                pauseTimer()
                             }}>
                                 <img src={nextArrow} style={{ transform: "rotate(90deg)" }}></img>
                             </button>
@@ -329,98 +257,60 @@ export default function ResultsTemplate() {
                         </div>
 
                         <div className="table">
-                            <AlgoTable TableEntryList={testData}></AlgoTable>
-                        </div>
-                    </div>
-
-                    <div className="charts-parent-container">
-                        <h2 className="chart-title">{tradeTitle}</h2>
-                        <div className="charts-container">
-                            <CreateChart index={tradeIndex}></CreateChart>
-                        </div>
-
-                        <div className="button-group">
-                            <button onClick={() => {
-                                setTradeIndex(tradeIndex => {
-                                    tradeIndex++;
-                                    tradeIndex = (timeIndex % 3) + 3;
-                                    return tradeIndex;
-                                });
-                                handleTimer(tradeIndex);
-                            }}>
-                                <img src={nextArrow} style={{ transform: "rotate(-90deg)" }}></img>
-                            </button>
-
-                            <button onClick={() => pauseTimer(tradeIndex)}>
-                                <img src={pause}></img>
-                            </button>
-
-                            <button onClick={() => {
-                                setTradeIndex(tradeIndex => {
-                                    tradeIndex--;
-                                    if (tradeIndex < 3) {
-                                        tradeIndex = 5;
-                                    }
-                                    return tradeIndex;
-                                });
-                                handleTimer(tradeIndex);
-                            }}>
-                                <img src={nextArrow} style={{ transform: "rotate(90deg)" }}></img>
-                            </button>
-                        </div>
-                    </div>
-
-                    <div className="metric-grid">
-                        <div className="metric-container">
-                            <p className="metric-title">Percent Commision</p>
-                            <p className="metric">{comm === -1 ? "N/A" : `${comm}%`}</p>
-                        </div>
-
-                        <div className="metric-container">
-                            <p className="metric-title">Flat Fee</p>
-                            <p className="metric">{fee === -1 ? "N/A" : `-$${fee}`}</p>
-                        </div>
-
-                        <div className="metric-container">
-                            <p className="metric-title">Taxes</p>
-                            <p className="metric">{taxes === -1 ? "N/A" : `-$${taxes}`}</p>
-                        </div>
-
-                        <div className="metric-container">
-                            <p className="metric-title">Total Equity</p>
-                            <p className="metric">${equity}</p>
-                        </div>
-
-                        <div className="metric-container">
-                            <p className="metric-title">Win Rate</p>
-                            <p className="metric">{winRate}%</p>
-                        </div>
-
-                        <div className="metric-container">
-                            <p className="metric-title">Profit Factor</p>
-                            <p className="metric">{profitFactor}</p>
-                        </div>
-
-                        <div className="metric-container">
-                            <p className="metric-title">Total Trades</p>
-                            <p className="metric">{trades}</p>
-                        </div>
-
-                        <div className="metric-container">
-                            <p className="metric-title">Expected Value per Trade</p>
-                            <p className="metric">${EV}</p>
-                        </div>
-
-                        <div className="metric-container">
-                            <p className="metric-title">Maximum Drop Down</p>
-                            <p className="metric">${maxDD}</p>
+                            <AlgoTable TableEntryList={tableData}></AlgoTable>
                         </div>
                     </div>
                 </div>
-                
+
+                <div className="metric-grid">
+                    <div className="metric-container">
+                        <p className="metric-title">Percent Commision</p>
+                        <p className="metric">{comm === -1 ? "N/A" : `${comm}%`}</p>
+                    </div>
+
+                    <div className="metric-container">
+                        <p className="metric-title">Flat Fee</p>
+                        <p className="metric">{fee === -1 ? "N/A" : `-$${fee}`}</p>
+                    </div>
+
+                    <div className="metric-container">
+                        <p className="metric-title">Taxes</p>
+                        <p className="metric">{taxes === -1 ? "N/A" : `-$${taxes}`}</p>
+                    </div>
+
+                    <div className="metric-container">
+                        <p className="metric-title">Total Equity</p>
+                        <p className="metric">${equity}</p>
+                    </div>
+
+                    <div className="metric-container">
+                        <p className="metric-title">Win Rate</p>
+                        <p className="metric">{winRate}%</p>
+                    </div>
+
+                    <div className="metric-container">
+                        <p className="metric-title">Profit Factor</p>
+                        <p className="metric">{profitFactor}</p>
+                    </div>
+
+                    <div className="metric-container">
+                        <p className="metric-title">Total Trades</p>
+                        <p className="metric">{trades}</p>
+                    </div>
+
+                    <div className="metric-container">
+                        <p className="metric-title">Expected Value per Trade</p>
+                        <p className="metric">${EV}</p>
+                    </div>
+
+                    <div className="metric-container">
+                        <p className="metric-title">Maximum Drop Down</p>
+                        <p className="metric">${maxDD}</p>
+                    </div>
+                </div>
             </div>
 
-            
+
         </div>
     );
 }

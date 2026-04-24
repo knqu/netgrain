@@ -31,6 +31,8 @@ struct BalanceEvent {
 
 struct PositionSnapshotEvent {
     Position position;
+    i64 market_price;
+    u32 timestamp;
 };
 
 // struct that represents all possible events that can be pushed to the persistence queue

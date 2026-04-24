@@ -6,11 +6,12 @@ if(NOT DEFINED CMAKE_TOOLCHAIN_FILE)
 endif()
 
 project(webserver)
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-set(CROW_ENABLE_SSL ON)
-
+if (MSVC)
+    add_compile_options(/bigobj)
+endif()
 
 include(FetchContent)
 
@@ -22,15 +23,10 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(fmt)
 
-find_package(OpenSSL REQUIRED)
-
-add_executable(my_app src/main.cpp)
-target_compile_definitions(my_app PRIVATE CROW_ENABLE_SSL)
-
-target_link_libraries(my_app 
-  PRIVATE
-    OpenSSL::SSL
-    OpenSSL::Crypto
+add_executable(my_app
+  src/main.cpp
+  ../../core/src/simulator/historicalData.cpp
+  ../../core/src/simulator/simulator.cpp
 )
 
 # Link fmt

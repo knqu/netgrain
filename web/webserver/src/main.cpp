@@ -1,7 +1,3 @@
-#define CROW_ENABLE_SSL
-
-// HEADERS
-
 #include <fmt/core.h>
 #include <crow.h>
 #include "crow/middlewares/cookie_parser.h"
@@ -27,7 +23,7 @@ using njson = nlohmann::json; // HACK:
 MarketDataManager data_manager;
 
 void load_ticker_data() {
-    string default_dir = "../../data/";  // NOTE: updated to work when run from webserver directory
+    string default_dir = "../../../data/";  // NOTE: updated to work when run from webserver directory
 
     if (std::filesystem::exists(default_dir) && std::filesystem::is_directory(default_dir)) {    
         for (const auto& entry : filesystem::recursive_directory_iterator(default_dir)) {
@@ -911,42 +907,39 @@ int main() {
     });
 
     CROW_ROUTE(app, "/api/resultsTemplate").methods(
-        crow::HTTPMethod::GET,
+        crow::HTTPMethod::POST,
         crow::HTTPMethod::Patch)([&](const crow::request& req) {
 
-        auto& cookie = app.get_context<crow::CookieParser>(req);
-        std::string email = cookie.get_cookie("email");
+        std::cout << "is this working" << std::endl;
+        auto reqBody = crow::json::load(req.body);
+        int simID = reqBody["simID"].i();
+        std::cout << "simID" << std::endl;
+        std::cout<< simID << std::endl;
 
-        if (email.empty()) return crow::response(401);
+        std::unordered_map<std::string, std::string> metrics;
 
         try {
-            std::vector<int> hist = ConnectorSingleton::getInstance().fetchAllSims(email);
-
-            if (hist.size() <= 1) {
-                crow::response res;
-                res.code = 201;
-                return res;
-            }
-
-            std::vector<double> q = ConnectorSingleton::getInstance().comparativeAnalytics(hist.at(hist.size() - 1), hist.at(hist.size() - 2));
-
-            std::string jsonStr = {};
-            jsonStr += "{";
-            jsonStr += "\"percent\":\"" + to_string(q.at(q.size() - 3)) + "\",";
-            jsonStr += "\"flat\":\"" + to_string(q.at(q.size() - 2)) + "\",";
-            jsonStr += "\"taxes\":\"" + to_string(q.at(q.size() - 1)) + "\"";
-            jsonStr += "}";
-
-            crow::response res;
-            res.code = 200;
-            res.set_header("Access-Control-Allow-Origin", "https://localhost");
-            res.set_header("Access-Control-Allow-Credentials", "true");
-            res.set_header("Content-Type", "application/json");
-            res.write(jsonStr);
-            return res;
-        } catch (...) {
+            metrics = ConnectorSingleton::getInstance().fetchMetrics(simID);
+        } catch (const std::exception& e) {
+            std::cout << e.what() << std::endl;
             return crow::response(500);
         }
+
+        std::string jsonStr = {};
+        std::string temp = "{invalid json}";
+        jsonStr += "{";
+        jsonStr += "\"table\" : " + metrics["table"] + ",";
+        jsonStr += "\"equity\" : " + metrics["equity"] + ",";
+        jsonStr += "\"pl\" : " + metrics["PL"] + ",";
+        jsonStr += "\"drawdown\" : " + metrics["drawdown"];
+        jsonStr += "}";
+
+        std::cout << jsonStr << std::endl;
+
+        crow::response res;
+        res.code = 200;
+        res.write(jsonStr);
+        return res;
     });
 
     CROW_CATCHALL_ROUTE(app)([](){
