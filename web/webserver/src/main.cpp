@@ -250,6 +250,8 @@ int main() {
         int id = 0;
 
         auto& cookie = app.get_context<crow::CookieParser>(req);
+        std::string email = cookie.get_cookie("email");
+        std::cerr << email << std::endl;
 
         // Generate Mode: convert ticker entries to generators
         // NOTE: run_generated_simulation() seems to basically call gbm()
@@ -261,7 +263,7 @@ int main() {
                             entry.liquidity, entry.market_cap, id++));
                 
                 Generator* gen_ptr = generators.back().get();
-                ConnectorSingleton::getInstance().createSimulation(cookie.get_cookie("email"), "", -1);
+                ConnectorSingleton::getInstance().createSimulation(email, "", -1);
 
                 std::thread([gen_ptr]{
                     gen_ptr->generate_ws();

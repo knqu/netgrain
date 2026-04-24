@@ -445,7 +445,8 @@ try
       int currentSeq = -1;
 
       try {
-        std::string query = "SELECT COUNT(*) FROM pastsimulations;";
+        //std::string query = "SELECT COUNT(*) FROM pastsimulations;";
+        std::string query = "SELECT nextval('pastsimulations_simid_seq');";
         pqxx::row r = tx.exec(query).one_row();
         currentSeq = r[0].as<int>();
         currentSeq++;
