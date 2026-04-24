@@ -561,7 +561,14 @@ skip:
     *curr_size += sizeof(T);
   }
 
-  std::vector<char> save_simulation() {
+  std::vector<char> save_simulation(size_t streamed_len) {
+    streamed_len = std::min(streamed_len, this->streamed_points->size());
+
+    std::vector streamed_subset(streamed_points->begin(),
+                                streamed_points->begin() + streamed_len);
+
+    this->gen_settings.pause.store(true);
+
     std::vector<char> buffer;
     size_t curr_size = 0;
 
