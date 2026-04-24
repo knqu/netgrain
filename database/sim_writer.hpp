@@ -114,9 +114,9 @@ public:
                 auto& p = e.position;
                 tx.exec(
                     "INSERT INTO sim_positions "
-                    "(sim_id, ticker, quantity, cost_basis) "
-                    "VALUES ($1, $2, $3, $4)",
-                    pqxx::params{sim_id, p.ticker, p.quantity, p.cost_basis}
+                    "(sim_id, ticker, quantity, cost_basis, market_price, timestamp) "
+                    "VALUES ($1, $2, $3, $4, $5, $6)",
+                    pqxx::params{sim_id, p.ticker, p.quantity, p.cost_basis, e.market_price, e.timestamp}
                 );
             }
             tx.commit();

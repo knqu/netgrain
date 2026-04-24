@@ -172,7 +172,7 @@ public:
                     balance += trade_value - fee;
 
                     pos.quantity -= fill_quantity;
-                    i64 remaining = fill_quantity;
+                    i64 remaining = fill_quantity; 
                     
                     auto lot = pos.lots.begin();  // default to fifo disposal (todo: add other methods in the future)
                     while (remaining > 0 && lot != pos.lots.end()) {
@@ -218,7 +218,7 @@ public:
                     seen[f.ticker] = true;
                     auto it = positions.find(f.ticker);
                     if (it != positions.end())
-                        pq->push(PositionSnapshotEvent{it->second});
+                        pq->push(PositionSnapshotEvent{it->second, bars.find(it->second.ticker)->second.close, fills.back().timestamp});
                 }
             }
         }
