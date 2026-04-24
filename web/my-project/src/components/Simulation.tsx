@@ -238,11 +238,6 @@ const Simulation: React.FC = () => {
                     
                     setRunResult(parsedData);
                     setEngineStatus("Simulation Sent!");
-                    return (
-                        <div>
-                            <button onClick={() => {setPage("Start");}}>Begin Simulation</button>
-                        </div>
-                    );
                 } catch (e) {
                     console.error("JSON Parse Error:", e);
                 }
@@ -569,7 +564,11 @@ const Simulation: React.FC = () => {
                     </div>
                 );
                 case "Start":
-                    return (<SimulationRun num_stocks={stocks.length}/>);
+                     return (
+                        <div>
+                            <button onClick={() => {return (<SimulationRun num_stocks={stocks.length}/>)}}>Begin Simulation</button>
+                        </div>
+                    );
         }
     }
 
