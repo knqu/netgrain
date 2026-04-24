@@ -1,11 +1,10 @@
-import netgrain
-
-
 class Strategy:
     def __init__(self):
         self.last = 0
 
     def on_bar(self, market, broker):
+        import netgrain
+
         price = market["AAPL"]["open"]
         if price < self.last:
             broker.place_order(
