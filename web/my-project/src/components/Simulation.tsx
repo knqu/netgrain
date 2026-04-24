@@ -525,7 +525,7 @@ const Simulation: React.FC = () => {
 
     const startSim = async () => {
         handleStart();
-        //setPage("Start");
+        setPage("Start");
     };    
 
     const handleLangChange = (event: any) => {
