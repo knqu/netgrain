@@ -566,9 +566,11 @@ const Simulation: React.FC = () => {
                 case "Start":
                      return (
                         <div>
-                            <button onClick={() => {return (<SimulationRun num_stocks={stocks.length}/>)}}>Begin Simulation</button>
+                            <button onClick={() => {return (setPage("Begin"))}}>Begin Simulation</button>
                         </div>
                     );
+                case "Begin":
+                    return (<SimulationRun num_stocks={stocks.length}/>)
         }
     }
 
