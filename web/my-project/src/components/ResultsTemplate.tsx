@@ -74,8 +74,6 @@ const HistData: HistogramData<number>[] = [
     { time: 15, value: 50, color: "green" },
   ];
 
-
-
 export default function ResultsTemplate() {
     const [timeTitle, setTimeTitle] = useState<string>("Equity Curve over Time");
     const [tradeTitle, setTradeTitle] = useState<string>("Profit and Loss Curve");
@@ -95,6 +93,33 @@ export default function ResultsTemplate() {
     const [profitFactor, setProfitFactor] = useState<number>(0);
     const [EV, setEV] = useState<number>(0);
     const [maxDD, setMaxDD] = useState<number>(0);
+
+    useEffect(() => {
+        const fetchMetrics = async () => {
+            try {
+                const response = await fetch('/api/resultsTemplate', {
+                    method: 'GET'
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    setComm(data.percent);
+                    setFee(data.flat);
+                    setTaxes(data.taxes);
+                } else {
+                    setComm(-1);
+                    setFee(-1);
+                    setTaxes(-1);
+                }
+            } catch (error) {
+                setComm(-1);
+                setFee(-1);
+                setTaxes(-1);
+            }
+        };
+
+        fetchMetrics();
+    }, []);
 
     function handleTimer(index : number) {
       if (index < 3) {
@@ -348,17 +373,17 @@ export default function ResultsTemplate() {
                     <div className="metric-grid">
                         <div className="metric-container">
                             <p className="metric-title">Percent Commision</p>
-                            <p className="metric">{comm}%</p>
+                            <p className="metric">{comm === -1 ? "N/A" : `${comm}%`}</p>
                         </div>
 
                         <div className="metric-container">
                             <p className="metric-title">Flat Fee</p>
-                            <p className="metric">-${fee}</p>
+                            <p className="metric">{fee === -1 ? "N/A" : `-$${fee}`}</p>
                         </div>
 
                         <div className="metric-container">
                             <p className="metric-title">Taxes</p>
-                            <p className="metric">-${taxes}</p>
+                            <p className="metric">{taxes === -1 ? "N/A" : `-$${taxes}`}</p>
                         </div>
 
                         <div className="metric-container">

@@ -835,7 +835,6 @@ int main() {
     CROW_ROUTE(app, "/api/calculateFee").methods(
         crow::HTTPMethod::GET,
         crow::HTTPMethod::Patch)([&](const crow::request& req) {
-
         auto& cookie = app.get_context<crow::CookieParser>(req);
         std::string email = cookie.get_cookie("email");
 
@@ -891,6 +890,45 @@ int main() {
             }
             jsonStr.pop_back();
             jsonStr += "]";
+
+            crow::response res;
+            res.code = 200;
+            res.set_header("Access-Control-Allow-Origin", "https://localhost");
+            res.set_header("Access-Control-Allow-Credentials", "true");
+            res.set_header("Content-Type", "application/json");
+            res.write(jsonStr);
+            return res;
+        } catch (...) {
+            return crow::response(500);
+        }
+    });
+
+    CROW_ROUTE(app, "/api/resultsTemplate").methods(
+        crow::HTTPMethod::GET,
+        crow::HTTPMethod::Patch)([&](const crow::request& req) {
+
+        auto& cookie = app.get_context<crow::CookieParser>(req);
+        std::string email = cookie.get_cookie("email");
+
+        if (email.empty()) return crow::response(401);
+
+        try {
+            std::vector<int> hist = ConnectorSingleton::getInstance().fetchAllSims(email);
+
+            if (hist.size() <= 1) {
+                crow::response res;
+                res.code = 201;
+                return res;
+            }
+
+            std::vector<double> q = ConnectorSingleton::getInstance().comparativeAnalytics(hist.at(hist.size() - 1), hist.at(hist.size() - 2));
+
+            std::string jsonStr = {};
+            jsonStr += "{";
+            jsonStr += "\"percent\":\"" + to_string(q.at(q.size() - 3)) + "\",";
+            jsonStr += "\"flat\":\"" + to_string(q.at(q.size() - 2)) + "\",";
+            jsonStr += "\"taxes\":\"" + to_string(q.at(q.size() - 1)) + "\"";
+            jsonStr += "}";
 
             crow::response res;
             res.code = 200;
