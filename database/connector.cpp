@@ -112,8 +112,7 @@ try
                 "host=localhost "
                 "port=5432 "
                 "dbname=postgres "
-                "user=postgres "
-                "password=N@te0731"
+                "user=cnath"
               );
             #elif __APPLE__
               conn = new pqxx::connection(
