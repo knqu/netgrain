@@ -169,6 +169,7 @@ int main() {
         crow::HTTPMethod::PATCH,
         crow::HTTPMethod::OPTIONS
         )([&](const crow::request& req) {
+        fmt::print("request received\n");
 
         // CORS Preflight
         if (req.method == crow::HTTPMethod::OPTIONS) {
@@ -197,6 +198,8 @@ int main() {
         std::string mode = j.value("mode", "generated");
         i64 initial_capital = static_cast<i64>(j.value("initial_capital", 10000.0) * PRICE_SCALE_FACTOR);
         int num_bars = j.value("num_bars", 252);
+        fmt::print("parsed: mode={}, num_bars={}, initial_capital(raw)={}\n",
+                   mode, num_bars, j.value("initial_capital", 10000.0));
 
         struct TickerEntry {
             std::string name;
@@ -244,6 +247,10 @@ int main() {
             entry.market_cap = stock.value("market_cap", 5000);
             ticker_entries.push_back(entry);
         }
+        fmt::print("tickers received: {}\n", ticker_entries.size());
+        for (const auto& t : ticker_entries) {
+            fmt::print(" - {}\n", t.name);
+        }
 
         // Error Check: if no tickers were parsed into array
         if (ticker_entries.empty()) {
@@ -266,10 +273,13 @@ int main() {
             res.code = 400;
             return res;
         }
+        fmt::print("strategy_code received\n");
 
         try {
             python_strategy = std::make_unique<PythonUserStrategy>(strategy_code);
+            fmt::print("strategy loaded successfully\n");
         } catch (const std::exception& e) {
+            fmt::print("strategy load failed: {}\n", e.what());
             crow::response res(njson{{"error", "strategy_load_failed"}, {"message", e.what()}}.dump());
             res.set_header("Access-Control-Allow-Origin", "*");
             res.set_header("Content-Type", "application/json");
@@ -283,6 +293,7 @@ int main() {
         // NOTE: run_generated_simulation() seems to basically call gbm()
         // for num_bars (finite) and outputs SimulationResult
         if (mode == "generated") {
+            fmt::print("entering generated branch\n");
             for (const auto& entry : ticker_entries) {
                 generators.push_back(std::make_unique<Generator>(
                             entry.name, entry.base_price, entry.volatility,
@@ -295,8 +306,11 @@ int main() {
                 }).detach();
             }
             try {
+                fmt::print("calling run_generated_simulation...\n");
                 result = run_generated_simulation(engine, *python_strategy, generators, num_bars);
+                fmt::print("run_generated_simulation done\n");
             } catch (const std::exception& e) {
+                fmt::print("simulation failed: {}\n", e.what());
                 crow::response res(njson{{"error", "simulation_failed"}, {"message", e.what()}}.dump());
                 res.set_header("Access-Control-Allow-Origin", "*");
                 res.set_header("Content-Type", "application/json");
@@ -319,8 +333,11 @@ int main() {
                 tickers.push_back(entry.name);
             }
             try {
+                fmt::print("calling run_csv_simulation...\n");
                 result = run_csv_simulation(engine, *python_strategy, data_manager, tickers);
+                fmt::print("run_csv_simulation done\n");
             } catch (const std::exception& e) {
+                fmt::print("simulation failed: {}\n", e.what());
                 crow::response res(njson{{"error", "simulation_failed"}, {"message", e.what()}}.dump());
                 res.set_header("Access-Control-Allow-Origin", "*");
                 res.set_header("Content-Type", "application/json");
@@ -330,6 +347,8 @@ int main() {
         }
 
         std::string output = serialize_simulation_result(result);
+        fmt::print("responding: fills={}, positions={}\n",
+                   result.fills.size(), result.positions.size());
 
         crow::response res(output);
         res.set_header("Access-Control-Allow-Origin", "*");
