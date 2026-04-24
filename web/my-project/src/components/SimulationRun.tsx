@@ -68,60 +68,68 @@ const SimRun: React.FC<{ socketRef: WebSocket, activeStock: String, dates: Date[
         const payload = JSON.parse(e.data);
         const price = Number(payload.price);
         const idx = Number(payload.id);
-        setTotalTicks(prev => prev + 1);
-        if (payload.clamped) {
-          setClampedTicks(prev => prev + 1);
+        const msg_t = String(payload.msg_type);
+        switch (msg_t) {
+          case "stock":
+            setTotalTicks(prev => prev + 1);
+            if (payload.clamped) {
+              setClampedTicks(prev => prev + 1);
+            }
+
+            //dates[idx].setUTCDate(dates[idx].getUTCDate() + 1);
+            var time: UTCTimestamp;
+            if (data[idx].length === 0) {
+              const nd = new Date(2018, 12, 31, 12, 0, 0)
+              time = nd.getTime() / 1000 as UTCTimestamp;
+            }
+            else {
+              time = (data[idx][data[idx].length - 1].time + 1) as UTCTimestamp;
+            }
+            //const time: UTCTimestamp = (data[idx][-1].time + 1000) / 1000 as UTCTimestamp;
+            data[idx].push({ time: time, value: price });
+
+            const d = new Date(time * 1000);
+            const timeLabel = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
+
+            onNewSnapshot({
+              id: idx,
+              timeLabel: timeLabel,
+              price: price,
+              clamped: payload.clamped,
+              type: payload.type || 'normal',
+              drift: payload.drift,
+              volatility: payload.volatility
+            });
+
+            if (!detailsMap.current[idx]) detailsMap.current[idx] = {};
+            detailsMap.current[idx][time as number] = {
+              price: price,
+              type: payload.type || 'normal',
+              drift: payload.drift,
+              volatility: payload.volatility
+            };
+
+            if (Number(activeStockRef.current) === idx) {
+              seriesRef.current.update({ time: time, value: price });
+            }
+
+            if (data[idx].at(-1)!.value > highs[idx]) {
+              highs[idx] = data[0].at(-1)!.value;
+            }
+            if (data[idx].at(-1)!.value < lows[idx]) {
+              lows[idx] = data[idx].at(-1)!.value;
+            }
+
+            if (data[idx].at(-1)!.value < lowerBound || data[idx].at(-1)!.value > upperBound) {
+              lowerBound = Number.MIN_VALUE;
+              upperBound = Number.MAX_VALUE;
+              socketRef.send("multiple: pause");
+            }
+            break;
+          case "Order":
+            //TODO: order update code
         }
 
-        //dates[idx].setUTCDate(dates[idx].getUTCDate() + 1);
-        var time: UTCTimestamp;
-        if (data[idx].length === 0) {
-          const nd = new Date(2018, 12, 31, 12, 0, 0)
-          time = nd.getTime() / 1000 as UTCTimestamp;
-        }
-        else {
-          time = (data[idx][data[idx].length - 1].time + 1) as UTCTimestamp;
-        }
-        //const time: UTCTimestamp = (data[idx][-1].time + 1000) / 1000 as UTCTimestamp;
-        data[idx].push({ time: time, value: price });
-
-        const d = new Date(time * 1000);
-        const timeLabel = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
-
-        onNewSnapshot({
-          id: idx,
-          timeLabel: timeLabel,
-          price: price,
-          clamped: payload.clamped,
-          type: payload.type || 'normal',
-          drift: payload.drift,
-          volatility: payload.volatility
-        });
-
-        if (!detailsMap.current[idx]) detailsMap.current[idx] = {};
-        detailsMap.current[idx][time as number] = {
-          price: price,
-          type: payload.type || 'normal',
-          drift: payload.drift,
-          volatility: payload.volatility
-        };
-
-        if (Number(activeStockRef.current) === idx) {
-          seriesRef.current.update({ time: time, value: price });
-        }
-
-        if (data[idx].at(-1)!.value > highs[idx]) {
-          highs[idx] = data[0].at(-1)!.value;
-        }
-        if (data[idx].at(-1)!.value < lows[idx]) {
-          lows[idx] = data[idx].at(-1)!.value;
-        }
-
-        if (data[idx].at(-1)!.value < lowerBound || data[idx].at(-1)!.value > upperBound) {
-          lowerBound = Number.MIN_VALUE;
-          upperBound = Number.MAX_VALUE;
-          socketRef.send("multiple: pause");
-        }
       } catch (err) {
         console.error("Error parsing WS message:", err);
       }
@@ -174,21 +182,21 @@ const SimRun: React.FC<{ socketRef: WebSocket, activeStock: String, dates: Date[
   }, []);
 
   useEffect(() => {
-  // Check if both the chart and series are ready
-  if (seriesRef.current && chartRef.current) {
-    try {
-      const idx = Number(activeStock);
-      const newData = data[idx] || [];
+    // Check if both the chart and series are ready
+    if (seriesRef.current && chartRef.current) {
+      try {
+        const idx = Number(activeStock);
+        const newData = data[idx] || [];
 
-      seriesRef.current.setData(newData);
+        seriesRef.current.setData(newData);
 
-      chartRef.current.timeScale().fitContent();
+        chartRef.current.timeScale().fitContent();
 
-    } catch (err) {
-      console.error("Error swapping stock data:", err);
+      } catch (err) {
+        console.error("Error swapping stock data:", err);
+      }
     }
-  }
-}, [activeStock]);
+  }, [activeStock]);
 
   const percentReal = totalTicks === 0
     ? 100
@@ -465,6 +473,7 @@ export default function SimulationRun({ num_stocks }: simulationRunProps) {
                   <strong>Stock {i + 1}:</strong> ${price.toFixed(2)}
                 </div>
               ))}
+
             </div>
           </div>
         );
