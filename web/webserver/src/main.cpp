@@ -27,7 +27,7 @@ using njson = nlohmann::json; // HACK:
 MarketDataManager data_manager;
 
 void load_ticker_data() {
-    string default_dir = "../../data/";  // NOTE: updated to work when run from webserver directory
+    string default_dir = "../../../data/";  // NOTE: updated to work when run from webserver directory
 
     if (std::filesystem::exists(default_dir) && std::filesystem::is_directory(default_dir)) {    
         for (const auto& entry : filesystem::recursive_directory_iterator(default_dir)) {
