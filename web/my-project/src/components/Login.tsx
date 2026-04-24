@@ -23,24 +23,24 @@ export default function Login() {
                 console.log(err);
             }
         };
-        checkSession()
+        checkSession();
     }, []);
 
-    const handleLogin = async (e : React.FormEvent<HTMLFormElement>) => {
+    const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         try {
             const response = await fetch(
                 "/api/loginAttempt",
                 {
                     method: "POST",
-                    headers : {"Content-Type" : "application/json"},
-                    body: JSON.stringify({login_submitted_email : email, login_submitted_password : password}),
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ login_submitted_email: email, login_submitted_password: password }),
                     redirect: "manual",
                 }
             );
             if (response.status == 200) {
                 console.log('breuh');
-              navigate("/home");
+                navigate("/home");
             }
         } catch (err) {
             console.log(err);
@@ -53,13 +53,15 @@ export default function Login() {
                 <div className='login-container'>
                     <h1 className="inter-font">Login</h1>
 
+                    <hr></hr>
+
                     <div className="login-form inter-font">
                         <form onSubmit={handleLogin} id="login-form">
                             <div className='input-field'>
                                 <h3 className='align-left'>Email</h3>
                                 <input type="text" value={email} onChange={(e) => setEmail(e.target.value)} className="inter-font"></input>
                             </div>
-                            
+
                             <div className='input-field'>
                                 <h3 className='align-left'>Password</h3>
                                 <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="inter-font"></input>
@@ -69,10 +71,10 @@ export default function Login() {
                         <div className="buttons-and-links">
                             <div className='login-signup-button'>
                                 <input type='submit' value='Login' form='login-form' id='login-button'></input>
-                                <button onClick={() => {navigate("/registration")}} id='signup-button'>Sign Up</button>
+                                <button onClick={() => { navigate("/registration"); }} id='signup-button'>Sign Up</button>
                             </div>
 
-                            <p><a onClick={() => {navigate("/forgot")}}>Forgot Password</a></p>
+                            <p><a onClick={() => { navigate("/forgot"); }}>Forgot Password</a></p>
                         </div>
                     </div>
                 </div>

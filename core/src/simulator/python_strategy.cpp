@@ -21,13 +21,20 @@ static void log_python_error() {
 }
 
 PythonUserStrategy::PythonUserStrategy(const std::string& source_code) : impl_(std::make_unique<Impl>()) {
+    std::cerr << "acquiring gil...\n";
     py::gil_scoped_acquire gil;
+    std::cerr << "gil acquired\n";
+
+    std::cerr << "importing module netgrain\n";
     py::module_::import("netgrain");
+    std::cerr << "imported netgrain\n";
 
     py::dict global;
     py::dict local;
     try {
+        std::cerr << "executing strategy_code\n";
         py::exec(source_code, global, local);
+        std::cerr << "exec ok\n";
     } catch (py::error_already_set&) {
         log_python_error();
         throw std::runtime_error("Python error while loading strategy code");
@@ -38,8 +45,10 @@ PythonUserStrategy::PythonUserStrategy(const std::string& source_code) : impl_(s
     }
 
     try {
+        std::cerr << "instantiating Strategy()...\n";
         py::object Strat = local["Strategy"];
         impl_->user_instance = Strat();
+        std::cerr << "Strategy() instance created\n";
     } catch (py::error_already_set&) {
         log_python_error();
         throw std::runtime_error("Python error while instantiating Strategy");

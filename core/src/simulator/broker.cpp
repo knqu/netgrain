@@ -1,5 +1,7 @@
 #include "broker.hpp"
 
+#include <stdexcept>
+
 double Broker::get_balance() {
     if (!engine) {
         throw std::runtime_error("Engine is not initialized");
