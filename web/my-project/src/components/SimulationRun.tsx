@@ -9,6 +9,7 @@ import {
 
 import { type WidgetInterface } from "./EndSimulation"
 import EndSimulation from "./EndSimulation"
+
 //import type LiveChartProps from './LiveChart';
 
 interface pointData {
@@ -34,7 +35,7 @@ var lows: number[] = [1000, 1000];
 
 // -- Sim Run component
 
-const SimRun: React.FC<{ socketRef: WebSocket, activeStock: String, dates: Date[] }> = ({ socketRef, activeStock, dates }) => {
+const SimRun: React.FC<{ socketRef: WebSocket, activeStock: String, dates: Date[], onPriceUpdate: (idx: number, price: number) => void }> = ({ socketRef, activeStock, dates, onPriceUpdate }) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const seriesRef = useRef<any>(null);
@@ -50,7 +51,7 @@ const SimRun: React.FC<{ socketRef: WebSocket, activeStock: String, dates: Date[
         const payload = JSON.parse(e.data);
         const price = Number(payload.price);
         const idx = Number(payload.id);
-
+        onPriceUpdate(idx, price);
         setTotalTicks(prev => prev + 1);
         if (payload.clamped) {
           setClampedTicks(prev => prev + 1);
@@ -159,8 +160,16 @@ export default function SimulationRun({num_stocks}: simulationRunProps) {
   for (var i = 0; i < num_stocks; i++) {
     data.push([]);
   }
-  
+  const [latestPrices, setLatestPrices] = useState<number[]>(new Array(num_stocks).fill(0));
   const [activeStock, setActiveStock] = useState('0');
+
+  const handlePriceUpdate = (idx: number, price: number) => {
+    setLatestPrices(prev => {
+      const next = [...prev];
+      next[idx] = price;
+      return next;
+    });
+  };
 
   const socketRef = useRef<WebSocket>(null);
   if (!socketRef.current) {
@@ -327,12 +336,17 @@ export default function SimulationRun({num_stocks}: simulationRunProps) {
             <div className="Chart_outer_container">
               <div className="Chart_inner_container">
                 <div className="Chart" >
-                  <SimRun socketRef={socketRef.current!} activeStock={activeStock} dates={dates.current!} />
+                  <SimRun socketRef={socketRef.current!} activeStock={activeStock} dates={dates.current!} onPriceUpdate={handlePriceUpdate} />
                 </div>
               </div>
             </div>
-
-
+            <div className="price-dashboard">
+              {latestPrices.map((price, i) => (
+                <div key={i}>
+                <strong>Stock {i + 1}:</strong> ${price.toFixed(2)}
+              </div>
+              ))}
+            </div>
           </div>
         );
       case "End":
