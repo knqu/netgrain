@@ -101,7 +101,7 @@ export default function HistoryComponent() {
   ];
 
   const navigate = useNavigate();
-  async function fetchSim() {
+  async function fetchSim(simID : number) {
     try {
       const response =
         await fetch(
@@ -109,11 +109,12 @@ export default function HistoryComponent() {
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: "{submitted_simID : simID}"
+            body: `{submitted_simID : ${simID}}`
           }
         );
 
       if (response.status == 200) {
+        sessionStorage.setItem("simID", simID.toString());
         navigate("/ResultsTemplate");
       }
     } catch (err) {
@@ -334,7 +335,7 @@ export default function HistoryComponent() {
             </div>
           </div>
 
-          <button className="expand-button" onClick={fetchSim}>
+          <button className="expand-button" onClick={() => fetchSim(Number(TableEntry.ID))}>
             <img id="history-table-expand" src={expand}></img>
           </button>
         </div>
@@ -381,13 +382,8 @@ export default function HistoryComponent() {
 
         if (response.status == 200 && response.body != null) {
           const responseStr = await response.text();
-          console.log("String");
-          console.log(responseStr);
-
           const temp = JSON.parse(responseStr);
           setHistEntries(temp);
-          console.log("history entries");
-          console.log(histEntries);
         }
       } catch (err) {
         console.log(err);
