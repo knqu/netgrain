@@ -1,5 +1,6 @@
 #include <pybind11/embed.h>
 #include <pybind11/pybind11.h>
+#include <pybind11/stl.h>
 
 #include "broker.hpp"
 
@@ -21,8 +22,8 @@ PYBIND11_EMBEDDED_MODULE(netgrain, m) {
         .def("place_order", &Broker::place_order)
         .def("cancel_order", &Broker::cancel_order)
         .def("get_balance", &Broker::get_balance)
-        .def("get_positions", &Broker::get_positions)
-        .def("get_pending_orders", &Broker::get_pending_orders)
-        .def("get_cancelled_orders", &Broker::get_cancelled_orders)
-        .def("get_fill_log", &Broker::get_fill_log);
+        .def("get_positions", &Broker::get_positions, py::return_value_policy::reference)
+        .def("get_pending_orders", &Broker::get_pending_orders, py::return_value_policy::reference)
+        .def("get_cancelled_orders", &Broker::get_cancelled_orders, py::return_value_policy::reference)
+        .def("get_fill_log", &Broker::get_fill_log, py::return_value_policy::reference);
 }
