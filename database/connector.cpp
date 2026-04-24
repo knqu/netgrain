@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <iostream>
 #include <pqxx/pqxx>
-#include <fmt/core.h>
+#include <fmt/format.h>
 #include <regex>
 #include <utility>
 #include <filesystem>

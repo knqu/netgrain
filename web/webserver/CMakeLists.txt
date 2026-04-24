@@ -22,10 +22,31 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(fmt)
 
+set(PYBIND11_FINDPYTHON ON)
+FetchContent_Declare(
+  pybind11
+  GIT_REPOSITORY https://github.com/pybind/pybind11.git
+  GIT_TAG        v2.12.0
+)
+FetchContent_MakeAvailable(pybind11)
+
 find_package(OpenSSL REQUIRED)
 
-add_executable(my_app src/main.cpp)
+set(NETGRAIN_SIMULATOR_SOURCES
+  ../../core/src/simulator/simulator.cpp
+  ../../core/src/simulator/historicalData.cpp
+  ../../core/src/simulator/broker.cpp
+  ../../core/src/simulator/python_strategy.cpp
+  ../../core/src/simulator/python_broker_module.cpp
+)
+
+add_executable(my_app src/main.cpp ${NETGRAIN_SIMULATOR_SOURCES})
 target_compile_definitions(my_app PRIVATE CROW_ENABLE_SSL)
+
+target_include_directories(my_app PRIVATE
+  ${CMAKE_CURRENT_SOURCE_DIR}/../../core/src/simulator
+  ${CMAKE_CURRENT_SOURCE_DIR}/../../core/src/generator
+)
 
 target_link_libraries(my_app 
   PRIVATE
@@ -35,6 +56,8 @@ target_link_libraries(my_app
 
 # Link fmt
 target_link_libraries(my_app PRIVATE fmt::fmt)
+
+target_link_libraries(my_app PRIVATE pybind11::embed)
 
 find_package(Crow CONFIG REQUIRED)
 target_link_libraries(my_app PRIVATE Crow::Crow)

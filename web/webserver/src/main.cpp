@@ -2,7 +2,7 @@
 
 // HEADERS
 
-#include <fmt/core.h>
+#include <fmt/format.h>
 #include <crow.h>
 #include "crow/middlewares/cookie_parser.h"
 #include "crow/middlewares/session.h"
@@ -10,6 +10,9 @@
 #include "../../../lib/nlohmann/json.hpp"
 #include "../../../core/src/generator/generator.hpp"
 #include "../../../core/src/simulator/simulator.hpp"
+#include "../../../core/src/simulator/python_strategy.hpp"
+
+#include <pybind11/embed.h>
 #include <mailio/message.hpp>
 #include <mailio/smtp.hpp>
 
@@ -22,6 +25,8 @@
 #include <algorithm>
 #include <cstdio>
 #include <filesystem>
+
+namespace py = pybind11;
 
 using njson = nlohmann::json; // HACK:
 MarketDataManager data_manager;
@@ -54,6 +59,8 @@ void load_ticker_data() {
 }
 
 int main() {
+    py::scoped_interpreter python_guard{};
+
     load_ticker_data();
     using Session = crow::SessionMiddleware<crow::InMemoryStore>;
     crow::App<crow::CookieParser, Session> app{Session{
@@ -186,16 +193,9 @@ int main() {
             return res;
         }
 
-<<<<<<< Updated upstream
-        std::string mode = j.value("mode", "csv");
-        i64 initial_capital = static_cast<i64>(
-            j.value("initial_capital", 10000.0) * PRICE_SCALE_FACTOR);
-
-=======
         // Grab values from a few parameters (default to second parameter of .value() if not found)
         std::string mode = j.value("mode", "generated");
         i64 initial_capital = static_cast<i64>(j.value("initial_capital", 10000.0) * PRICE_SCALE_FACTOR);
->>>>>>> Stashed changes
         int num_bars = j.value("num_bars", 252);
 
         struct TickerEntry {
@@ -218,12 +218,28 @@ int main() {
         }
 
         // For each ticker, add to ticker_entries
-        // Example: {"initial_capital":100000,"stocks":[{"ticker":"GOOGL","base_price":135,"liquidity":50,"volatility":2,"market_cap":3}],"start_date":"","end_date":"","trade_fee":1.5,"script":""}
+        // Example:
+        // {
+        //   "initial_capital":100000,
+        //   "stocks":[
+        //     {
+        //       "ticker":"GOOGL",
+        //       "base_price":135,
+        //       "liquidity":50,
+        //       "volatility":2,
+        //       "market_cap":3
+        //     }
+        //   ],
+        //   "start_date":"",
+        //   "end_date":"",
+        //   "trade_fee":1.5,
+        //   "script":""
+        // }
         for (auto& stock : j["stocks"]) {
             TickerEntry entry;
-            entry.name       = stock.at("ticker").get<std::string>();
+            entry.name = stock.at("ticker").get<std::string>();
             entry.base_price = stock.value("base_price", 100);
-            entry.liquidity  = stock.value("liquidity", 1000);
+            entry.liquidity = stock.value("liquidity", 1000);
             entry.volatility = stock.value("volatility", 20);
             entry.market_cap = stock.value("market_cap", 5000);
             ticker_entries.push_back(entry);
@@ -241,22 +257,49 @@ int main() {
         Engine engine(initial_capital);
         SimulationResult result;
 
+        std::unique_ptr<PythonUserStrategy> python_strategy;
+        std::string strategy_code = j.value("strategy_code", "");
+        if (strategy_code.empty()) {
+            crow::response res(njson{{"error", "missing_strategy"}, {"message", "strategy_code is required"}}.dump());
+            res.set_header("Access-Control-Allow-Origin", "*");
+            res.set_header("Content-Type", "application/json");
+            res.code = 400;
+            return res;
+        }
+
+        try {
+            python_strategy = std::make_unique<PythonUserStrategy>(strategy_code);
+        } catch (const std::exception& e) {
+            crow::response res(njson{{"error", "strategy_load_failed"}, {"message", e.what()}}.dump());
+            res.set_header("Access-Control-Allow-Origin", "*");
+            res.set_header("Content-Type", "application/json");
+            res.code = 400;
+            return res;
+        }
+
         int id = 0;
 
         // Generate Mode: convert ticker entries to generators
         // NOTE: run_generated_simulation() seems to basically call gbm() for num_bars (finite) and outputs SimulationResult
         if (mode == "generated") {
-            //std::vector<Generator> generators;
             for (const auto& entry : ticker_entries) {
-                std::cout << id << " ============" << std::endl;
                 generators.push_back(std::make_unique<Generator>(entry.name, entry.base_price, entry.volatility, entry.liquidity, entry.market_cap, id++));
 
-                // for each stock, automatically begin generation
-                std::thread([&]{
-                    generators.at(generators.size() - 1)->generate_ws();
+                Generator* gen_ptr = generators.back().get();
+
+                std::thread([gen_ptr]{
+                    gen_ptr->generate_ws();
                 }).detach();
             }
-            result = run_generated_simulation(engine, generators, num_bars);
+            try {
+                result = run_generated_simulation(engine, *python_strategy, generators, num_bars);
+            } catch (const std::exception& e) {
+                crow::response res(njson{{"error", "simulation_failed"}, {"message", e.what()}}.dump());
+                res.set_header("Access-Control-Allow-Origin", "*");
+                res.set_header("Content-Type", "application/json");
+                res.code = 500;
+                return res;
+            }
         } else {  // csv mode
             std::vector<std::string> tickers;
             for (const auto& entry : ticker_entries) {
@@ -272,7 +315,15 @@ int main() {
                 }
                 tickers.push_back(entry.name);
             }
-            result = run_csv_simulation(engine, data_manager, tickers);
+            try {
+                result = run_csv_simulation(engine, *python_strategy, data_manager, tickers);
+            } catch (const std::exception& e) {
+                crow::response res(njson{{"error", "simulation_failed"}, {"message", e.what()}}.dump());
+                res.set_header("Access-Control-Allow-Origin", "*");
+                res.set_header("Content-Type", "application/json");
+                res.code = 500;
+                return res;
+            }
         }
 
         std::string output = serialize_simulation_result(result);
@@ -294,14 +345,15 @@ int main() {
             global_gen.gen_settings.send_data.store(true);
 
             if (generators.size()) {
+                global_gen.gen_settings.send_data.store(false);
+                global_gen.gen_settings.conn.store(nullptr);
+                global_gen.reset();
+
                 for (const auto& x : generators) {
-                    std::cout << x->id << std::endl;
                     x->gen_settings.conn.store(&conn);
                     x->gen_settings.send_data.store(true);
                 }
             }
-
-            std::cout << "generators size is " << generators.size() << std::endl;
         })
         .onclose([&]( // need to reset
             crow::websocket::connection &conn,
@@ -311,9 +363,11 @@ int main() {
             fmt::print("websocket connection closed: {}\n", reason);
             std::lock_guard<std::mutex> _(mtx);
 
-            global_gen.gen_settings.send_data.store(false);
-            global_gen.gen_settings.conn.store(nullptr);
-            global_gen.reset();
+            if (!generators.size()) {
+                global_gen.gen_settings.send_data.store(false);
+                global_gen.gen_settings.conn.store(nullptr);
+                global_gen.reset();
+            }
             users.erase(&conn);
         })
         .onmessage([&](
@@ -325,8 +379,10 @@ int main() {
 
             std::lock_guard<std::mutex> _(mtx);
 
-            //NOTE: to avoid drastic changes, only websocket connections with "event (X)", where X is the ID will be processed different, all others will still use global_gen
-            //NOTE: after /api/simulate, let generators vector be filled and be a separate case
+            // NOTE: to avoid drastic changes, only websocket connections with
+            // "event (X)", where X is the ID will be processed different, all
+            // others will still use global_gen
+            // NOTE: after /api/simulate, let generators vector be filled and be a separate case
 
             // <<<<<<<<< EVENTS >>>>>>>>>>>>
             if (data.starts_with("sim")) {
@@ -420,9 +476,7 @@ int main() {
                     fmt::print("rewind is ignored: another event is active\n");
                 }
             }
-<<<<<<< Updated upstream
-
-            if (data.starts_with("set_fields"))
+            else if (data.starts_with("set_fields"))
             {
                 std::string fields_str = data.substr(11);
 
@@ -448,11 +502,10 @@ int main() {
 
                 global_gen.set_fields(base_price, percent_drift, percent_volatility,
                         market_cap, target_price);
-=======
+            }
             else if (data.starts_with("multiple")) {
                 int index = data.find("(");
                 // TODO:
->>>>>>> Stashed changes
             }
         });
 
@@ -743,21 +796,11 @@ int main() {
         crow::HTTPMethod::GET,
         crow::HTTPMethod::Patch)([&](const crow::request& req) {
 
-<<<<<<< Updated upstream
         char *streamed_length = req.url_params.get("length");
         int streamed_len = stoi(streamed_length);
 
-        std::vector streamed_subset(streamed_points->begin(),
-                                    streamed_points->begin() + streamed_len);
-
-        parameters.pause.store(true);
         std::vector<char> file_buf;
-        file_buf = global_gen.save_simulation(&parameters, &streamed_subset);
-=======
-        global_gen.gen_settings.pause.store(true);
-        std::vector<char> file_buf;
-        file_buf = global_gen.save_simulation();
->>>>>>> Stashed changes
+        file_buf = global_gen.save_simulation(streamed_len);
         std::string file_binary(file_buf.begin(), file_buf.end());
         
         crow::response res;

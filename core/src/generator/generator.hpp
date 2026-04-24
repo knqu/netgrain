@@ -8,7 +8,6 @@
 #include <crow.h>
 
 #include <fmt/format.h>
-#include <fmt/core.h>
 
 #include "def.hpp"
 #include "data_transfer.hpp"
