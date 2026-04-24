@@ -238,6 +238,7 @@ const Simulation: React.FC = () => {
                     
                     setRunResult(parsedData);
                     setEngineStatus("Simulation Sent!");
+                    setPage("Start");
                 } catch (e) {
                     console.error("JSON Parse Error:", e);
                 }
@@ -525,7 +526,7 @@ const Simulation: React.FC = () => {
 
     const startSim = async () => {
         handleStart();
-        setPage("Start");
+        
     };    
 
     const handleLangChange = (event: any) => {
@@ -566,6 +567,7 @@ const Simulation: React.FC = () => {
                 case "Start":
                      return (
                         <div>
+                            <p>{engineStatus}</p>
                             <button onClick={() => {return (setPage("Begin"))}}>Begin Simulation</button>
                         </div>
                     );
