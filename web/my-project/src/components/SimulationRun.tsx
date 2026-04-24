@@ -37,7 +37,17 @@ type seriesType =
     DeepPartial<AreaStyleOptions & SeriesOptionsCommon>
   >
 */
+interface OrderData {
+  id: number;
+  qty: number;
+  t_price: number;
+  type: String;
+}
+
 var data: pointData[][] = [];
+var order_data: OrderData[][] = [[{ id: 1, qty: 10, t_price: 50.50, type: "BUY" }, { id: 2, qty: 15, t_price: 5.50, type: "SELL" }],
+[{ id: 3, qty: 50, t_price: 15.00, type: "BUY" }, { id: 4, qty: 10, t_price: 17.5, type: "BUY" }],
+[{ id: 5, qty: 75, t_price: 13.00, type: "BUY" }]];
 var lowerBound: number;
 var upperBound: number;
 
@@ -127,7 +137,7 @@ const SimRun: React.FC<{ socketRef: WebSocket, activeStock: String, dates: Date[
             }
             break;
           case "Order":
-            //TODO: order update code
+          //TODO: order update code
         }
 
       } catch (err) {
@@ -231,6 +241,7 @@ export default function SimulationRun({ num_stocks }: simulationRunProps) {
   for (var i = 0; i < num_stocks; i++) {
     data.push([]);
   }
+  //const [allOrders, setAllOrders] = useState<OrderData[][]>(order_data);
   const [latestPrices, setLatestPrices] = useState<number[]>(new Array(num_stocks).fill(0));
   const [activeStock, setActiveStock] = useState('0');
 
@@ -474,6 +485,31 @@ export default function SimulationRun({ num_stocks }: simulationRunProps) {
                 </div>
               ))}
 
+            </div>
+            <div className="order-dashboard" style={{ marginTop: '20px', padding: '10px', backgroundColor: '#fff7ed', border: '1px solid #ffedd5', color: 'black' }}>
+              <h4 style={{ margin: '0 0 10px 0' }}>Orders for Stock {Number(activeStock) + 1}</h4>
+              <div style={{ maxHeight: '150px', overflowY: 'auto' }}>
+                <table style={{ width: '100%', fontSize: '0.85rem', textAlign: 'left' }}>
+                  <thead>
+                    <tr>
+                      <th>ID</th>
+                      <th>Type</th>
+                      <th>Qty</th>
+                      <th>Price</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {order_data[Number(activeStock)]?.map((order) => (
+                      <tr key={order.id}>
+                        <td>{order.id}</td>
+                        <td style={{ color: order.type === 'BUY' ? 'green' : 'red' }}>{order.type}</td>
+                        <td>{order.qty}</td>
+                        <td>${order.t_price.toFixed(2)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         );
