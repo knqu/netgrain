@@ -50,7 +50,7 @@ export interface SimulationConfigRequest {
     start_date: string;
     end_date: string;
     trade_fee: number;
-    script: String;
+    stategy_code: String;
     // include script
 }
 
@@ -215,7 +215,7 @@ const Simulation: React.FC = () => {
             start_date: startDate,
             end_date: endDate,
             trade_fee: Number(tradeFee),
-            script: pythonScript,
+            stategy_code: pythonScript,
             // include script here
         };
 
@@ -526,7 +526,6 @@ const Simulation: React.FC = () => {
 
     const startSim = async () => {
         handleStart();
-        
     };    
 
     const handleLangChange = (event: any) => {
@@ -567,7 +566,6 @@ const Simulation: React.FC = () => {
                 case "Start":
                      return (
                         <div>
-                            <p>{engineStatus}</p>
                             <button onClick={() => {return (setPage("Begin"))}}>Begin Simulation</button>
                         </div>
                     );
