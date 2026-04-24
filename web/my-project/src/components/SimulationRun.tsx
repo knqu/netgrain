@@ -174,14 +174,21 @@ const SimRun: React.FC<{ socketRef: WebSocket, activeStock: String, dates: Date[
   }, []);
 
   useEffect(() => {
-    if (seriesRef.current) {
-      try {
-        seriesRef.current.setData(data[Number(activeStock)]);
-      } catch (err) {
-        console.error("Chart is probably disposed", err);
-      }
+  // Check if both the chart and series are ready
+  if (seriesRef.current && chartRef.current) {
+    try {
+      const idx = Number(activeStock);
+      const newData = data[idx] || [];
+
+      seriesRef.current.setData(newData);
+
+      chartRef.current.timeScale().fitContent();
+
+    } catch (err) {
+      console.error("Error swapping stock data:", err);
     }
-  }, [activeStock])
+  }
+}, [activeStock]);
 
   const percentReal = totalTicks === 0
     ? 100
