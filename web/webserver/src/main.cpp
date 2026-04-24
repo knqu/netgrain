@@ -60,6 +60,7 @@ void load_ticker_data() {
 
 int main() {
     py::scoped_interpreter python_guard{};
+    py::gil_scoped_release python_gil_release{};
 
     load_ticker_data();
     using Session = crow::SessionMiddleware<crow::InMemoryStore>;
