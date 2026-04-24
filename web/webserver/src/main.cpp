@@ -25,7 +25,7 @@ MarketDataManager data_manager;
 void load_ticker_data() {
     string default_dir = "../../../data/";  // NOTE: updated to work when run from webserver directory
 
-    if (std::filesystem::exists(default_dir) && std::filesystem::is_directory(default_dir)) {    
+    if (std::filesystem::exists(default_dir) && std::filesystem::is_directory(default_dir)) {
         for (const auto& entry : filesystem::recursive_directory_iterator(default_dir)) {
         // recursive bc I changed to have subfolders for asset classes
             if (entry.is_regular_file()) {
@@ -261,7 +261,7 @@ int main() {
                 generators.push_back(std::make_unique<Generator>(
                             entry.name, entry.base_price, entry.volatility,
                             entry.liquidity, entry.market_cap, id++));
-                
+
                 Generator* gen_ptr = generators.back().get();
                 ConnectorSingleton::getInstance().createSimulation(email, "", -1);
 
@@ -385,7 +385,7 @@ int main() {
                     fmt::print("flash crash!\n");
                 }
             }
-            else if (data == "sideways") { 
+            else if (data == "sideways") {
                 fmt::print("sideways!\n");
                 global_gen.gen_settings.new_event.store(3);
             }
@@ -746,7 +746,7 @@ int main() {
         global_gen.gen_settings.pause.store(true);
 
         global_gen.refresh();
-        
+
         fmt::print("Loaded simulation!\n");
 
         std::vector<double> data_points = *(global_gen.streamed_points);
@@ -770,10 +770,12 @@ int main() {
         char *streamed_length = req.url_params.get("length");
         int streamed_len = stoi(streamed_length);
 
+        fmt::print("streamed_len: {}\n", streamed_len);
+
         std::vector<char> file_buf;
         file_buf = global_gen.save_simulation(streamed_len);
         std::string file_binary(file_buf.begin(), file_buf.end());
-        
+
         crow::response res;
         res.set_header("Content-Type", "application/octet-stream");
         res.body = file_binary;
@@ -936,7 +938,7 @@ int main() {
 
         if (hist.size() >= 2) {
             std::vector<double> q = ConnectorSingleton::getInstance().comparativeAnalytics(
-                    hist.at(hist.size() - 1), 
+                    hist.at(hist.size() - 1),
                     hist.at(hist.size() - 2)
                     );
             j["percent"] = std::to_string(q.at(q.size() - 3));
