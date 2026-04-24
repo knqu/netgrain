@@ -765,9 +765,9 @@ try
 
 /*
 int main() {
-  for (auto x : ConnectorSingleton::getInstance().comparativeAnalytics(1, 2)) {
-    fmt::print("{}\n", x);
-  }
-  return 0;
+    ConnectorSingleton::getInstance().createSimulation("user1", "", -1);
+    ConnectorSingleton::getInstance().createSimulation("user2", "", -1);
+    ConnectorSingleton::getInstance().createSimulation("user2", "", -1);
+    return 0;
 }
 */
