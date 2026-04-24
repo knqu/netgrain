@@ -8,8 +8,6 @@ export interface WidgetListProps {
   items: WidgetInterface[];
 }
 
-
-
 export default function EndSimulation({items}: WidgetListProps) {
   console.log(items);
   function ParseWidget({lowVal, highVal} : WidgetInterface) {

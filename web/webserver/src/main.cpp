@@ -280,11 +280,14 @@ int main() {
         int id = 0;
 
         // Generate Mode: convert ticker entries to generators
-        // NOTE: run_generated_simulation() seems to basically call gbm() for num_bars (finite) and outputs SimulationResult
+        // NOTE: run_generated_simulation() seems to basically call gbm()
+        // for num_bars (finite) and outputs SimulationResult
         if (mode == "generated") {
             for (const auto& entry : ticker_entries) {
-                generators.push_back(std::make_unique<Generator>(entry.name, entry.base_price, entry.volatility, entry.liquidity, entry.market_cap, id++));
-
+                generators.push_back(std::make_unique<Generator>(
+                            entry.name, entry.base_price, entry.volatility,
+                            entry.liquidity, entry.market_cap, id++));
+                
                 Generator* gen_ptr = generators.back().get();
 
                 std::thread([gen_ptr]{
@@ -402,7 +405,8 @@ int main() {
                 sim_args_str = sim_args_str.substr(find_pos + 1);
                 int target = std::stoi(sim_args_str);
 
-                generators.push_back(std::make_unique<Generator>(drift, volatility, price, target, 1));
+                generators.push_back(
+                    std::make_unique<Generator>(drift, volatility, price, target, 1));
 
                 fmt::print("[id: {}]: {} {} {} {}\n",
                     generators.size(),
@@ -463,7 +467,8 @@ int main() {
                     int rewind_count = std::stoi(data.substr(7), nullptr, 10);
                     rewind_count = std::min<int>(rewind_count, global_gen.streamed_points->size());
                     double last_price_point =
-                        global_gen.streamed_points->at(global_gen.streamed_points->size() - rewind_count);
+                        global_gen.streamed_points->at(
+                            global_gen.streamed_points->size() - rewind_count);
 
                     global_gen.streamed_points->erase(
                         global_gen.streamed_points->end() - rewind_count,
