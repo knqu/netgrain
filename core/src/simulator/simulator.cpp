@@ -1,9 +1,12 @@
 #include "simulator.hpp"
 
+#include "broker.hpp"
+
 #include <sstream>
 #include <algorithm>
 
-SimulationResult run_csv_simulation(Engine& engine, MarketDataManager& data, const std::vector<std::string>& tickers) {
+SimulationResult run_csv_simulation(Engine& engine, Strategy& strategy, MarketDataManager& data,
+                                    const std::vector<std::string>& tickers) {
     if (tickers.empty()) return {engine.get_balance(), {}, {}};
 
     // find shortest dataset across all tickers
@@ -12,19 +15,25 @@ SimulationResult run_csv_simulation(Engine& engine, MarketDataManager& data, con
         min_len = std::min(min_len, data.get_bars(tickers[t]).size());
     }
 
+    Broker broker(&engine);
+
     // process bars one by one up to shortest length
     for (size_t i = 0; i < min_len; i++) {
         std::unordered_map<std::string, MarketDataRow> bar_map;
         for (const auto& ticker : tickers) {
             bar_map[ticker] = data.get_bars(ticker)[i];
         }
+        strategy.on_bar(bar_map, broker);
         engine.process_bar(bar_map);
     }
 
     return {engine.get_balance(), engine.get_fill_log(), engine.get_positions()};
 }
 
-SimulationResult run_generated_simulation(Engine& engine, std::vector<std::unique_ptr<Generator>>& generators, int num_bars) {
+SimulationResult run_generated_simulation(Engine& engine, Strategy& strategy,
+                                          std::vector<std::unique_ptr<Generator>>& generators, int num_bars) {
+    Broker broker(&engine);
+
     for (int i = 0; i < num_bars; i++) {
         u32 date = static_cast<u32>(i);
 
@@ -33,6 +42,7 @@ SimulationResult run_generated_simulation(Engine& engine, std::vector<std::uniqu
         for (auto& gen : generators) {
             bar_map[gen->get_ticker()] = gen->generate_bar(date);
         }
+        strategy.on_bar(bar_map, broker);
         engine.process_bar(bar_map);
     }
 

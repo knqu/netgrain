@@ -1,8 +1,23 @@
+body {
+    background-color: #101010;
+    color: white;
+}
+
+h1 {
+    font-size: 2em;
+    font-weight: 600;
+}
+
+hr {
+    border: 1px solid #5c5c5c;
+    margin-top: 1em;
+}
+
 .inter-font {
-  font-family: "Inter", 'Times New Roman';
-  font-optical-sizing: auto;
-  font-weight: 400;
-  font-style: normal;
+    font-family: "Inter", 'Times New Roman';
+    font-optical-sizing: auto;
+    font-weight: 400;
+    font-style: normal;
 }
 
 .parent-container {
@@ -14,11 +29,11 @@
 }
 
 .login-parent {
-    background-color: #3D3F42;
-    border-radius: 0.4em;
+    background-color: #5c5c5c;
     border-color: white;
-    padding: 0.5em;
-    width: 14vw;
+    padding: 0.1em;
+    width: 20vw;
+    border-radius: 0.4em;
 }
 
 .login-container {
@@ -42,8 +57,8 @@
     text-align: left;
 }
 
-input{
-    background-color: black;
+input {
+    background-color: #101010;
     padding: 0.4em;
     border-radius: 0.3em;
     margin-bottom: 0.1em;
@@ -70,7 +85,8 @@ textarea:focus, input:focus {
 .login-signup-button {
     display: flex;
     flex-direction: row;
-    justify-content: space-between;
+    justify-content: space-evenly;
+    margin: 0.5em 0 1em 0;
 }
 
 #login-button:hover {

@@ -8,7 +8,6 @@
 #include <crow.h>
 
 #include <fmt/format.h>
-#include <fmt/core.h>
 
 #include "../simulator/def.hpp"
 #include "data_transfer.hpp"
@@ -23,6 +22,8 @@
 #include <queue>
 #include <thread>
 #include <chrono>
+#include <cstdint>
+#include <limits>
 
 class Generator {
 public:
@@ -55,8 +56,60 @@ public:
   bool has_bar_state = false;
   bool last_was_clamped = false; // Tracks if the very last tick was an outlier correction
 
+  std::mt19937 rng_{};
+  bool rng_seeded_ = false;
+  uint32_t rng_seed_ = 0;
+  bool normal_has_spare_ = false;
+  double normal_spare_ = 0.0;
+
+  void seed_rng_nondeterministic_() {
+    std::random_device rd{};
+    std::seed_seq seq{rd(), rd(), rd(), rd(), rd(), rd(), rd(), rd()};
+    rng_.seed(seq);
+    rng_seeded_ = false;
+    normal_has_spare_ = false;
+  }
+
+  void seed_rng_deterministic_(uint32_t seed) {
+    rng_.seed(seed);
+    rng_seeded_ = true;
+    rng_seed_ = seed;
+    normal_has_spare_ = false;
+  }
+
+  double rand_unit_() {
+    return std::generate_canonical<double, std::numeric_limits<double>::digits>(rng_);
+  }
+
+  double rand_normal01_() {
+    if (normal_has_spare_) {
+      normal_has_spare_ = false;
+      return normal_spare_;
+    }
+
+    double u1 = rand_unit_();
+    while (u1 <= 0.0) u1 = rand_unit_();
+    const double u2 = rand_unit_();
+
+    constexpr double kTwoPi = 6.283185307179586476925286766559;
+    const double r = std::sqrt(-2.0 * std::log(u1));
+    const double theta = kTwoPi * u2;
+
+    const double z0 = r * std::cos(theta);
+    const double z1 = r * std::sin(theta);
+
+    normal_spare_ = z1;
+    normal_has_spare_ = true;
+    return z0;
+  }
+
+  int rand_int_inclusive_(int lo, int hi) {
+    std::uniform_int_distribution<int> dist(lo, hi);
+    return dist(rng_);
+  }
+
   // constructor and destructor
-  Generator(double drift, double volatility, int price, int target, int id) {
+  Generator(double drift, double volatility, int price, int target, int id, bool deterministic = false, uint32_t seed = 0) {
     this->percent_drift = drift;
     this->percent_volatility = volatility;
     this->base_price = price;
@@ -72,6 +125,8 @@ public:
     this->gen_settings.gen.store(true);
     this->gen_settings.new_event.store(0);
     this->gen_settings.send_data.store(false);
+
+    deterministic ? seed_rng_deterministic_(seed) : seed_rng_nondeterministic_();
   }
 
   Generator(
@@ -80,7 +135,9 @@ public:
     int volatility,
     int liquidity,
     int market_cap,
-    int id) {
+    int id,
+    bool deterministic = false,
+    uint32_t seed = 0) {
 
     this->ticker = ticker;
     this->base_price = base_price;
@@ -102,6 +159,8 @@ public:
     this->gen_settings.send_data.store(false);
     // NOTE: even though the simulator passes in an int scaled by 100,
     // the gbm math looks to be scale invariant
+
+    deterministic ? seed_rng_deterministic_(seed) : seed_rng_nondeterministic_();
   }
 
   ~Generator() {
@@ -131,6 +190,19 @@ public:
     percent_drift = n_drift;
     percent_volatility = n_vol;
     data_buffer->push(n_price);
+  }
+
+  // Deterministic seeding. Call before generating to make outputs repeatable.
+  void set_seed(uint32_t seed) {
+    seed_rng_deterministic_(seed);
+  }
+
+  bool is_seeded_deterministic() const {
+    return rng_seeded_;
+  }
+
+  uint32_t get_seed() const {
+    return rng_seed_;
   }
 
   void reset() {
@@ -174,10 +246,12 @@ public:
   void generate_new_data_point() {
     u32 new_data = data_buffer->front();
     short multiplier = 1;
-    if (rand() % 10 == 0) {
+    if (rand_int_inclusive_(0, 9) == 0) {
       multiplier = -1;
     }
-    new_data = new_data + multiplier * (rand() % (u32) (percent_drift * 100));
+    const int max_step = std::max(0, static_cast<int>(percent_drift * 100));
+    const int step = (max_step > 0) ? rand_int_inclusive_(0, max_step - 1) : 0;
+    new_data = new_data + multiplier * static_cast<u32>(step);
     data_buffer->push(new_data);
   }
 
@@ -185,23 +259,18 @@ public:
    * This function returns the brownian motion at increment t, given the
    * Weiner process at time t
    */
-  double gbm(double S_0, std::normal_distribution<double> &d, std::mt19937 &gen) {
+  double gbm(double S_0) {
     double ret =
       (
         this->percent_drift
         - (this->percent_volatility * this->percent_volatility / 2)
-      ) * dt + this->percent_volatility * sqrt(dt) * d(gen);
+      ) * dt + this->percent_volatility * sqrt(dt) * rand_normal01_();
     ret = S_0 * exp(ret);
     return clamp_price(S_0, ret);
   }
 
   // generates one ohlcv bar by simulating ticks_per_bar intra-bar price movements via gbm, then aggregating
   MarketDataRow generate_bar(u32 date, int ticks_per_bar = 50) {
-    // setup is basically copied from generate method below
-    std::random_device rd{};
-    std::mt19937 rng{rd()};
-    std::normal_distribution<double> norm{0.0, 1.0};
-
     // state is carried between calls so close(N) == open(N+1)
     double cur = has_bar_state ? last_bar_close : static_cast<double>(base_price);
     double open = cur;
@@ -209,7 +278,7 @@ public:
     double low = cur;
 
     for (int i = 0; i < ticks_per_bar; i++) {
-      cur = gbm(cur, norm, rng);
+      cur = gbm(cur);
       if (cur > high) high = cur;
       if (cur < low) low = cur;
     }
@@ -220,8 +289,8 @@ public:
     // simulate volume from liquidity parameter - made this up,
     // values are arbitrary (between 80-120%)
     u64 volume = (liquidity > 0)
-      ? static_cast<u64>(liquidity * (80 + (rand() % 41)) / 100)
-      : static_cast<u64>(500 + rand() % 1000);
+      ? static_cast<u64>(liquidity * rand_int_inclusive_(80, 120) / 100)
+      : static_cast<u64>(rand_int_inclusive_(500, 1499));
 
     return MarketDataRow{
       date,
@@ -236,10 +305,6 @@ public:
 
   // return the number of datapoints generated, if data is not being tested
   int generate(Data_Transfer *gen_settings, std::ostream &fout) {
-    std::random_device rd{};
-    std::mt19937 gen{rd()};
-    std::normal_distribution<double> norm{0.0, 1.0};
-
     // Values near the mean are the most likely. Standard deviation
     // affects the dispersion of generated values from the mean.
     int i = 0;
@@ -247,7 +312,7 @@ public:
       std::this_thread::sleep_for(std::chrono::milliseconds(1000));
       // generate the next data point in the weiner process and add it onto
       // the data buffer, before dequeuing it
-      data_buffer->push(gbm(data_buffer->front(), norm, gen));
+      data_buffer->push(gbm(data_buffer->front()));
 
       // TODO: way to send data would go here, this could be in the format
       // of a second queue, extra fields in the Data_Transfer, etc. for now
@@ -275,10 +340,10 @@ public:
   /*
    * This function implements Ornstein–Uhlenbeck process for a sideways trading market.
    */
-  double ou(double x_t, std::normal_distribution<double> &d, std::mt19937 &gen) {
+  double ou(double x_t) {
     double ret =
       x_t + ((this->percent_drift * (this->target_price - x_t)) * dt)
-      + (this->percent_volatility * sqrt(dt) * d(gen));
+      + (this->percent_volatility * sqrt(dt) * rand_normal01_());
     return clamp_price(x_t, ret);
   }
 
@@ -287,13 +352,13 @@ public:
    * of large negative moves, and a lower probability of large positive moves
    * Uses class drift/volatility, but occasionally triggers "panic selling"
    */
-  double bear_math(double x_t, std::normal_distribution<double> &d, std::mt19937 &gen) {
+  double bear_math(double x_t) {
     double expected_return =
       (this->percent_drift - (this->percent_volatility * this->percent_volatility / 2.0)) * this->dt;
-    double random_shock = this->percent_volatility * sqrt(this->dt) * d(gen);
+    double random_shock = this->percent_volatility * sqrt(this->dt) * rand_normal01_();
     double total_move = expected_return + random_shock;
 
-    if (rand() % 100 < 3) {
+    if (rand_int_inclusive_(0, 99) < 3) {
         total_move -= 0.05;
     }
 
@@ -305,17 +370,17 @@ public:
    * large positive moves, and a lower probability of large negative moves
    * Uses class drift/volatility, but incorporates "buy the dip" and FOMO behavior
    */
-  double bull_math(double x_t, std::normal_distribution<double> &d, std::mt19937 &gen) {
+  double bull_math(double x_t) {
     double expected_return =
       (this->percent_drift - (this->percent_volatility * this->percent_volatility / 2.0)) * this->dt;
-    double random_shock = this->percent_volatility * sqrt(this->dt) * d(gen);
+    double random_shock = this->percent_volatility * sqrt(this->dt) * rand_normal01_();
     double total_move = expected_return + random_shock;
 
     if (total_move < -0.01) {
         total_move *= 0.5;
     }
 
-    if (rand() % 100 < 2) {
+    if (rand_int_inclusive_(0, 99) < 2) {
         total_move += 0.03;
     }
 
@@ -324,10 +389,6 @@ public:
 
   // return the number of datapoints generated, if data is not being tested
   int generate_ws() {
-    std::random_device rd{};
-    std::mt19937 gen{rd()};
-    std::normal_distribution<double> norm{0.0, 1.0};
-
     // Values near the mean are the most likely. Standard deviation
     // affects the dispersion of generated values from the mean.
     int tracker = 0;
@@ -354,15 +415,15 @@ public:
             {
               if (tracker == 0)
               {
-                flash_crash_points = 14 + rand() % 11;
+                flash_crash_points = rand_int_inclusive_(14, 24);
                 precede = data_buffer->front();
-                curr = gbm(precede, norm, gen);
+                curr = gbm(precede);
               }
 
               if (tracker < flash_crash_points)
               {
-                double offset = (rand() % ((int) ((double) base_price * 0.34)))
-                  + (double) base_price * 0.5436;
+                const int max_off = std::max(1, static_cast<int>(static_cast<double>(base_price) * 0.34));
+                double offset = rand_int_inclusive_(0, max_off - 1) + (double) base_price * 0.5436;
 
                 while (offset > curr * 0.8)
                 {
@@ -383,7 +444,7 @@ public:
                 }
 
                 precede = curr;
-                curr = gbm(precede, norm, gen);
+                curr = gbm(precede);
               }
               else {
                 gen_settings.new_event.store(0);
@@ -409,7 +470,7 @@ public:
               if (tracker == 0)
               {
                 larger = data_buffer->front();
-                curr = gbm(larger, norm, gen);
+                curr = gbm(larger);
               }
 
               if (curr > gen_settings.threshold.load())
@@ -418,7 +479,7 @@ public:
 
                 gen_settings.new_event.store(0);
 
-                data_buffer->push(gbm(curr * 0.3213, norm, gen));
+                data_buffer->push(gbm(curr * 0.3213));
 
                 double price_val = send_price();
 
@@ -449,7 +510,7 @@ public:
                 tracker += 1;
 
                 larger = curr > larger ? curr : larger;
-                curr = gbm(larger, norm, gen);
+                curr = gbm(larger);
               }
 
               break;
@@ -458,7 +519,7 @@ public:
             {
               this->percent_drift = 0.02;
               this->percent_volatility = 2;
-              data_buffer->push(ou(data_buffer->front(), norm, gen));
+              data_buffer->push(ou(data_buffer->front()));
               if (gen_settings.send_data.load()) {
                 double res = send_price();
                 gen_settings.conn.load()->send_text(fmt::format(
@@ -473,7 +534,7 @@ public:
               this->percent_drift = -5.0;
               this->percent_volatility = 0.30;
 
-              data_buffer->push(bear_math(data_buffer->front(), norm, gen));
+              data_buffer->push(bear_math(data_buffer->front()));
 
               if (gen_settings.send_data.load()) {
                 double price_val = send_price();
@@ -490,7 +551,7 @@ public:
               this->percent_drift = 5.0;
               this->percent_volatility = 0.15;
 
-              data_buffer->push(bull_math(data_buffer->front(), norm, gen));
+              data_buffer->push(bull_math(data_buffer->front()));
 
               if (gen_settings.send_data.load()) {
                 double price_val = send_price();
@@ -520,7 +581,7 @@ public:
         // no event
         // generate the next data point in the weiner process and add it onto
         // the data buffer, before dequeuing it
-        data_buffer->push(gbm(data_buffer->front(), norm, gen));
+        data_buffer->push(gbm(data_buffer->front()));
 
         // TODO: way to send data would go here, this could be in the format
         // of a second queue, extra fields in the Data_Transfer, etc. for now
