@@ -479,7 +479,7 @@ public:
                 double price_val = send_price();
                 gen_settings.conn.load()->send_text(fmt::format(
                   "{{\"price\": {}, \"clamped\": {}, \"type\": \"bear\", \"id\": {}, \"drift\": {}, \"volatility\": {}}}",
-                  price_val, this->last_was_clamped ? "true" : "false", this->id, this->percent_drift, this->percent_volatility));  
+                  price_val, this->last_was_clamped ? "true" : "false", this->id, this->percent_drift, this->percent_volatility));
                 this->streamed_points->push_back(price_val);
               }
               break;
@@ -612,12 +612,12 @@ skip:
     write_to_buffer(&buffer, threshold, &curr_size);
     write_to_buffer(&buffer, pause, &curr_size);
 
-    size_t buffer_len = this->streamed_points->size();
+    size_t buffer_len = streamed_subset.size();
     fmt::print("streamed_data_len: {}\n", buffer_len);
     write_to_buffer(&buffer, buffer_len, &curr_size);
     for (int i = 0; i < buffer_len; i++)
     {
-      write_to_buffer(&buffer, this->streamed_points->at(i), &curr_size);
+      write_to_buffer(&buffer, streamed_subset.at(i), &curr_size);
     }
 
     fmt::print("binary buffer length: {} = {}\n", curr_size, buffer.size());
