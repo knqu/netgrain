@@ -249,6 +249,8 @@ int main() {
 
         int id = 0;
 
+        auto& cookie = app.get_context<crow::CookieParser>(req);
+
         // Generate Mode: convert ticker entries to generators
         // NOTE: run_generated_simulation() seems to basically call gbm()
         // for num_bars (finite) and outputs SimulationResult
@@ -259,6 +261,7 @@ int main() {
                             entry.liquidity, entry.market_cap, id++));
                 
                 Generator* gen_ptr = generators.back().get();
+                ConnectorSingleton::getInstance().createSimulation(cookie.get_cookie("email"), "", -1);
 
                 std::thread([gen_ptr]{
                     gen_ptr->generate_ws();
@@ -917,7 +920,6 @@ int main() {
         std::cout<< simID << std::endl;
 
         std::unordered_map<std::string, std::string> metrics;
-
         try {
             metrics = ConnectorSingleton::getInstance().fetchMetrics(simID);
         } catch (const std::exception& e) {
@@ -925,20 +927,38 @@ int main() {
             return crow::response(500);
         }
 
-        std::string jsonStr = {};
-        std::string temp = "{invalid json}";
-        jsonStr += "{";
-        jsonStr += "\"table\" : " + metrics["table"] + ",";
-        jsonStr += "\"equity\" : " + metrics["equity"] + ",";
-        jsonStr += "\"pl\" : " + metrics["PL"] + ",";
-        jsonStr += "\"drawdown\" : " + metrics["drawdown"];
-        jsonStr += "}";
+        auto& cookie = app.get_context<crow::CookieParser>(req);
+        std::string email = cookie.get_cookie("email");
+        std::vector<int> hist = ConnectorSingleton::getInstance().fetchAllSims(email);
+        njson j;
 
-        std::cout << jsonStr << std::endl;
+        if (hist.size() >= 2) {
+            std::vector<double> q = ConnectorSingleton::getInstance().comparativeAnalytics(
+                    hist.at(hist.size() - 1), 
+                    hist.at(hist.size() - 2)
+                    );
+            j["percent"] = std::to_string(q.at(q.size() - 3));
+            j["flat"] = std::to_string(q.at(q.size() - 2));
+            j["taxes"] = std::to_string(q.at(q.size() - 1));
+        }
+        try {
+            /*
+            j["table"] = njson::parse(metrics["table"]);
+            j["equity"] = njson::parse(metrics["equity"]);
+            j["pl"] = njson::parse(metrics["PL"]);
+            j["drawdown"] = njson::parse(metrics["drawdown"]);
+            */
+            j["table"] = njson::array();
+            j["equity"] = njson::array();
+            j["pl"] = njson::array();
+            j["drawdown"] = njson::array();
+        } catch (const njson::parse_error& e) {
+            std::cerr << "JSON Parse error: " << e.what() << std::endl;
+        }
 
-        crow::response res;
+        crow::response res(j.dump());
+        res.set_header("Content-Type", "application/json");
         res.code = 200;
-        res.write(jsonStr);
         return res;
     });
 

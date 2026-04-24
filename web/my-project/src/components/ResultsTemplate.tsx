@@ -77,6 +77,9 @@ export default function ResultsTemplate() {
                 setEquityData(data["equity"]);
                 setPlData(data["pl"]);
                 setDdData(data["drawdown"]);
+                setTaxes(parseFloat(data.taxes));
+                setFee(parseFloat(data.flat));
+                setComm(parseFloat(data.percent));
             }
         } catch (err) {
             console.log(err);
@@ -265,17 +268,17 @@ export default function ResultsTemplate() {
                 <div className="metric-grid">
                     <div className="metric-container">
                         <p className="metric-title">Percent Commision</p>
-                        <p className="metric">{comm === -1 ? "N/A" : `${comm}%`}</p>
+                        <p className="metric">{isNaN(comm) ? "Unavailable" : `${comm}%`}</p>
                     </div>
 
                     <div className="metric-container">
                         <p className="metric-title">Flat Fee</p>
-                        <p className="metric">{fee === -1 ? "N/A" : `-$${fee}`}</p>
+                        <p className="metric">{isNaN(fee) ? "Unavailable" : `-$${fee}`}</p>
                     </div>
 
                     <div className="metric-container">
                         <p className="metric-title">Taxes</p>
-                        <p className="metric">{taxes === -1 ? "N/A" : `-$${taxes}`}</p>
+                        <p className="metric">{isNaN(taxes) ? "Unavailable" : `-$${taxes}`}</p>
                     </div>
 
                     <div className="metric-container">
