@@ -50,7 +50,7 @@ export interface SimulationConfigRequest {
     start_date: string;
     end_date: string;
     trade_fee: number;
-    script: String;
+    stategy_code: String;
     // include script
 }
 
@@ -215,7 +215,7 @@ const Simulation: React.FC = () => {
             start_date: startDate,
             end_date: endDate,
             trade_fee: Number(tradeFee),
-            script: pythonScript,
+            stategy_code: pythonScript,
             // include script here
         };
 
@@ -238,6 +238,7 @@ const Simulation: React.FC = () => {
                     
                     setRunResult(parsedData);
                     setEngineStatus("Simulation Sent!");
+                    setPage("Start");
                 } catch (e) {
                     console.error("JSON Parse Error:", e);
                 }
@@ -525,7 +526,6 @@ const Simulation: React.FC = () => {
 
     const startSim = async () => {
         handleStart();
-        setPage("Start");
     };    
 
     const handleLangChange = (event: any) => {

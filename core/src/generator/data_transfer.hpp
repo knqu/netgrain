@@ -9,6 +9,7 @@ struct Data_Transfer {
   std::atomic<crow::websocket::connection *> conn;
 
   std::atomic<int> rate_per_second;
+  std::atomic<int> snapshot_interval{200};
   std::atomic<bool> gen;
   std::atomic<bool> send_data;
   std::atomic<int> new_event;

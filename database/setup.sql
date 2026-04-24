@@ -76,7 +76,9 @@ CREATE TABLE sim_positions (
   sim_id int NOT NULL REFERENCES pastSimulations(simID),
   ticker text NOT NULL,
   quantity int NOT NULL,
-  cost_basis int NOT NULL
+  cost_basis int NOT NULL,
+  market_price int not NULL,
+  bar_timestamp int NOT NULL
 );
 
 CREATE INDEX idx_sim_fills_sim_id ON sim_fills(sim_id);

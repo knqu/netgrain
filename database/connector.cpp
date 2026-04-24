@@ -12,6 +12,7 @@
 #include <fstream>
 #include <stdlib.h>
 #include <sstream>
+#include <format>
 
 
 enum error_codes {
@@ -337,8 +338,8 @@ try
         std::string query = "SELECT * FROM pastSimulations WHERE (userid = $1)";
         r = tx.exec(query, pqxx::params{uuid});
         for (auto row = std::begin(r); row != std::end(r); row++) {
-          auto field = std::begin(row);
-          res.push_back(field.as<int>());
+          auto field = std::begin(*row);
+          res.push_back(field->as<int>());
         }
         return res;
       }
@@ -444,7 +445,8 @@ try
       int currentSeq = -1;
 
       try {
-        std::string query = "SELECT COUNT(*) FROM pastsimulations;";
+        //std::string query = "SELECT COUNT(*) FROM pastsimulations;";
+        std::string query = "SELECT nextval('pastsimulations_simid_seq');";
         pqxx::row r = tx.exec(query).one_row();
         currentSeq = r[0].as<int>();
         currentSeq++;
@@ -694,13 +696,13 @@ try
       for (auto row = std::begin(r); row != std::end(r); row++) {
         std::string tmp = "{";
         int i = 0;
-        for (auto field = std::begin(row); field != std::end(row); field++) {
+        for (auto field = std::begin(*row); field != std::end(*row); field++) {
           if (i == 0) {
             std::stringstream ss;
             ss << entry;
             tmp.append("\"rank\" : " + ss.str());
             tmp.append(", ");
-            tmp.append("\"username\" : \"" + getUsername(field.as<int>()) + "\"");
+            tmp.append("\"username\" : \"" + getUsername(field->as<int>()) + "\"");
             tmp.append(", ");
           }
           else if (i == 1) {
@@ -760,13 +762,146 @@ try
 
       return r[0].as<int>();
     }
+
+    std::unordered_map<std::string, std::string> fetchMetrics(int sim_id) {
+      pqxx::work tx(*conn);
+      std::unordered_map<std::string, std::string> ret;
+
+      try
+      {
+        std::string query = "SELECT * FROM sim_fills WHERE (sim_id = $1) ORDER BY bar_timestamp ASC";
+        pqxx::result r = tx.exec(query, pqxx::params{sim_id});
+        tx.commit();
+
+        std::string tableStr = "[";
+        std::string equityStr = "[";
+        std::string PLStr = "[";
+
+        std::unordered_map<std::string, std::pair<int, int>> posMap; // (ticker, (market_price, quantity))
+        std::vector<std::pair<int, int>> equityVec; // (timestamp, equity)
+        std::unordered_map<std::string, std::deque<std::pair<int, int>>> entryVec; // ticker -> [(price, quantity)*]
+        
+        for (auto row = std::begin(r); row != std::end(r); row++) {
+          int assets = 0;
+          int gain = row["fill_price"].as<int>() * row["quantity"].as<int>();
+
+          if (row["side"].as<std::string>() == "BUY") {
+            gain *= -1;
+            entryVec[row["ticker"].as<std::string>()].push_back({row["fill_price"].as<int>(), row["quantity"].as<int>()});
+          }
+          else {
+            int PL = 0;
+            int sellQuantity = row["quantity"].as<int>();
+            int sellPrice = row["fill_price"].as<int>();
+
+            while (sellQuantity > 0) {
+              std::pair<int, int> temp = entryVec[row["ticker"].as<std::string>()].front();
+              entryVec[row["ticker"].as<std::string>()].pop_front();
+              if (sellQuantity - temp.second >= 0) {
+                PL += (sellPrice - temp.first) * temp.second;
+                sellQuantity -= temp.second;
+              }
+              else {
+                PL += (sellPrice - temp.first) * sellQuantity;
+                temp.second -= sellQuantity;
+                sellQuantity = 0;
+                entryVec[row["ticker"].as<std::string>()].push_front(temp);
+              }
+            }
+
+            PLStr += "{\"time\" : ";
+            PLStr.append(row["bar_timestamp"].as<std::string>());
+            PLStr += ", \"value\" : ";
+            PLStr.append(std::to_string(PL));
+            PLStr += ", \"color\" : ";
+            PLStr.append(PL > 0 ? "\"green\"" : "\"red\"");
+            PLStr += "},";
+          }
+
+          std::string balanceQuery = "SELECT * FROM sim_balance_log WHERE (sim_id = $1) AND (bar_timestamp = $2)";
+          pqxx::row balanceResult = tx.exec(balanceQuery, pqxx::params{sim_id, row["bar_timestamp"].as<std::string>()}).one_row();
+          tx.commit();
+          int balance = balanceResult["balance"].as<int>();
+
+          std::string posQuery = "SELECT * FROM sim_positions WHERE (sim_id = $1) AND (bar_timestamp = $2) AND (ticker = $3)";
+          pqxx::row posResult = tx.exec(posQuery, pqxx::params{sim_id, row["bar_timestamp"].as<std::string>(), row["ticker"].as<std::string>()}).one_row();
+          tx.commit();
+          posMap[row["ticker"].as<std::string>()] = {posResult["market_price"].as<int>(), posResult["quantity"].as<int>()};
+          for (const auto& [ticker, pos] : posMap) {
+            assets += pos.first * pos.second;
+          }
+
+          int equity = balance + assets;
+          equityVec.push_back({posResult["bar_timestamp"].as<int>(), equity});
+
+          tableStr += "{\"timestamp\" : ";
+          tableStr.append(row["bar_timestamp"].as<std::string>());
+          tableStr += ", \"orderType\" : \"";
+          tableStr.append(row["side"].as<std::string>());
+          tableStr += "\", \"amountOfStock\" : ";
+          tableStr.append(row["quantity"].as<std::string>());
+          tableStr += ", \"moneyGained\" : ";
+          tableStr.append(std::to_string(gain));
+          tableStr += ", \"totalMoney\" : ";
+          tableStr.append(std::to_string(balance));
+          tableStr += "},";
+
+          equityStr += "{ \"time\" : ";
+          equityStr.append(row["bar_timestamp"].as<std::string>());
+          equityStr += ", \"value\" : ";
+          equityStr.append(std::to_string(equity));
+          equityStr += "},";
+        }
+
+        tableStr.pop_back();
+        equityStr.pop_back();
+        PLStr.pop_back();
+
+        tableStr.append("]");
+        equityStr.append("]");
+        PLStr.append("]");
+
+        std::string drawdownStr = "[";
+        int peak = -1;
+        for (int i = 0; i < equityVec.size(); i++) {
+          if (equityVec[i].second > peak) {
+            peak = equityVec[i].second;
+            drawdownStr += "{ \"time\" : ";
+            drawdownStr.append(std::to_string(equityVec[i].first));
+            drawdownStr += ", \"value\" : 0 },";
+            continue;
+          }
+
+          drawdownStr += "{ \"time\" : ";
+          drawdownStr.append(std::to_string(equityVec[i].first));
+          drawdownStr += ", \"value\" : ";
+          drawdownStr.append(std::to_string((equityVec[i].second - peak) / ((double) peak)));
+          drawdownStr += " },";
+        }
+        drawdownStr.pop_back();
+        drawdownStr += "]";
+
+        //std::cout << "Table: " << tableStr << std::endl << "Equity: " << equityStr << std::endl << "PL: " << PLStr << std::endl << "drawdwon: " << drawdownStr << std::endl;
+
+        ret["table"] = tableStr;
+        ret["equity"] = equityStr;
+        ret["PL"] = PLStr;
+        ret["drawdown"] = drawdownStr;
+      }
+      catch (const std::exception &e)
+      {
+        std::cerr << e.what() << std::endl;
+      }
+
+      return ret;
+    }
 };
 
 /*
 int main() {
-  for (auto x : ConnectorSingleton::getInstance().comparativeAnalytics(1, 2)) {
-    fmt::print("{}\n", x);
-  }
-  return 0;
+    ConnectorSingleton::getInstance().createSimulation("user1", "", -1);
+    ConnectorSingleton::getInstance().createSimulation("user2", "", -1);
+    ConnectorSingleton::getInstance().createSimulation("user2", "", -1);
+    return 0;
 }
 */

@@ -32,9 +32,9 @@ using njson = nlohmann::json; // HACK:
 MarketDataManager data_manager;
 
 void load_ticker_data() {
-    string default_dir = "../../../data/";  // NOTE: assumes program is run from root directory
+    string default_dir = "../../../data/";  // NOTE: updated to work when run from webserver directory
 
-    if (std::filesystem::exists(default_dir) && std::filesystem::is_directory(default_dir)) {    
+    if (std::filesystem::exists(default_dir) && std::filesystem::is_directory(default_dir)) {
         for (const auto& entry : filesystem::recursive_directory_iterator(default_dir)) {
         // recursive bc I changed to have subfolders for asset classes
             if (entry.is_regular_file()) {
@@ -279,6 +279,10 @@ int main() {
 
         int id = 0;
 
+        auto& cookie = app.get_context<crow::CookieParser>(req);
+        std::string email = cookie.get_cookie("email");
+        std::cerr << email << std::endl;
+
         // Generate Mode: convert ticker entries to generators
         // NOTE: run_generated_simulation() seems to basically call gbm()
         // for num_bars (finite) and outputs SimulationResult
@@ -287,8 +291,9 @@ int main() {
                 generators.push_back(std::make_unique<Generator>(
                             entry.name, entry.base_price, entry.volatility,
                             entry.liquidity, entry.market_cap, id++));
-                
+
                 Generator* gen_ptr = generators.back().get();
+                ConnectorSingleton::getInstance().createSimulation(email, "", -1);
 
                 std::thread([gen_ptr]{
                     gen_ptr->generate_ws();
@@ -426,7 +431,7 @@ int main() {
                     fmt::print("flash crash!\n");
                 }
             }
-            else if (data == "sideways") { 
+            else if (data == "sideways") {
                 fmt::print("sideways!\n");
                 global_gen.gen_settings.new_event.store(3);
             }
@@ -457,6 +462,13 @@ int main() {
             }
             else if (data == "resume") {
                 global_gen.gen_settings.pause.store(false);
+            }
+            else if (data.starts_with("freq:")) {
+                int interval = std::stoi(data.substr(5));
+                global_gen.gen_settings.snapshot_interval.store(interval);
+                for (auto& g : generators) {
+                    g->gen_settings.snapshot_interval.store(interval);
+                }
             }
             else if (data.starts_with("update")) {
                 int index = data.find(":");
@@ -780,7 +792,7 @@ int main() {
         global_gen.gen_settings.pause.store(true);
 
         global_gen.refresh();
-        
+
         fmt::print("Loaded simulation!\n");
 
         std::vector<double> data_points = *(global_gen.streamed_points);
@@ -804,10 +816,12 @@ int main() {
         char *streamed_length = req.url_params.get("length");
         int streamed_len = stoi(streamed_length);
 
+        fmt::print("streamed_len: {}\n", streamed_len);
+
         std::vector<char> file_buf;
         file_buf = global_gen.save_simulation(streamed_len);
         std::string file_binary(file_buf.begin(), file_buf.end());
-        
+
         crow::response res;
         res.set_header("Content-Type", "application/octet-stream");
         res.body = file_binary;
@@ -877,7 +891,6 @@ int main() {
     CROW_ROUTE(app, "/api/calculateFee").methods(
         crow::HTTPMethod::GET,
         crow::HTTPMethod::Patch)([&](const crow::request& req) {
-
         auto& cookie = app.get_context<crow::CookieParser>(req);
         std::string email = cookie.get_cookie("email");
 
@@ -946,6 +959,59 @@ int main() {
         }
     });
 
+    CROW_ROUTE(app, "/api/resultsTemplate").methods(
+        crow::HTTPMethod::POST,
+        crow::HTTPMethod::Patch)([&](const crow::request& req) {
+
+        std::cout << "is this working" << std::endl;
+        auto reqBody = crow::json::load(req.body);
+        int simID = reqBody["simID"].i();
+        std::cout << "simID" << std::endl;
+        std::cout<< simID << std::endl;
+
+        std::unordered_map<std::string, std::string> metrics;
+        try {
+            metrics = ConnectorSingleton::getInstance().fetchMetrics(simID);
+        } catch (const std::exception& e) {
+            std::cout << e.what() << std::endl;
+            return crow::response(500);
+        }
+
+        auto& cookie = app.get_context<crow::CookieParser>(req);
+        std::string email = cookie.get_cookie("email");
+        std::vector<int> hist = ConnectorSingleton::getInstance().fetchAllSims(email);
+        njson j;
+
+        if (hist.size() >= 2) {
+            std::vector<double> q = ConnectorSingleton::getInstance().comparativeAnalytics(
+                    hist.at(hist.size() - 1),
+                    hist.at(hist.size() - 2)
+                    );
+            j["percent"] = std::to_string(q.at(q.size() - 3));
+            j["flat"] = std::to_string(q.at(q.size() - 2));
+            j["taxes"] = std::to_string(q.at(q.size() - 1));
+        }
+        try {
+            /*
+            j["table"] = njson::parse(metrics["table"]);
+            j["equity"] = njson::parse(metrics["equity"]);
+            j["pl"] = njson::parse(metrics["PL"]);
+            j["drawdown"] = njson::parse(metrics["drawdown"]);
+            */
+            j["table"] = njson::array();
+            j["equity"] = njson::array();
+            j["pl"] = njson::array();
+            j["drawdown"] = njson::array();
+        } catch (const njson::parse_error& e) {
+            std::cerr << "JSON Parse error: " << e.what() << std::endl;
+        }
+
+        crow::response res(j.dump());
+        res.set_header("Content-Type", "application/json");
+        res.code = 200;
+        return res;
+    });
+
     CROW_CATCHALL_ROUTE(app)([](){
         std::cout << "Catch All" << std::endl;
         crow::response res;
@@ -970,4 +1036,3 @@ int main() {
     app.run();
     */
 }
-

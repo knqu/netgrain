@@ -16,3 +16,6 @@ ou-run.txt
 database/dbData
 node_modules
 web/webserver/perms2
+web/webserver/build/
+web/webserver/build/vcpkg
+web/webserver/nginx-1.29.7/logs

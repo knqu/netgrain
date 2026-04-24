@@ -6,11 +6,12 @@ if(NOT DEFINED CMAKE_TOOLCHAIN_FILE)
 endif()
 
 project(webserver)
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-set(CROW_ENABLE_SSL ON)
-
+if (MSVC)
+    add_compile_options(/bigobj)
+endif()
 
 include(FetchContent)
 
@@ -30,7 +31,6 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(pybind11)
 
-find_package(OpenSSL REQUIRED)
 
 set(NETGRAIN_SIMULATOR_SOURCES
   ../../core/src/simulator/simulator.cpp
@@ -46,12 +46,6 @@ target_compile_definitions(my_app PRIVATE CROW_ENABLE_SSL)
 target_include_directories(my_app PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/../../core/src/simulator
   ${CMAKE_CURRENT_SOURCE_DIR}/../../core/src/generator
-)
-
-target_link_libraries(my_app 
-  PRIVATE
-    OpenSSL::SSL
-    OpenSSL::Crypto
 )
 
 # Link fmt
