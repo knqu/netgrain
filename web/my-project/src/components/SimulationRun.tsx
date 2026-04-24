@@ -37,7 +37,17 @@ type seriesType =
     DeepPartial<AreaStyleOptions & SeriesOptionsCommon>
   >
 */
+interface OrderData {
+  id: number;
+  qty: number;
+  t_price: number;
+  type: String;
+}
+
 var data: pointData[][] = [];
+var order_data: OrderData[][] = [[{ id: 1, qty: 10, t_price: 50.50, type: "BUY" }, { id: 2, qty: 15, t_price: 5.50, type: "SELL" }],
+[{ id: 3, qty: 50, t_price: 15.00, type: "BUY" }, { id: 4, qty: 10, t_price: 17.5, type: "BUY" }],
+[{ id: 5, qty: 75, t_price: 13.00, type: "BUY" }]];
 var lowerBound: number;
 var upperBound: number;
 
@@ -68,60 +78,68 @@ const SimRun: React.FC<{ socketRef: WebSocket, activeStock: String, dates: Date[
         const payload = JSON.parse(e.data);
         const price = Number(payload.price);
         const idx = Number(payload.id);
-        setTotalTicks(prev => prev + 1);
-        if (payload.clamped) {
-          setClampedTicks(prev => prev + 1);
+        const msg_t = String(payload.msg_type);
+        switch (msg_t) {
+          case "stock":
+            setTotalTicks(prev => prev + 1);
+            if (payload.clamped) {
+              setClampedTicks(prev => prev + 1);
+            }
+
+            //dates[idx].setUTCDate(dates[idx].getUTCDate() + 1);
+            var time: UTCTimestamp;
+            if (data[idx].length === 0) {
+              const nd = new Date(2018, 12, 31, 12, 0, 0)
+              time = nd.getTime() / 1000 as UTCTimestamp;
+            }
+            else {
+              time = (data[idx][data[idx].length - 1].time + 1) as UTCTimestamp;
+            }
+            //const time: UTCTimestamp = (data[idx][-1].time + 1000) / 1000 as UTCTimestamp;
+            data[idx].push({ time: time, value: price });
+
+            const d = new Date(time * 1000);
+            const timeLabel = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
+
+            onNewSnapshot({
+              id: idx,
+              timeLabel: timeLabel,
+              price: price,
+              clamped: payload.clamped,
+              type: payload.type || 'normal',
+              drift: payload.drift,
+              volatility: payload.volatility
+            });
+
+            if (!detailsMap.current[idx]) detailsMap.current[idx] = {};
+            detailsMap.current[idx][time as number] = {
+              price: price,
+              type: payload.type || 'normal',
+              drift: payload.drift,
+              volatility: payload.volatility
+            };
+
+            if (Number(activeStockRef.current) === idx) {
+              seriesRef.current.update({ time: time, value: price });
+            }
+
+            if (data[idx].at(-1)!.value > highs[idx]) {
+              highs[idx] = data[0].at(-1)!.value;
+            }
+            if (data[idx].at(-1)!.value < lows[idx]) {
+              lows[idx] = data[idx].at(-1)!.value;
+            }
+
+            if (data[idx].at(-1)!.value < lowerBound || data[idx].at(-1)!.value > upperBound) {
+              lowerBound = Number.MIN_VALUE;
+              upperBound = Number.MAX_VALUE;
+              socketRef.send("multiple: pause");
+            }
+            break;
+          case "Order":
+          //TODO: order update code
         }
 
-        //dates[idx].setUTCDate(dates[idx].getUTCDate() + 1);
-        var time: UTCTimestamp;
-        if (data[idx].length === 0) {
-          const nd = new Date(2018, 12, 31, 12, 0, 0)
-          time = nd.getTime() / 1000 as UTCTimestamp;
-        }
-        else {
-          time = (data[idx][data[idx].length - 1].time + 1) as UTCTimestamp;
-        }
-        //const time: UTCTimestamp = (data[idx][-1].time + 1000) / 1000 as UTCTimestamp;
-        data[idx].push({ time: time, value: price });
-
-        const d = new Date(time * 1000);
-        const timeLabel = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
-
-        onNewSnapshot({
-          id: idx,
-          timeLabel: timeLabel,
-          price: price,
-          clamped: payload.clamped,
-          type: payload.type || 'normal',
-          drift: payload.drift,
-          volatility: payload.volatility
-        });
-
-        if (!detailsMap.current[idx]) detailsMap.current[idx] = {};
-        detailsMap.current[idx][time as number] = {
-          price: price,
-          type: payload.type || 'normal',
-          drift: payload.drift,
-          volatility: payload.volatility
-        };
-
-        if (Number(activeStockRef.current) === idx) {
-          seriesRef.current.update({ time: time, value: price });
-        }
-
-        if (data[idx].at(-1)!.value > highs[idx]) {
-          highs[idx] = data[0].at(-1)!.value;
-        }
-        if (data[idx].at(-1)!.value < lows[idx]) {
-          lows[idx] = data[idx].at(-1)!.value;
-        }
-
-        if (data[idx].at(-1)!.value < lowerBound || data[idx].at(-1)!.value > upperBound) {
-          lowerBound = Number.MIN_VALUE;
-          upperBound = Number.MAX_VALUE;
-          socketRef.send("multiple: pause");
-        }
       } catch (err) {
         console.error("Error parsing WS message:", err);
       }
@@ -174,21 +192,21 @@ const SimRun: React.FC<{ socketRef: WebSocket, activeStock: String, dates: Date[
   }, []);
 
   useEffect(() => {
-  // Check if both the chart and series are ready
-  if (seriesRef.current && chartRef.current) {
-    try {
-      const idx = Number(activeStock);
-      const newData = data[idx] || [];
+    // Check if both the chart and series are ready
+    if (seriesRef.current && chartRef.current) {
+      try {
+        const idx = Number(activeStock);
+        const newData = data[idx] || [];
 
-      seriesRef.current.setData(newData);
+        seriesRef.current.setData(newData);
 
-      chartRef.current.timeScale().fitContent();
+        chartRef.current.timeScale().fitContent();
 
-    } catch (err) {
-      console.error("Error swapping stock data:", err);
+      } catch (err) {
+        console.error("Error swapping stock data:", err);
+      }
     }
-  }
-}, [activeStock]);
+  }, [activeStock]);
 
   const percentReal = totalTicks === 0
     ? 100
@@ -223,6 +241,7 @@ export default function SimulationRun({ num_stocks }: simulationRunProps) {
   for (var i = 0; i < num_stocks; i++) {
     data.push([]);
   }
+  //const [allOrders, setAllOrders] = useState<OrderData[][]>(order_data);
   const [latestPrices, setLatestPrices] = useState<number[]>(new Array(num_stocks).fill(0));
   const [activeStock, setActiveStock] = useState('0');
 
@@ -465,6 +484,32 @@ export default function SimulationRun({ num_stocks }: simulationRunProps) {
                   <strong>Stock {i + 1}:</strong> ${price.toFixed(2)}
                 </div>
               ))}
+
+            </div>
+            <div className="order-dashboard" style={{ marginTop: '20px', padding: '10px', backgroundColor: '#fff7ed', border: '1px solid #ffedd5', color: 'black' }}>
+              <h4 style={{ margin: '0 0 10px 0' }}>Orders for Stock {Number(activeStock) + 1}</h4>
+              <div style={{ maxHeight: '150px', overflowY: 'auto' }}>
+                <table style={{ width: '100%', fontSize: '0.85rem', textAlign: 'left' }}>
+                  <thead>
+                    <tr>
+                      <th>ID</th>
+                      <th>Type</th>
+                      <th>Qty</th>
+                      <th>Price</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {order_data[Number(activeStock)]?.map((order) => (
+                      <tr key={order.id}>
+                        <td>{order.id}</td>
+                        <td style={{ color: order.type === 'BUY' ? 'green' : 'red' }}>{order.type}</td>
+                        <td>{order.qty}</td>
+                        <td>${order.t_price.toFixed(2)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         );
