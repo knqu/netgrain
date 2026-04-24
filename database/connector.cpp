@@ -112,7 +112,8 @@ try
                 "host=localhost "
                 "port=5432 "
                 "dbname=postgres "
-                "user=cnath"
+                "user=postgres "
+                "password=N@te0731"
               );
             #elif __APPLE__
               conn = new pqxx::connection(
@@ -337,8 +338,8 @@ try
         std::string query = "SELECT * FROM pastSimulations WHERE (userid = $1)";
         r = tx.exec(query, pqxx::params{uuid});
         for (auto row = std::begin(r); row != std::end(r); row++) {
-          auto field = std::begin(row);
-          res.push_back(field.as<int>());
+          auto field = std::begin(*row);
+          res.push_back(field->as<int>());
         }
         return res;
       }
@@ -694,13 +695,13 @@ try
       for (auto row = std::begin(r); row != std::end(r); row++) {
         std::string tmp = "{";
         int i = 0;
-        for (auto field = std::begin(row); field != std::end(row); field++) {
+        for (auto field = std::begin(*row); field != std::end(*row); field++) {
           if (i == 0) {
             std::stringstream ss;
             ss << entry;
             tmp.append("\"rank\" : " + ss.str());
             tmp.append(", ");
-            tmp.append("\"username\" : \"" + getUsername(field.as<int>()) + "\"");
+            tmp.append("\"username\" : \"" + getUsername(field->as<int>()) + "\"");
             tmp.append(", ");
           }
           else if (i == 1) {

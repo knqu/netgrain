@@ -377,8 +377,8 @@ public:
                 if (gen_settings.send_data.load()) {
                   gen_settings.conn.load()
                     ->send_text(fmt::format(
-                      "{{\"price\": {}, \"clamped\": {}, \"type\": \"tagged\", \"id\": {}}}",
-                      (double) (curr - offset), this->last_was_clamped ? "true" : "false", this->id));
+                      "{{\"price\": {}, \"clamped\": {}, \"type\": \"tagged\", \"id\": {}, \"drift\": {}, \"volatility\": {}}}",
+                      (double) (curr - offset), this->last_was_clamped ? "true" : "false", this->id, this->percent_drift, this->percent_volatility));
                   this->streamed_points->push_back((double) curr - offset);
                 }
 
@@ -391,8 +391,8 @@ public:
                 if (gen_settings.send_data.load()) {
                   gen_settings.conn.load()
                     ->send_text(fmt::format(
-                      "{{\"price\": {}, \"clamped\": {}, \"type\": \"normal\", \"id\": {}}}",
-                      curr, this->last_was_clamped ? "true" : "false", this->id));
+                      "{{\"price\": {}, \"clamped\": {}, \"type\": \"normal\", \"id\": {}, \"drift\": {}, \"volatility\": {}}}",
+                      curr, this->last_was_clamped ? "true" : "false", this->id, this->percent_drift, this->percent_volatility));
                   this->streamed_points->push_back((double) curr);
                 }
 
@@ -425,8 +425,8 @@ public:
                 if (gen_settings.send_data.load()) {
                   gen_settings.conn.load()
                     ->send_text(fmt::format(
-                      "{{\"price\": {}, \"clamped\": {}, \"type\": \"normal\", \"id\": {}}}",
-                      price_val, this->last_was_clamped ? "true" : "false", this->id));
+                      "{{\"price\": {}, \"clamped\": {}, \"type\": \"normal\", \"id\": {}, \"drift\": {}, \"volatility\": {}}}",
+                      price_val, this->last_was_clamped ? "true" : "false", this->id, this->percent_drift, this->percent_volatility));
                   this->streamed_points->push_back(price_val);
                 }
 
@@ -441,8 +441,8 @@ public:
                 if (gen_settings.send_data.load()) {
                   gen_settings.conn.load()
                     ->send_text(fmt::format(
-                      "{{\"price\": {}, \"clamped\": {}, \"type\": \"tagged\", \"id\": {}}}",
-                      curr, this->last_was_clamped ? "true" : "false", this->id));
+                      "{{\"price\": {}, \"clamped\": {}, \"type\": \"tagged\", \"id\": {}, \"drift\": {}, \"volatility\": {}}}",
+                      curr, this->last_was_clamped ? "true" : "false", this->id, this->percent_drift, this->percent_volatility));
                   this->streamed_points->push_back(curr);
                 }
 
@@ -462,8 +462,8 @@ public:
               if (gen_settings.send_data.load()) {
                 double res = send_price();
                 gen_settings.conn.load()->send_text(fmt::format(
-                  "{{\"price\": {}, \"clamped\": {}, \"type\": \"sideways\", \"id\": {}}}",
-                  res, this->last_was_clamped ? "true" : "false", this->id));
+                  "{{\"price\": {}, \"clamped\": {}, \"type\": \"sideways\", \"id\": {}, \"drift\": {}, \"volatility\": {}}}",
+                  res, this->last_was_clamped ? "true" : "false", this->id, this->percent_drift, this->percent_volatility));
                 this->streamed_points->push_back(res);
               }
               break;
@@ -478,8 +478,8 @@ public:
               if (gen_settings.send_data.load()) {
                 double price_val = send_price();
                 gen_settings.conn.load()->send_text(fmt::format(
-                  "{{\"price\": {}, \"clamped\": {}, \"type\": \"bear\", \"id\": {}}}",
-                  price_val, this->last_was_clamped ? "true" : "false", this->id));
+                  "{{\"price\": {}, \"clamped\": {}, \"type\": \"bear\", \"id\": {}, \"drift\": {}, \"volatility\": {}}}",
+                  price_val, this->last_was_clamped ? "true" : "false", this->id, this->percent_drift, this->percent_volatility));  
                 this->streamed_points->push_back(price_val);
               }
               break;
@@ -495,9 +495,8 @@ public:
               if (gen_settings.send_data.load()) {
                 double price_val = send_price();
                 gen_settings.conn.load()->send_text(fmt::format(
-                  "{{\"price\": {}, \"clamped\": {}, \"type\": \"bull\", \"id\": {}}}",
-                  send_price(), this->last_was_clamped ? "true" : "false", this->id));
-                this->streamed_points->push_back(price_val);
+                  "{{\"price\": {}, \"clamped\": {}, \"type\": \"bull\", \"id\": {}, \"drift\": {}, \"volatility\": {}}}",
+                  price_val, this->last_was_clamped ? "true" : "false", this->id, this->percent_drift, this->percent_volatility));                this->streamed_points->push_back(price_val);
               }
               break;
             }
@@ -529,8 +528,8 @@ public:
         if (gen_settings.send_data.load()) {
           double price_val = send_price();
           gen_settings.conn.load()->send_text(fmt::format(
-            "{{\"price\": {}, \"clamped\": {}, \"type\": \"normal\", \"id\": {}}}",
-            price_val, this->last_was_clamped ? "true" : "false", this->id));
+            "{{\"price\": {}, \"clamped\": {}, \"type\": \"normal\", \"id\": {}, \"drift\": {}, \"volatility\": {}}}",
+            price_val, this->last_was_clamped ? "true" : "false", this->id, this->percent_drift, this->percent_volatility));
           this->streamed_points->push_back(price_val);
         }
       }
@@ -540,7 +539,7 @@ skip:
       // goto
 
       i += 1;
-      std::this_thread::sleep_for(std::chrono::milliseconds(200));
+      std::this_thread::sleep_for(std::chrono::milliseconds(gen_settings.snapshot_interval.load()));
     }
     return i;
   }

@@ -12,6 +12,17 @@ import EndSimulation from "./EndSimulation"
 
 //import type LiveChartProps from './LiveChart';
 
+export interface Snapshot {
+  id: number;
+  timeLabel: string;
+  price: number;
+  clamped: boolean;
+  type: string;
+  drift: number;
+  volatility: number;
+}
+
+
 interface pointData {
   time: UTCTimestamp;
   value: number;
@@ -35,23 +46,28 @@ var lows: number[] = [1000, 1000];
 
 // -- Sim Run component
 
-const SimRun: React.FC<{ socketRef: WebSocket, activeStock: String, dates: Date[], onPriceUpdate: (idx: number, price: number) => void }> = ({ socketRef, activeStock, dates, onPriceUpdate }) => {
+const SimRun: React.FC<{ socketRef: WebSocket, activeStock: String, dates: Date[], onNewSnapshot: (snap: Snapshot) => void }> = ({ socketRef, activeStock, dates, onNewSnapshot }) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const seriesRef = useRef<any>(null);
   const [totalTicks, setTotalTicks] = useState(0);
   const [clampedTicks, setClampedTicks] = useState(0);
+  const [hoverData, setHoverData] = useState<any>(null);
+
+  // Use ref to avoid stale closures in chart subscriptions
+  const activeStockRef = useRef(activeStock);
+  useEffect(() => { activeStockRef.current = activeStock; }, [activeStock]);
+
+  // Global mapping to store details for US 13 hover
+  const detailsMap = useRef<Record<number, Record<number, any>>>({});
 
   // TODO: modify so this works with one socket
   function addMsg(curSocket: WebSocket) {
     const onMsgTemp = (e: MessageEvent) => {
       try {
-          console.log(e.data);
-        
         const payload = JSON.parse(e.data);
         const price = Number(payload.price);
         const idx = Number(payload.id);
-        onPriceUpdate(idx, price);
         setTotalTicks(prev => prev + 1);
         if (payload.clamped) {
           setClampedTicks(prev => prev + 1);
@@ -69,7 +85,28 @@ const SimRun: React.FC<{ socketRef: WebSocket, activeStock: String, dates: Date[
         //const time: UTCTimestamp = (data[idx][-1].time + 1000) / 1000 as UTCTimestamp;
         data[idx].push({ time: time, value: price });
 
-        if (Number(activeStock) === idx) {
+        const d = new Date(time * 1000);
+        const timeLabel = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
+
+        onNewSnapshot({
+          id: idx,
+          timeLabel: timeLabel,
+          price: price,
+          clamped: payload.clamped,
+          type: payload.type || 'normal',
+          drift: payload.drift,
+          volatility: payload.volatility
+        });
+
+        if (!detailsMap.current[idx]) detailsMap.current[idx] = {};
+        detailsMap.current[idx][time as number] = {
+          price: price,
+          type: payload.type || 'normal',
+          drift: payload.drift,
+          volatility: payload.volatility
+        };
+
+        if (Number(activeStockRef.current) === idx) {
           seriesRef.current.update({ time: time, value: price });
         }
 
@@ -91,7 +128,7 @@ const SimRun: React.FC<{ socketRef: WebSocket, activeStock: String, dates: Date[
     }
     curSocket.addEventListener("message", onMsgTemp);
     return onMsgTemp;
-  } 
+  }
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -104,14 +141,26 @@ const SimRun: React.FC<{ socketRef: WebSocket, activeStock: String, dates: Date[
     const areaSeries = chart.addSeries(AreaSeries);
     seriesRef.current = areaSeries;
 
-    var msg: ((e: MessageEvent)=> void) = addMsg(socketRef);
-    
-  
+    var msg: ((e: MessageEvent) => void) = addMsg(socketRef);
+
+
     chart.timeScale().fitContent();
 
     const resizeObserver = new ResizeObserver(entries => {
       const { width, height } = entries[0].contentRect;
       chart.resize(width, height);
+    });
+
+    chart.subscribeCrosshairMove((param) => {
+      if (param.time) {
+        const timeKey = param.time as number;
+        const currentActive = Number(activeStockRef.current);
+        if (detailsMap.current[currentActive] && detailsMap.current[currentActive][timeKey]) {
+          setHoverData(detailsMap.current[currentActive][timeKey]);
+        }
+      } else {
+        setHoverData(null);
+      }
     });
 
     resizeObserver.observe(containerRef.current);
@@ -144,6 +193,13 @@ const SimRun: React.FC<{ socketRef: WebSocket, activeStock: String, dates: Date[
     <div style={{ display: "flex", flexDirection: "column", height: "100%", width: "100%" }}>
       <div style={{ padding: '10px', backgroundColor: '#f9f9f9', borderBottom: '2px solid #ccc', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div style={{ fontSize: '1.2rem' }}><strong>Generator Realism Phase:</strong> <span style={{ color: color, marginLeft: '8px' }}>{percentReal}% Adherence</span></div>
+
+        {hoverData && (
+          <div style={{ fontSize: '0.9rem', backgroundColor: '#eef2ff', padding: '4px 8px', borderRadius: '4px', border: '1px solid #c7d2fe', color: 'black' }}>
+            <strong>Hover:</strong> {hoverData.type} | <strong>Drift:</strong> {hoverData.drift?.toFixed(2) ?? '--'}% | <strong>Vol:</strong> {hoverData.volatility?.toFixed(2) ?? '--'}%
+          </div>
+        )}
+
         <div style={{ fontSize: '0.9rem', color: '#666' }}>{clampedTicks} wild outliers clamped</div>
       </div>
       <div className="areaChart" style={{ flexGrow: 1, minHeight: '400px' }} ref={containerRef} />
@@ -156,19 +212,38 @@ interface simulationRunProps {
 }
 
 // --- Main Dashboard ---
-export default function SimulationRun({num_stocks}: simulationRunProps) {
+export default function SimulationRun({ num_stocks }: simulationRunProps) {
   for (var i = 0; i < num_stocks; i++) {
     data.push([]);
   }
   const [latestPrices, setLatestPrices] = useState<number[]>(new Array(num_stocks).fill(0));
   const [activeStock, setActiveStock] = useState('0');
 
-  const handlePriceUpdate = (idx: number, price: number) => {
+  // US 12 & 13 State
+  const [speed, setSpeed] = useState(10);
+  const [snapshotLog, setSnapshotLog] = useState<Snapshot[]>([]);
+
+  const handleNewSnapshot = (snap: Snapshot) => {
     setLatestPrices(prev => {
       const next = [...prev];
-      next[idx] = price;
+      next[snap.id] = snap.price;
       return next;
     });
+
+    setSnapshotLog(prev => {
+      const newLog = [snap, ...prev];
+      if (newLog.length > 100) newLog.pop();
+      return newLog;
+    });
+  };
+
+  const handleFrequencyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = parseInt(e.target.value);
+    setSpeed(val);
+    let interval = Math.max(10, Math.round(2000 / val)); // Scale to max out at 10ms
+    if (socketRef.current?.readyState === WebSocket.OPEN) {
+      socketRef.current.send(`freq:${interval}`);
+    }
   };
 
   const socketRef = useRef<WebSocket>(null);
@@ -183,7 +258,7 @@ export default function SimulationRun({num_stocks}: simulationRunProps) {
     }
   }
 
-  
+
   useEffect(() => {
     const handleOpen = () => console.log("Connected");
     socketRef.current!.addEventListener("open", handleOpen);
@@ -309,6 +384,16 @@ export default function SimulationRun({num_stocks}: simulationRunProps) {
             <button onClick={() => sleepAfterTime()}>wait pause demo</button>
             <button onClick={() => sleepOnCondition()}>Conditional pause demo</button>
             <input id="sleep timer" inputMode="decimal"></input>
+
+            <div style={{ marginTop: '10px' }}>
+              <label style={{ marginRight: '10px' }}>Sim Speed: <strong>{speed}x</strong></label>
+              <input
+                type="range" min="1" max="100" step="1"
+                value={speed} onChange={handleFrequencyChange}
+                style={{ cursor: 'pointer', verticalAlign: 'middle' }}
+              />
+            </div>
+
             <div>
               <input id="lower bound" inputMode="decimal"></input>
               <input id="upper bound" inputMode="decimal"></input>
@@ -321,13 +406,13 @@ export default function SimulationRun({num_stocks}: simulationRunProps) {
             </div>
             <div style={{ marginBottom: '10px' }}>
               {Array.from({ length: num_stocks }, (_, i) => (
-                <button 
-                key={i} 
-                onClick={() => updateChart(i.toString())}
-                style={{ 
-                marginRight: '5px',
-                fontWeight: activeStock === i.toString() ? 'bold' : 'normal' 
-                }}
+                <button
+                  key={i}
+                  onClick={() => updateChart(i.toString())}
+                  style={{
+                    marginRight: '5px',
+                    fontWeight: activeStock === i.toString() ? 'bold' : 'normal'
+                  }}
                 >
                   Stock {i + 1}
                 </button>
@@ -336,15 +421,42 @@ export default function SimulationRun({num_stocks}: simulationRunProps) {
             <div className="Chart_outer_container">
               <div className="Chart_inner_container">
                 <div className="Chart" >
-                  <SimRun socketRef={socketRef.current!} activeStock={activeStock} dates={dates.current!} onPriceUpdate={handlePriceUpdate} />
+                  <SimRun socketRef={socketRef.current!} activeStock={activeStock} dates={dates.current!} onNewSnapshot={handleNewSnapshot} />
                 </div>
               </div>
             </div>
+
+            <div style={{ marginTop: '20px', padding: '10px', backgroundColor: '#f8fafc', border: '1px solid #ccc', color: 'black' }}>
+              <h4 style={{ margin: '0 0 10px 0', color: 'black' }}>Snapshot Metrics (Stock {Number(activeStock) + 1})</h4>
+              <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
+                <table style={{ width: '100%', fontSize: '0.85rem', textAlign: 'left', borderCollapse: 'collapse', color: 'black' }}>
+                  <thead style={{ position: 'sticky', top: 0, backgroundColor: '#f8fafc', color: 'black' }}>
+                    <tr>
+                      <th style={{ padding: '4px', borderBottom: '2px solid #cbd5e1' }}>Price</th>
+                      <th style={{ padding: '4px', borderBottom: '2px solid #cbd5e1' }}>Mode</th>
+                      <th style={{ padding: '4px', borderBottom: '2px solid #cbd5e1' }}>Drift</th>
+                      <th style={{ padding: '4px', borderBottom: '2px solid #cbd5e1' }}>Vol</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {snapshotLog.filter(snap => snap.id === Number(activeStock)).map((snap, idx) => (
+                      <tr key={idx} style={{ backgroundColor: idx === 0 ? '#dcfce7' : 'transparent', borderBottom: '1px solid #e2e8f0' }}>
+                        <td style={{ padding: '6px' }}>${snap.price.toFixed(2)}</td>
+                        <td style={{ padding: '6px' }}>{snap.type}</td>
+                        <td style={{ padding: '6px', color: snap.drift >= 0 ? '#059669' : '#dc2626' }}>{snap.drift ? snap.drift.toFixed(2) : '--'}</td>
+                        <td style={{ padding: '6px' }}>{snap.volatility ? snap.volatility.toFixed(2) : '--'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
             <div className="price-dashboard">
               {latestPrices.map((price, i) => (
                 <div key={i}>
-                <strong>Stock {i + 1}:</strong> ${price.toFixed(2)}
-              </div>
+                  <strong>Stock {i + 1}:</strong> ${price.toFixed(2)}
+                </div>
               ))}
             </div>
           </div>

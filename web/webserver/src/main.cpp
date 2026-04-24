@@ -27,7 +27,7 @@ using njson = nlohmann::json; // HACK:
 MarketDataManager data_manager;
 
 void load_ticker_data() {
-    string default_dir = "../../../data/";  // NOTE: assumes program is run from root directory
+    string default_dir = "../../data/";  // NOTE: updated to work when run from webserver directory
 
     if (std::filesystem::exists(default_dir) && std::filesystem::is_directory(default_dir)) {    
         for (const auto& entry : filesystem::recursive_directory_iterator(default_dir)) {
@@ -415,6 +415,13 @@ int main() {
             }
             else if (data == "resume") {
                 global_gen.gen_settings.pause.store(false);
+            }
+            else if (data.starts_with("freq:")) {
+                int interval = std::stoi(data.substr(5));
+                global_gen.gen_settings.snapshot_interval.store(interval);
+                for (auto& g : generators) {
+                    g->gen_settings.snapshot_interval.store(interval);
+                }
             }
             else if (data.starts_with("update")) {
                 int index = data.find(":");
@@ -835,7 +842,6 @@ int main() {
     CROW_ROUTE(app, "/api/calculateFee").methods(
         crow::HTTPMethod::GET,
         crow::HTTPMethod::Patch)([&](const crow::request& req) {
-
         auto& cookie = app.get_context<crow::CookieParser>(req);
         std::string email = cookie.get_cookie("email");
 
@@ -904,6 +910,45 @@ int main() {
         }
     });
 
+    CROW_ROUTE(app, "/api/resultsTemplate").methods(
+        crow::HTTPMethod::GET,
+        crow::HTTPMethod::Patch)([&](const crow::request& req) {
+
+        auto& cookie = app.get_context<crow::CookieParser>(req);
+        std::string email = cookie.get_cookie("email");
+
+        if (email.empty()) return crow::response(401);
+
+        try {
+            std::vector<int> hist = ConnectorSingleton::getInstance().fetchAllSims(email);
+
+            if (hist.size() <= 1) {
+                crow::response res;
+                res.code = 201;
+                return res;
+            }
+
+            std::vector<double> q = ConnectorSingleton::getInstance().comparativeAnalytics(hist.at(hist.size() - 1), hist.at(hist.size() - 2));
+
+            std::string jsonStr = {};
+            jsonStr += "{";
+            jsonStr += "\"percent\":\"" + to_string(q.at(q.size() - 3)) + "\",";
+            jsonStr += "\"flat\":\"" + to_string(q.at(q.size() - 2)) + "\",";
+            jsonStr += "\"taxes\":\"" + to_string(q.at(q.size() - 1)) + "\"";
+            jsonStr += "}";
+
+            crow::response res;
+            res.code = 200;
+            res.set_header("Access-Control-Allow-Origin", "https://localhost");
+            res.set_header("Access-Control-Allow-Credentials", "true");
+            res.set_header("Content-Type", "application/json");
+            res.write(jsonStr);
+            return res;
+        } catch (...) {
+            return crow::response(500);
+        }
+    });
+
     CROW_CATCHALL_ROUTE(app)([](){
         std::cout << "Catch All" << std::endl;
         crow::response res;
@@ -928,4 +973,3 @@ int main() {
     app.run();
     */
 }
-
