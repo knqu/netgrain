@@ -257,16 +257,15 @@ int main() {
         // NOTE: run_generated_simulation() seems to basically call gbm()
         // for num_bars (finite) and outputs SimulationResult
         if (mode == "generated") {
-            //std::vector<Generator> generators;
             for (const auto& entry : ticker_entries) {
-                std::cout << id << " ============" << std::endl;
                 generators.push_back(std::make_unique<Generator>(
                             entry.name, entry.base_price, entry.volatility,
                             entry.liquidity, entry.market_cap, id++));
+                
+                Generator* gen_ptr = generators.back().get();
 
-                // for each stock, automatically begin generation
-                std::thread([&]{
-                    generators.at(generators.size() - 1)->generate_ws();
+                std::thread([gen_ptr]{
+                    gen_ptr->generate_ws();
                 }).detach();
             }
             result = run_generated_simulation(engine, generators, num_bars);
@@ -307,14 +306,15 @@ int main() {
             global_gen.gen_settings.send_data.store(true);
 
             if (generators.size()) {
+                global_gen.gen_settings.send_data.store(false);
+                global_gen.gen_settings.conn.store(nullptr);
+                global_gen.reset();
+
                 for (const auto& x : generators) {
-                    std::cout << x->id << std::endl;
                     x->gen_settings.conn.store(&conn);
                     x->gen_settings.send_data.store(true);
                 }
             }
-
-            std::cout << "generators size is " << generators.size() << std::endl;
         })
         .onclose([&]( // need to reset
             crow::websocket::connection &conn,
@@ -324,9 +324,11 @@ int main() {
             fmt::print("websocket connection closed: {}\n", reason);
             std::lock_guard<std::mutex> _(mtx);
 
-            global_gen.gen_settings.send_data.store(false);
-            global_gen.gen_settings.conn.store(nullptr);
-            global_gen.reset();
+            if (!generators.size()) {
+                global_gen.gen_settings.send_data.store(false);
+                global_gen.gen_settings.conn.store(nullptr);
+                global_gen.reset();
+            }
             users.erase(&conn);
         })
         .onmessage([&](
