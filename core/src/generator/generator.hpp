@@ -674,12 +674,12 @@ skip:
     write_to_buffer(&buffer, threshold, &curr_size);
     write_to_buffer(&buffer, pause, &curr_size);
 
-    size_t buffer_len = this->streamed_points->size();
+    size_t buffer_len = streamed_subset.size();
     fmt::print("streamed_data_len: {}\n", buffer_len);
     write_to_buffer(&buffer, buffer_len, &curr_size);
     for (int i = 0; i < buffer_len; i++)
     {
-      write_to_buffer(&buffer, this->streamed_points->at(i), &curr_size);
+      write_to_buffer(&buffer, streamed_subset.at(i), &curr_size);
     }
 
     fmt::print("binary buffer length: {} = {}\n", curr_size, buffer.size());
