@@ -8,9 +8,9 @@
 
 .Grid_and_Leaderboard {
     display: grid;
-    grid-template-rows: 1fr;
+    grid-template-rows: auto; 
     grid-template-columns: minmax(0, 9fr) 1fr;
-    min-width: 0;
+    align-items: start; 
     gap: 2em;
     width: 95vw;
     overflow: hidden;
