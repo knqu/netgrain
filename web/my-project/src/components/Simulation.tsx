@@ -92,6 +92,8 @@ const Simulation: React.FC = () => {
   const [isRunning, setIsRunning] = useState<boolean>(false);
   const [engineStatus, setEngineStatus] = useState<string>("");
   const [runResult, setRunResult] = useState<any>(null);
+  const [editorCode, setEditorCode] = useState<string>("");
+
 
   // --- UPLOAD STATE ---
   const [uploadFile, setUploadFile] = useState<File | null>(null);
@@ -700,13 +702,15 @@ const Simulation: React.FC = () => {
             <div className="sim-grid">
               <div className="grid-item">
                 <EditorContainer
+                  value={editorCode}
                   onMount={(editor) => {
                     editorInstanceRef.current = editor;
                   }}
+                  onChange={(newValue) => setEditorCode(newValue)}
                 />
               </div>
               <div className="grid-item">
-                <ConfigUI />
+                {ConfigUI()}
               </div>
             </div>
           </div>

@@ -4,6 +4,8 @@ import React, { useEffect, useRef } from "react";
 
 interface Props {
   onMount: (editor: any) => void;
+  value: string;
+  onChange: (v: string) => void;
 }
 
 monaco.languages.registerCompletionItemProvider('python', {
@@ -82,7 +84,7 @@ monaco.languages.registerCompletionItemProvider('python', {
 });
 
 
-const EditorContainer: React.FC<Props> = ({onMount} : Props) => {
+const EditorContainer: React.FC<Props> = ({onMount, value, onChange} : Props) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const myEditor = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
 
@@ -91,10 +93,14 @@ const EditorContainer: React.FC<Props> = ({onMount} : Props) => {
     // const value = `this is a test`;
     myEditor.current = monaco.editor.create(containerRef.current, {
       //value,
+      value: value,
       language: "python",
       automaticLayout: false,
     });
 
+    const changeSubscription = myEditor.current.onDidChangeModelContent(() => {
+      onChange(myEditor.current?.getValue() || "");
+    })
     if (onMount) {
       onMount(myEditor.current);
     }
@@ -115,13 +121,14 @@ const EditorContainer: React.FC<Props> = ({onMount} : Props) => {
 
     return () => {
       if (myEditor.current) {
+        changeSubscription.dispose();
         resizeObserver.disconnect();
         myEditor.current.dispose();
 
         onMount(null);
       }
     };
-  }, [onMount]);
+  }, []);
 
   return (
     <div className="editor_outer" >
