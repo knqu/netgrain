@@ -5,7 +5,6 @@ import HistoryComponent from './History';
 import Generation from './Generation';
 import GridComponent from './GridComponent';
 import SimResults from './SimResults';
-import LiveCharts from './LiveChart';
 import ChartSelect from './ChartSelect';
 import Simulation from './Simulation';
 import Remix from './Remix';
@@ -49,7 +48,6 @@ export default function AppHome() {
       <DashboardButton button="Simulation"></DashboardButton>
       <DashboardButton button="Generation"></DashboardButton>
       <DashboardButton button="simResults"></DashboardButton>
-      <DashboardButton button="liveCharts"></DashboardButton>
       <DashboardButton button="chartSelect"></DashboardButton>
       <DashboardButton button="Remix"></DashboardButton>
       <DashboardButton button="Add Widget" onClickOverride={() => { onAdd("") }}></DashboardButton>
@@ -140,10 +138,6 @@ export default function AppHome() {
       case "simResults" :
         return (
           <SimResults />
-        );
-      case "liveCharts" :
-        return (
-          <LiveCharts />
         );
       case "Remix" :
         return (

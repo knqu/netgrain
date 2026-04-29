@@ -44,6 +44,7 @@ interface OrderData {
   type: String;
 }
 
+let paused = false;
 var data: pointData[][] = [];
 var order_data: OrderData[][] = [[{ id: 1, qty: 10, t_price: 50.50, type: "BUY" }, { id: 2, qty: 15, t_price: 5.50, type: "SELL" }],
 [{ id: 3, qty: 50, t_price: 15.00, type: "BUY" }, { id: 4, qty: 10, t_price: 17.5, type: "BUY" }],
@@ -53,6 +54,8 @@ var upperBound: number;
 
 var highs: number[] = [0, 0];
 var lows: number[] = [1000, 1000];
+
+
 
 // -- Sim Run component
 
@@ -71,10 +74,12 @@ const SimRun: React.FC<{ socketRef: WebSocket, activeStock: String, dates: Date[
   // Global mapping to store details for US 13 hover
   const detailsMap = useRef<Record<number, Record<number, any>>>({});
 
+
   // TODO: modify so this works with one socket
   function addMsg(curSocket: WebSocket) {
     const onMsgTemp = (e: MessageEvent) => {
       try {
+        console.log(e.data);
         const payload = JSON.parse(e.data);
         const price = Number(payload.price);
         const idx = Number(payload.id);
@@ -101,12 +106,14 @@ const SimRun: React.FC<{ socketRef: WebSocket, activeStock: String, dates: Date[
             const d = new Date(time * 1000);
             const timeLabel = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
 
+            const marketMode = String(payload.type || 'normal');
+
             onNewSnapshot({
               id: idx,
               timeLabel: timeLabel,
               price: price,
               clamped: payload.clamped,
-              type: payload.type || 'normal',
+              type: marketMode,
               drift: payload.drift,
               volatility: payload.volatility
             });
@@ -114,7 +121,7 @@ const SimRun: React.FC<{ socketRef: WebSocket, activeStock: String, dates: Date[
             if (!detailsMap.current[idx]) detailsMap.current[idx] = {};
             detailsMap.current[idx][time as number] = {
               price: price,
-              type: payload.type || 'normal',
+              type: marketMode,
               drift: payload.drift,
               volatility: payload.volatility
             };
@@ -133,7 +140,7 @@ const SimRun: React.FC<{ socketRef: WebSocket, activeStock: String, dates: Date[
             if (data[idx].at(-1)!.value < lowerBound || data[idx].at(-1)!.value > upperBound) {
               lowerBound = Number.MIN_VALUE;
               upperBound = Number.MAX_VALUE;
-              socketRef.send("multiple: pause");
+              socketRef.send("pause");
             }
             break;
           case "Order":
@@ -263,6 +270,8 @@ export default function SimulationRun({ num_stocks }: simulationRunProps) {
     });
   };
 
+  const socketRef = useRef<WebSocket>(null);
+
   const handleFrequencyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = parseInt(e.target.value);
     setSpeed(val);
@@ -272,7 +281,6 @@ export default function SimulationRun({ num_stocks }: simulationRunProps) {
     }
   };
 
-  const socketRef = useRef<WebSocket>(null);
   if (!socketRef.current) {
     socketRef.current = new WebSocket("ws://localhost:18080/websocket");
   }
@@ -306,7 +314,7 @@ export default function SimulationRun({ num_stocks }: simulationRunProps) {
 
   function pause() {
     console.log("send pause signal");
-    socketRef.current!.send("multiple: pause");
+    socketRef.current!.send("pause");
   }
 
   function resume() {
@@ -315,21 +323,35 @@ export default function SimulationRun({ num_stocks }: simulationRunProps) {
   }
 
   function modify() {
-    console.log("multiple: modify demo")
-    socketRef.current!.send("multiple: flash_crash");
+    console.log("modify demo")
+    socketRef.current!.send("flash_crash");
+  }
+
+  function bear() {
+    console.log("MARKET EVENT: bear")
+    socketRef.current!.send("bear");
+  }
+
+  function bull() {
+    console.log("MARKET EVENT: bull")
+    socketRef.current!.send("bull");
+  }
+
+  function sideways() {
+    console.log("MARKET EVENT: sideways")
+    socketRef.current!.send("sideways");
   }
 
   async function sleep(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms));
   }
 
-
   async function sleepAfterTime() {
     console.log("Sleep after elapsed time demo");
     const time = (document.getElementById("sleep timer") as HTMLInputElement).value;
     console.log(`sleep for ${time} seconds`);
     await sleep(Number(time) * 1000);
-    socketRef.current!.send("multiple: pause");
+    socketRef.current!.send("pause");
   }
 
   async function sleepOnCondition() {
@@ -367,7 +389,7 @@ export default function SimulationRun({ num_stocks }: simulationRunProps) {
 
   function endSim() {
     data = []
-    socketRef.current!.send("multiple: stop");
+    socketRef.current!.send("stop");
     var widgetVal: WidgetInterface[] = [];
     widgetVal.length = 0;
     switch (selectedOption) {
@@ -398,6 +420,7 @@ export default function SimulationRun({ num_stocks }: simulationRunProps) {
     // determine what data is saved from the simulation for the widget
   };
 
+
   const renderPage = () => {
     //console.log(Stats);
     switch (currentPage) {
@@ -409,6 +432,9 @@ export default function SimulationRun({ num_stocks }: simulationRunProps) {
             <button onClick={() => modify()}>Modify Demo</button>
             <button onClick={() => sleepAfterTime()}>wait pause demo</button>
             <button onClick={() => sleepOnCondition()}>Conditional pause demo</button>
+            <button onClick={() => bull()}>Bull</button>
+            <button onClick={() => bear()}>Bear</button>
+            <button onClick={() => sideways()}>Sideways</button>
             <input id="sleep timer" inputMode="decimal"></input>
 
             <div style={{ marginTop: '10px' }}>
