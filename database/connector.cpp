@@ -16,7 +16,7 @@
 
 
 enum error_codes {
-  UUID_NOT_FOUND, 
+  UUID_NOT_FOUND,
   INVALID_EMAIL_FORMAT,
   EMAIL_ALREADY_REGISTERED,
   USERNAME_ALREADY_REGISTERED,
@@ -583,7 +583,7 @@ try
       }
 
       fmt::print("{}\n", ss.str().substr(0, ss.str().size() - 1));
-      
+
       return ss.str().substr(0, ss.str().size() - 1);
     }
 
@@ -636,7 +636,7 @@ try
     }
 
     // Persistent Change
-    // adding again, uuid doesn't exist, 
+    // adding again, uuid doesn't exist,
     // convert simulation time into timestamp
     // simulationTime should be string HH:MM:SS, there are some workarounds needed for other time libraries
     int addLeaderboardAttempt(std::string identiifer, int profit, std::string simulationTime) {
@@ -780,23 +780,23 @@ try
         std::unordered_map<std::string, std::pair<int, int>> posMap; // (ticker, (market_price, quantity))
         std::vector<std::pair<int, int>> equityVec; // (timestamp, equity)
         std::unordered_map<std::string, std::deque<std::pair<int, int>>> entryVec; // ticker -> [(price, quantity)*]
-        
+
         for (auto row = std::begin(r); row != std::end(r); row++) {
           int assets = 0;
-          int gain = row["fill_price"].as<int>() * row["quantity"].as<int>();
+          int gain = (*row)["fill_price"].as<int>() * (*row)["quantity"].as<int>();
 
-          if (row["side"].as<std::string>() == "BUY") {
+          if ((*row)["side"].as<std::string>() == "BUY") {
             gain *= -1;
-            entryVec[row["ticker"].as<std::string>()].push_back({row["fill_price"].as<int>(), row["quantity"].as<int>()});
+            entryVec[(*row)["ticker"].as<std::string>()].push_back({(*row)["fill_price"].as<int>(), (*row)["quantity"].as<int>()});
           }
           else {
             int PL = 0;
-            int sellQuantity = row["quantity"].as<int>();
-            int sellPrice = row["fill_price"].as<int>();
+            int sellQuantity = (*row)["quantity"].as<int>();
+            int sellPrice = (*row)["fill_price"].as<int>();
 
             while (sellQuantity > 0) {
-              std::pair<int, int> temp = entryVec[row["ticker"].as<std::string>()].front();
-              entryVec[row["ticker"].as<std::string>()].pop_front();
+              std::pair<int, int> temp = entryVec[(*row)["ticker"].as<std::string>()].front();
+              entryVec[(*row)["ticker"].as<std::string>()].pop_front();
               if (sellQuantity - temp.second >= 0) {
                 PL += (sellPrice - temp.first) * temp.second;
                 sellQuantity -= temp.second;
@@ -805,12 +805,12 @@ try
                 PL += (sellPrice - temp.first) * sellQuantity;
                 temp.second -= sellQuantity;
                 sellQuantity = 0;
-                entryVec[row["ticker"].as<std::string>()].push_front(temp);
+                entryVec[(*row)["ticker"].as<std::string>()].push_front(temp);
               }
             }
 
             PLStr += "{\"time\" : ";
-            PLStr.append(row["bar_timestamp"].as<std::string>());
+            PLStr.append((*row)["bar_timestamp"].as<std::string>());
             PLStr += ", \"value\" : ";
             PLStr.append(std::to_string(PL));
             PLStr += ", \"color\" : ";
@@ -819,14 +819,14 @@ try
           }
 
           std::string balanceQuery = "SELECT * FROM sim_balance_log WHERE (sim_id = $1) AND (bar_timestamp = $2)";
-          pqxx::row balanceResult = tx.exec(balanceQuery, pqxx::params{sim_id, row["bar_timestamp"].as<std::string>()}).one_row();
+          pqxx::row balanceResult = tx.exec(balanceQuery, pqxx::params{sim_id, (*row)["bar_timestamp"].as<std::string>()}).one_row();
           tx.commit();
           int balance = balanceResult["balance"].as<int>();
 
           std::string posQuery = "SELECT * FROM sim_positions WHERE (sim_id = $1) AND (bar_timestamp = $2) AND (ticker = $3)";
-          pqxx::row posResult = tx.exec(posQuery, pqxx::params{sim_id, row["bar_timestamp"].as<std::string>(), row["ticker"].as<std::string>()}).one_row();
+          pqxx::row posResult = tx.exec(posQuery, pqxx::params{sim_id, (*row)["bar_timestamp"].as<std::string>(), (*row)["ticker"].as<std::string>()}).one_row();
           tx.commit();
-          posMap[row["ticker"].as<std::string>()] = {posResult["market_price"].as<int>(), posResult["quantity"].as<int>()};
+          posMap[(*row)["ticker"].as<std::string>()] = {posResult["market_price"].as<int>(), posResult["quantity"].as<int>()};
           for (const auto& [ticker, pos] : posMap) {
             assets += pos.first * pos.second;
           }
@@ -835,11 +835,11 @@ try
           equityVec.push_back({posResult["bar_timestamp"].as<int>(), equity});
 
           tableStr += "{\"timestamp\" : ";
-          tableStr.append(row["bar_timestamp"].as<std::string>());
+          tableStr.append((*row)["bar_timestamp"].as<std::string>());
           tableStr += ", \"orderType\" : \"";
-          tableStr.append(row["side"].as<std::string>());
+          tableStr.append((*row)["side"].as<std::string>());
           tableStr += "\", \"amountOfStock\" : ";
-          tableStr.append(row["quantity"].as<std::string>());
+          tableStr.append((*row)["quantity"].as<std::string>());
           tableStr += ", \"moneyGained\" : ";
           tableStr.append(std::to_string(gain));
           tableStr += ", \"totalMoney\" : ";
@@ -847,7 +847,7 @@ try
           tableStr += "},";
 
           equityStr += "{ \"time\" : ";
-          equityStr.append(row["bar_timestamp"].as<std::string>());
+          equityStr.append((*row)["bar_timestamp"].as<std::string>());
           equityStr += ", \"value\" : ";
           equityStr.append(std::to_string(equity));
           equityStr += "},";

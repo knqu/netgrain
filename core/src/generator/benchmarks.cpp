@@ -1,6 +1,6 @@
 #pragma once
 
-#include "generator.cpp"
+#include "generator.hpp"
 #include "ou.cpp"
 #include "bear.cpp"
 #include "bull.cpp"
@@ -59,7 +59,7 @@ class gen_benchmark {
           // process
           std::thread t(timer, seconds, std::ref(tester));
           t.detach();
-          
+
           // generate while the timer is still going on
           count = new_gen.generate(&tester, std::cout);
           std::cout << count << "\n";
@@ -78,7 +78,7 @@ class gen_benchmark {
           std::cin >> seconds;
           std::thread t(timer, seconds, std::ref(tester));
           t.detach();
-          
+
           count = new_gen.gen(&tester);
           std::cout << count << "\n";
           return count;
@@ -140,9 +140,9 @@ class gen_benchmark {
           std::thread t(timer, 15, std::ref(tester));
           t.detach();
 
-          
+
           new_gen.generate(&tester, out);
-      
+
           out.close();
           double percent_diff;
           std::cout << "What is the max percent difference expected? ";
@@ -152,4 +152,3 @@ class gen_benchmark {
           return OK;
       }
 };
-

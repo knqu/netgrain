@@ -2,7 +2,7 @@
 
 #include "def.hpp"
 #include "queue.hpp"
-#include "dataTransfer.cpp"
+#include "data_transfer.hpp"
 #include <cmath>
 #include <random>
 #include <iostream>
