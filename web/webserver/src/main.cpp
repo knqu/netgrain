@@ -303,6 +303,7 @@ int main() {
                 generators.push_back(std::make_unique<Generator>(
                             entry.name, entry.base_price, entry.volatility,
                             entry.liquidity, entry.market_cap, id++));
+                std::cerr << "Initializing generator: " << id << std::endl;
 
                 Generator* gen_ptr = generators.back().get();
                 ConnectorSingleton::getInstance().createSimulation(email, "", -1);

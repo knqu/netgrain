@@ -53,7 +53,7 @@ export interface SimulationConfigRequest {
   start_date: string;
   end_date: string;
   trade_fee: number;
-  stategy_code: String;
+  strategy_code: String;
   // include script
 }
 
@@ -236,7 +236,7 @@ const Simulation: React.FC = () => {
       start_date: startDate,
       end_date: endDate,
       trade_fee: Number(tradeFee),
-      stategy_code: pythonScript,
+      strategy_code: pythonScript,
       // include script here
     };
 
