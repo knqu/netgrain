@@ -440,7 +440,7 @@ export default function SimulationRun({ num_stocks }: simulationRunProps) {
             <div style={{ marginTop: '10px' }}>
               <label style={{ marginRight: '10px' }}>Sim Speed: <strong>{speed}x</strong></label>
               <input
-                type="range" min="1" max="100" step="1"
+                type="range" min="1" max="20" step="1"
                 value={speed} onChange={handleFrequencyChange}
                 style={{ cursor: 'pointer', verticalAlign: 'middle' }}
               />
