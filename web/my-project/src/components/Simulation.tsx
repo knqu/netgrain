@@ -696,7 +696,7 @@ const Simulation: React.FC = () => {
                 <option value="cpp">C++</option>
               </select>
               <button className="startSim" onClick={startSim}>
-                Start Simulation
+                 ▶ Start Simulation
               </button>
             </div>
             <div className="sim-grid">
