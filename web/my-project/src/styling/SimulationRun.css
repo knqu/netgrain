@@ -1,70 +1,148 @@
-
-
-.ChartContainer {
+/* Layout Containers */
+.simulation-container {
     display: flex;
-    flex: 1;
     flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    gap: 1.5em;
+    height: 88vh; /* Lock to viewport height */
+    gap: 12px;
+    padding: 15px;
+    color: #e0e0e0;
+    background-color: #121212;
+    font-family: 'Inter', system-ui, sans-serif;
+    box-sizing: border-box;
+    overflow: hidden; /* Prevent page-level scrolling */
 }
 
-.Chart_header_container {
-    width: 880px;
-    background-color: #252628;
-    padding: 0.76em;
-    border-radius: 0.3em;
-}
-
-.Chart_header {
+.main-content-row {
     display: flex;
     flex-direction: row;
-    justify-content: space-around;
-    align-items: center;
+    gap: 15px;
+    flex: 1; /* Take up all remaining vertical space */
+    min-height: 0; /* Allow children to shrink/scroll internally[cite: 1] */
+    width: 100%;
 }
 
-.Selector_container {
+/* Control Panels - More compact */
+.control-grid {
+    display: grid;
+    /* Force 3 columns to save vertical space */
+    grid-template-columns: repeat(3, 1fr);
+    gap: 15px;
+    background: #1e1e1e;
+    padding: 12px 20px;
+    border-radius: 12px;
+    border: 1px solid #333;
+    flex-shrink: 0; /* Don't let controls shrink */
+}
+
+.control-group h3 {
+    margin: 0 0 8px 0;
+    font-size: 0.9rem;
+    color: #94a3b8;
+}
+
+.button-row {
     display: flex;
-    flex-direction: row;
-    justify-content: center;
-    align-items: center;
-    gap: 0.5em;
+    flex-wrap: wrap;
+    gap: 6px;
 }
 
+/* Interactive Elements */
+button {
+    padding: 6px 12px;
+    font-size: 0.85rem;
+    border-radius: 6px;
+    border: none;
+    background: #3d3d3d;
+    color: white;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+input[type="number"], .input-row input {
+    background: #2d2d2d;
+    border: 1px solid #444;
+    color: white;
+    padding: 4px;
+    border-radius: 4px;
+    width: 60px;
+    font-size: 0.85rem;
+}
+
+/* Chart Styles */
 .Chart_outer_container {
+    flex: 2; /* Chart takes 50% of the row[cite: 1] */
+    background-color: #1e1e1e;
+    padding: 12px;
+    border-radius: 12px;
+    border: 1px solid #333;
     display: flex;
     flex-direction: column;
-    justify-content: center;
-    align-items: center;
-
-    width: max-content;
-    background-color: #252628;
-    padding: 1.6em;
-    border-radius: 0.5em;
-}
-
-.Chart_inner_container {
-    width: max-content;
-    background-color: #484B4E;
-    padding: 1em;
-    border-radius: 0.5em;
-    
-    display: flex;
-    flex-direction: row;
-    justify-content: center;
-    align-items: center;
 }
 
 .areaChart {
-    width: 800px;
-    height: 440px;
+    width: 100%;
+    height: 100%; /* Fill the container */
 }
 
-#stockSelector {
-    color: white;
+/* Data Tables Section */
+.data-section {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+    height: 25vh; /* Fixed relative height for tables */
+    flex-shrink: 0;
+    margin-bottom: 10px;
 }
 
-option {
-    color: black;
-    background-color: white;
+.table-card {
+    flex: 1; /* Each table takes 25% of the row[cite: 1] */
+    background: #1e1e1e;
+    padding: 12px;
+    border-radius: 12px;
+    border: 1px solid #333;
+    display: flex;
+    flex-direction: column;
+    min-width: 250px;
+}
+
+.table-card h4 {
+    margin: 0 0 5px 0;
+    font-size: 0.9rem;
+}
+
+.table-container {
+    flex: 1;
+    overflow-y: auto;
+    margin-top: 8px;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+th {
+    position: sticky;
+    top: 0;
+    background: #1e1e1e;
+    text-align: left;
+    border-bottom: 2px solid #333;
+    padding: 6px 10px;
+    color: #94a3b8;
+}
+
+td {
+    padding: 6px 10px;
+    border-bottom: 1px solid #2d2d2d;
+}
+
+.control-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 15px;
+    background: #1e1e1e;
+    padding: 15px;
+    border-radius: 12px;
+    border: 1px solid #333;
+    flex-shrink: 0;
 }

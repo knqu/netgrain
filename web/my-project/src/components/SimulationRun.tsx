@@ -223,21 +223,31 @@ const SimRun: React.FC<{ socketRef: WebSocket, activeStock: String, dates: Date[
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", width: "100%" }}>
-      <div style={{ padding: '10px', backgroundColor: '#f9f9f9', borderBottom: '2px solid #ccc', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div style={{ fontSize: '1.2rem' }}><strong>Generator Realism Phase:</strong> <span style={{ color: color, marginLeft: '8px' }}>{percentReal}% Adherence</span></div>
+      <div style={{ 
+        padding: '6px 12px', 
+        backgroundColor: '#1e1e1e', 
+        borderBottom: '1px solid #333', 
+        display: 'flex', 
+        justifyContent: 'space-between', 
+        alignItems: 'center',
+        fontSize: '0.85rem'
+      }}>
+        <div><strong>Generator Realism:</strong> <span style={{ color: color, marginLeft: '8px' }}>{percentReal}% Adherence</span></div>
 
         {hoverData && (
-          <div style={{ fontSize: '0.9rem', backgroundColor: '#eef2ff', padding: '4px 8px', borderRadius: '4px', border: '1px solid #c7d2fe', color: 'black' }}>
-            <strong>Hover:</strong> {hoverData.type} | <strong>Drift:</strong> {hoverData.drift?.toFixed(2) ?? '--'}% | <strong>Vol:</strong> {hoverData.volatility?.toFixed(2) ?? '--'}%
+          <div style={{ backgroundColor: '#2d2d2d', padding: '2px 8px', borderRadius: '4px', border: '1px solid #444' }}>
+            <strong>Hover:</strong> {hoverData.type} | <strong>Drift:</strong> {hoverData.drift?.toFixed(2)}% | <strong>Vol:</strong> {hoverData.volatility?.toFixed(2)}%
           </div>
         )}
 
-        <div style={{ fontSize: '0.9rem', color: '#666' }}>{clampedTicks} wild outliers clamped</div>
+        <div style={{ color: '#94a3b8' }}>{clampedTicks} outliers clamped</div>
       </div>
-      <div className="areaChart" style={{ flexGrow: 1, minHeight: '400px' }} ref={containerRef} />
+      {/* Removed minHeight to allow flex-grow to control size */}
+      <div className="areaChart" style={{ flexGrow: 1 }} ref={containerRef} />
     </div>
   );
 };
+
 
 interface simulationRunProps {
   num_stocks: number;
@@ -422,127 +432,116 @@ export default function SimulationRun({ num_stocks }: simulationRunProps) {
 
 
   const renderPage = () => {
-    //console.log(Stats);
-    switch (currentPage) {
-      case "Run":
-        return (
-          <div className="chart-wrapper">
-            <button onClick={() => pause()}>Pause</button>
-            <button onClick={() => resume()}>Resume</button>
-            <button onClick={() => modify()}>Modify Demo</button>
-            <button onClick={() => sleepAfterTime()}>wait pause demo</button>
-            <button onClick={() => sleepOnCondition()}>Conditional pause demo</button>
-            <button onClick={() => bull()}>Bull</button>
-            <button onClick={() => bear()}>Bear</button>
-            <button onClick={() => sideways()}>Sideways</button>
-            <input id="sleep timer" inputMode="decimal"></input>
+    if (currentPage === "End") return <EndSimulation items={Stats} />;
 
-            <div style={{ marginTop: '10px' }}>
-              <label style={{ marginRight: '10px' }}>Sim Speed: <strong>{speed}x</strong></label>
-              <input
-                type="range" min="1" max="20" step="1"
-                value={speed} onChange={handleFrequencyChange}
-                style={{ cursor: 'pointer', verticalAlign: 'middle' }}
-              />
+    return (
+      <div className="simulation-container">
+        {/* Top Control Panel[cite: 2] */}
+        <div className="control-grid">
+          <div className="control-group">
+            <h3>Simulation Controls</h3>
+            <div className="button-row">
+              <button onClick={pause}>Pause</button>
+              <button onClick={resume}>Resume</button>
+              <button onClick={() => setPage("End")} style={{background: '#ef4444'}}>End Simulation</button>
             </div>
-
-            <div>
-              <input id="lower bound" inputMode="decimal"></input>
-              <input id="upper bound" inputMode="decimal"></input>
-            </div>
-            <div>
-              <button onClick={() => endSim()}>End simulation</button>
-            </div>
-            <div>
-              <WidgetForm />
-            </div>
-            <div style={{ marginBottom: '10px' }}>
-              {Array.from({ length: num_stocks }, (_, i) => (
-                <button
-                  key={i}
-                  onClick={() => updateChart(i.toString())}
-                  style={{
-                    marginRight: '5px',
-                    fontWeight: activeStock === i.toString() ? 'bold' : 'normal'
-                  }}
-                >
-                  Stock {i + 1}
-                </button>
-              ))}
-            </div>
-            <div className="Chart_outer_container">
-              <div className="Chart_inner_container">
-                <div className="Chart" >
-                  <SimRun socketRef={socketRef.current!} activeStock={activeStock} dates={dates.current!} onNewSnapshot={handleNewSnapshot} />
-                </div>
-              </div>
-            </div>
-
-            <div style={{ marginTop: '20px', padding: '10px', backgroundColor: '#f8fafc', border: '1px solid #ccc', color: 'black' }}>
-              <h4 style={{ margin: '0 0 10px 0', color: 'black' }}>Snapshot Metrics (Stock {Number(activeStock) + 1})</h4>
-              <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
-                <table style={{ width: '100%', fontSize: '0.85rem', textAlign: 'left', borderCollapse: 'collapse', color: 'black' }}>
-                  <thead style={{ position: 'sticky', top: 0, backgroundColor: '#f8fafc', color: 'black' }}>
-                    <tr>
-                      <th style={{ padding: '4px', borderBottom: '2px solid #cbd5e1' }}>Price</th>
-                      <th style={{ padding: '4px', borderBottom: '2px solid #cbd5e1' }}>Mode</th>
-                      <th style={{ padding: '4px', borderBottom: '2px solid #cbd5e1' }}>Drift</th>
-                      <th style={{ padding: '4px', borderBottom: '2px solid #cbd5e1' }}>Vol</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {snapshotLog.filter(snap => snap.id === Number(activeStock)).map((snap, idx) => (
-                      <tr key={idx} style={{ backgroundColor: idx === 0 ? '#dcfce7' : 'transparent', borderBottom: '1px solid #e2e8f0' }}>
-                        <td style={{ padding: '6px' }}>${snap.price.toFixed(2)}</td>
-                        <td style={{ padding: '6px' }}>{snap.type}</td>
-                        <td style={{ padding: '6px', color: snap.drift >= 0 ? '#059669' : '#dc2626' }}>{snap.drift ? snap.drift.toFixed(2) : '--'}</td>
-                        <td style={{ padding: '6px' }}>{snap.volatility ? snap.volatility.toFixed(2) : '--'}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            <div className="price-dashboard">
-              {latestPrices.map((price, i) => (
-                <div key={i}>
-                  <strong>Stock {i + 1}:</strong> ${price.toFixed(2)}
-                </div>
-              ))}
-
-            </div>
-            <div className="order-dashboard" style={{ marginTop: '20px', padding: '10px', backgroundColor: '#fff7ed', border: '1px solid #ffedd5', color: 'black' }}>
-              <h4 style={{ margin: '0 0 10px 0' }}>Orders for Stock {Number(activeStock) + 1}</h4>
-              <div style={{ maxHeight: '150px', overflowY: 'auto' }}>
-                <table style={{ width: '100%', fontSize: '0.85rem', textAlign: 'left' }}>
-                  <thead>
-                    <tr>
-                      <th>ID</th>
-                      <th>Type</th>
-                      <th>Qty</th>
-                      <th>Price</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {order_data[Number(activeStock)]?.map((order) => (
-                      <tr key={order.id}>
-                        <td>{order.id}</td>
-                        <td style={{ color: order.type === 'BUY' ? 'green' : 'red' }}>{order.type}</td>
-                        <td>{order.qty}</td>
-                        <td>${order.t_price.toFixed(2)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+            <div className="speed-slider" style={{marginTop: '10px'}}>
+              <label style={{fontSize: '0.8rem'}}>Speed: <strong>{speed}x</strong></label>
+              <input type="range" min="1" max="20" value={speed} onChange={handleFrequencyChange} style={{width: '100%'}}/>
             </div>
           </div>
-        );
-      case "End":
-        return (< EndSimulation items={Stats} />);
-    }
-  }
+
+          <div className="control-group">
+            <h3>Automated Pausing</h3>
+            <div className="button-row" style={{marginBottom: '8px'}}>
+              <input id="sleep timer" type="number" defaultValue="5" style={{width: '50px'}}/>
+              <button onClick={sleepAfterTime}>Wait Pause</button>
+            </div>
+            <div className="button-row">
+              <input id="lower bound" placeholder="Min" style={{width: '50px'}}/>
+              <input id="upper bound" placeholder="Max" style={{width: '50px'}}/>
+              <button onClick={sleepOnCondition}>Set Bounds</button>
+            </div>
+          </div>
+
+          <div className="control-group">
+            <h3>Market Events</h3>
+            <div className="button-row">
+              <button onClick={bull}>Bull</button>
+              <button onClick={bear}>Bear</button>
+              <button onClick={sideways}>Sideways</button>
+              <button onClick={modify}>Flash Crash</button>
+            </div>
+          </div>
+        </div>
+
+        {/* Stock Selector Tabs[cite: 2] */}
+        <div className="button-row">
+          {Array.from({ length: num_stocks }, (_, i) => (
+            <button 
+              key={i} 
+              className={activeStock === i.toString() ? 'active' : ''}
+              onClick={() => updateChart(i.toString())}
+            >
+              Stock {i + 1}: ${latestPrices[i]?.toFixed(2)}
+            </button>
+          ))}
+        </div>
+
+        {/* Main Content Row: Chart + Snapshots + Orders */}
+        <div className="main-content-row">
+          {/* Component 1: Chart */}
+          <div className="Chart_outer_container">
+            <SimRun socketRef={socketRef.current!} activeStock={activeStock} dates={dates.current!} onNewSnapshot={handleNewSnapshot} />
+          </div>
+
+          {/* Component 2: Snapshot Metrics */}
+          <div className="table-card">
+            <h4>Snapshot Metrics (Stock {Number(activeStock) + 1})</h4>
+            <div className="table-container">
+              <table>
+                <thead>
+                  <tr><th>Price</th><th>Mode</th><th>Drift</th><th>Vol</th></tr>
+                </thead>
+                <tbody>
+                  {snapshotLog.filter(snap => snap.id === Number(activeStock)).map((snap, idx) => (
+                    <tr key={idx}>
+                      <td>${snap.price.toFixed(2)}</td>
+                      <td>{snap.type}</td>
+                      <td style={{ color: snap.drift >= 0 ? '#10b981' : '#ef4444' }}>{snap.drift?.toFixed(2)}%</td>
+                      <td>{snap.volatility?.toFixed(2)}%</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Component 3: Active Orders */}
+          <div className="table-card">
+            <h4>Active Orders</h4>
+            <div className="table-container">
+              <table>
+                <thead>
+                  <tr><th>ID</th><th>Type</th><th>Qty</th><th>Price</th></tr>
+                </thead>
+                <tbody>
+                  {order_data[Number(activeStock)]?.map((order) => (
+                    <tr key={order.id}>
+                      <td>#{order.id}</td>
+                      <td style={{ color: order.type === 'BUY' ? '#10b981' : '#ef4444', fontWeight: 'bold' }}>{order.type}</td>
+                      <td>{order.qty}</td>
+                      <td>${order.t_price.toFixed(2)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   //const websocket2 = useMemo(() => new WebSocket("ws://localhost:5555/"), []);
   return (
