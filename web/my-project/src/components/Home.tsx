@@ -46,9 +46,6 @@ export default function AppHome() {
       <DashboardButton button="Dashboard"></DashboardButton>
       <DashboardButton button="History"></DashboardButton>
       <DashboardButton button="Simulation"></DashboardButton>
-      <DashboardButton button="Generation"></DashboardButton>
-      <DashboardButton button="chartSelect"></DashboardButton>
-      <DashboardButton button="Remix"></DashboardButton>
       </div>
       </div>
     );
