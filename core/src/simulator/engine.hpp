@@ -37,6 +37,7 @@ class Engine {
 
 public:
     int simID;  
+    bool running;
     crow::websocket::connection * conn = nullptr;
     
     Engine(i64 starting_balance, PersistenceQueue *pq = nullptr) {
@@ -214,26 +215,30 @@ public:
             }
         }
         fill_log.insert(fill_log.end(), fills.begin(), fills.end());
-        std::cerr << "Current :" << std::filesystem::current_path() << std::endl;
 
         std::ostringstream oss;
         oss << "../src/sims/" << simID << "/";
         std::string path = oss.str();
-        std::cerr << "Path :" << path << std::endl;
 
-        fstream marketData(path + "marketData", ios::out);
+        fstream marketData(path + "marketData", std::ios::out | std::ios::app);
         for (const auto& [ticker, info] : bars) {
+            std::cerr << ticker << " " << info.close << std::endl;
             marketData << ticker << " " << info.close << "\n";
         }
         marketData << "End Bar\n";
         marketData.close();
 
         if (!fills.empty()) {
-            fstream algorithmActions(path + "algorithmActions", ios::out);
+            fstream algorithmActions(path + "algorithmActions", std::ios::out | std::ios::app);
             for (auto& f : fills) {
                 std::ostringstream data;
-                data << "{ \"Ticker : \"" << f.ticker << "\", \"Quantity\" : " << f.quantity << ", \"Fill Price\" : " << f.fill_price << ", \"Side\" : \"" << (f.side == Side::BUY ? "BUY" : "SELL") << "\"}," ;
-                conn->send_text(data.str());
+                data << "{ \"Ticker\" : \"" << f.ticker << "\", \"Quantity\" : " << f.quantity << ", \"Fill_Price\" : " << f.fill_price << ", \"Side\" : \"" << (f.side == Side::BUY ? "BUY" : "SELL") << "\"" <<  ",\"msg_type\" : \"fill\" }" ;
+                std::string msg = data.str();
+                if (conn != nullptr){
+                    std::cerr << "sending msg data" << std::endl;
+                    conn->send_text(msg);
+                }
+                std::cerr << "writing data\n";
                 algorithmActions << f.ticker << " " << (f.side == Side::BUY ? "BUY" : "SELL") << " " << f.quantity << " " << f.fill_price << " " << balance << "\n";
             }
             algorithmActions << "End Bar\n";

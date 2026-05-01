@@ -27,8 +27,8 @@ std::vector<i64> calculate_equity_and_write_PL(unsigned simID) {
     std::unordered_map<std::string, i64> marketMap; // ticker -> last market_price
     std::unordered_map<i64, int> PnLMap;
 
-    fstream algorithmActions(path + "algorithmActions", ios::in);
-    fstream marketData(path + "marketData", ios::in);
+    fstream algorithmActions(path + "algorithmActions", std::ios::in);
+    fstream marketData(path + "marketData", std::ios::in);
 
     std::string line;
     std::string market_line;
@@ -113,7 +113,7 @@ std::vector<i64> calculate_equity_and_write_PL(unsigned simID) {
         }
     }
 
-    fstream simResults(path + "simResults", ios::out);
+    fstream simResults(path + "simResults", std::ios::out | std::ios::app);
     simResults << "[";
     for (const auto [PnL, quantity] : PnLMap) {
          simResults << "{ \"time\" : " << PnL << ", \"value\" : " << quantity << "\"color\" : " << (PnL >= 0 ? "\"green\"" : "\"red\"") << " },";
@@ -139,7 +139,7 @@ void write_metrics(int simID, double duration) {
     oss << "../src/sims/" << simID << "/";
     std::string path = oss.str();;
 
-    fstream simResults(path + "simResults", ios::out);
+    fstream simResults(path + "simResults", std::ios::out | std::ios::app);
     simResults << "Simulation " << simID << "\n";
 
     auto now = std::chrono::system_clock::now();
@@ -227,8 +227,9 @@ SimulationResult run_generated_simulation(Engine& engine, Strategy& strategy,
     Broker broker(&engine);
 
     auto start = std::chrono::high_resolution_clock::now();
-    std::cerr << "runnign sim\n";
-    for (int i = 0; i < num_bars; i++) {
+    engine.running = true;
+    int i = 0;
+    while (engine.running) {
         u32 date = static_cast<u32>(i);
 
         // generate bars for each generator
@@ -236,15 +237,22 @@ SimulationResult run_generated_simulation(Engine& engine, Strategy& strategy,
         for (auto& gen : generators) {
             bar_map[gen->get_ticker()] = gen->generate_bar(date);
         }
-        std::cerr << "generated bars\n";
         strategy.on_bar(bar_map, broker);
-        std::cerr << "pyton on bar\n";
         engine.process_bar(bar_map);
-        std::cerr << "is this working now\n";
+        i++;
     }
     auto end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> duration = end - start;
+
+    for (auto& gen : generators) {
+        gen->gen_settings.send_data.store(false);
+        gen->gen_settings.conn.load()->close();
+        gen->gen_settings.conn.store(nullptr);
+    }
+    engine.conn->close();
+    engine.conn = nullptr;
     
+    std::cerr << "Writing metrics now" << std::endl;
     write_metrics(engine.simID, duration.count());
 
     return {engine.get_balance(), engine.get_fill_log(), engine.get_positions()};

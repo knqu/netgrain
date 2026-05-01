@@ -508,11 +508,13 @@ public:
                 }
 
                 if (gen_settings.send_data.load()) {
-                  gen_settings.conn.load()
-                    ->send_text(fmt::format(
-                      "{{\"price\": {}, \"clamped\": {}, \"type\": \"tagged\", \"id\": {}, \"drift\": {}, \"volatility\": {}, \"msg_type\": \"stock\"}}",
-                      curr, this->last_was_clamped ? "true" : "false", this->id, this->percent_drift, this->percent_volatility));
-                  this->streamed_points->push_back(curr);
+                  if (gen_settings.conn.load() != nullptr){
+                    gen_settings.conn.load()
+                      ->send_text(fmt::format(
+                        "{{\"price\": {}, \"clamped\": {}, \"type\": \"tagged\", \"id\": {}, \"drift\": {}, \"volatility\": {}, \"msg_type\": \"stock\"}}",
+                        curr, this->last_was_clamped ? "true" : "false", this->id, this->percent_drift, this->percent_volatility));
+                    this->streamed_points->push_back(curr);
+                  }
                 }
 
                 tracker += 1;
@@ -594,7 +596,7 @@ public:
         // TODO: way to send data would go here, this could be in the format
         // of a second queue, extra fields in the Data_Transfer, etc. for now
         // printing to console will suffice
-        if (gen_settings.send_data.load()) {
+        if (gen_settings.send_data.load() && gen_settings.conn.load() != nullptr) {
           double price_val = send_price();
           gen_settings.conn.load()->send_text(fmt::format(
             // :( haiyan!

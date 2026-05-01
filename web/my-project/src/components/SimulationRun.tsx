@@ -420,7 +420,6 @@ export default function SimulationRun({ num_stocks, tickers }: simulationRunProp
   function endSim() {
     data = []
     socketRef.current!.send("stop");
-    socketRef.current!.close();
     var widgetVal: WidgetInterface[] = [];
     widgetVal.length = 0;
     switch (selectedOption) {

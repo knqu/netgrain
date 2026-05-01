@@ -377,7 +377,6 @@ int main() {
             crow::websocket::connection &conn,
             const std::string &reason,
             uint16_t) {
-
             fmt::print("websocket connection closed: {}\n", reason);
             std::lock_guard<std::mutex> _(mtx);
 
@@ -456,6 +455,10 @@ int main() {
             else if (data == "stop") {
                 for (const auto& x : generators) {
                     x->gen_settings.send_data.store(false);
+                }
+                for (const auto& x: engines) {
+                    std::cerr << "Ending a simulation" << std::endl;
+                    x->running = false;
                 }
             }
             else if (data.starts_with("bubble")) {
