@@ -34,7 +34,8 @@ SimulationResult run_generated_simulation(Engine& engine, Strategy& strategy,
                                           std::vector<std::unique_ptr<Generator>>& generators, int num_bars) {
     Broker broker(&engine);
 
-    for (int i = 0; i < num_bars; i++) {
+    int i = 0;
+    while (1) {
         u32 date = static_cast<u32>(i);
 
         // generate bars for each generator
@@ -43,7 +44,9 @@ SimulationResult run_generated_simulation(Engine& engine, Strategy& strategy,
             bar_map[gen->get_ticker()] = gen->generate_bar(date);
         }
         strategy.on_bar(bar_map, broker);
-        engine.process_bar(bar_map);
+        std::vector<Fill> res = engine.process_bar(bar_map);
+
+        i++;
     }
 
     return {engine.get_balance(), engine.get_fill_log(), engine.get_positions()};
