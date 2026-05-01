@@ -444,13 +444,11 @@ int main() {
                     target
                 );
             }
-            else if (data == "flash_crash") { // FIX:
+            else if (data == "flash_crash") {
                 fmt::print("flash crash!\n");
 
                 for (const auto& x : generators) {
-                    if (x->gen_settings.new_event.load() == 0) {
-                        x->gen_settings.new_event.store(1);
-                    }
+                    x->gen_settings.new_event.store(1);
                 }
             }
             else if (data == "sideways") {
