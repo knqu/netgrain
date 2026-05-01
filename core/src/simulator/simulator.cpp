@@ -227,9 +227,9 @@ SimulationResult run_generated_simulation(Engine& engine, Strategy& strategy,
     Broker broker(&engine);
 
     auto start = std::chrono::high_resolution_clock::now();
-    engine.running = true;
+    engine.running.store(true);
     int i = 0;
-    while (engine.running) {
+    while (engine.running.load()) {
         u32 date = static_cast<u32>(i);
 
         // generate bars for each generator

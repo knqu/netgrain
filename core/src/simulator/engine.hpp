@@ -37,7 +37,7 @@ class Engine {
 
 public:
     int simID;  
-    bool running;
+    std::atomic<bool> running;
     crow::websocket::connection * conn = nullptr;
     
     Engine(i64 starting_balance, PersistenceQueue *pq = nullptr) {

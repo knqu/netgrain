@@ -458,7 +458,7 @@ int main() {
                 }
                 for (const auto& x: engines) {
                     std::cerr << "Ending a simulation" << std::endl;
-                    x->running = false;
+                    x->running.store(false);
                 }
             }
             else if (data.starts_with("bubble")) {
