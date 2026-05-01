@@ -246,7 +246,7 @@ public:
    * takes, current price
    */
   void generate_new_data_point() {
-    u32 new_data = data_buffer->front();
+    double new_data = data_buffer->front();
     short multiplier = 1;
     if (rand_int_inclusive_(0, 9) == 0) {
       multiplier = -1;
