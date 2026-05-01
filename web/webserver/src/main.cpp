@@ -74,7 +74,9 @@ int main() {
     std::vector<std::unique_ptr<Generator>> generators;
     std::vector<std::unique_ptr<Engine>> engines;
 
-    Generator global_gen(0.02, 2, 100, 100, 0);
+    // NOTE: global variables for simulating
+    std::vector<std::unique_ptr<Generator>> generators;
+    std::unique_ptr<PythonUserStrategy> python_strategy;
 
     CROW_ROUTE(app, "/api/market").methods(
         crow::HTTPMethod::GET)([&](const crow::request& req) {
@@ -245,7 +247,6 @@ int main() {
         engines.push_back(std::make_unique<Engine>(initial_capital));
         SimulationResult result;
 
-        std::unique_ptr<PythonUserStrategy> python_strategy;
         std::string strategy_code = j.value("strategy_code", "");
         if (strategy_code.empty()) {
             crow::response res(njson{{"error", "missing_strategy"}, {"message", "strategy_code is required"}}.dump());
@@ -352,14 +353,7 @@ int main() {
             std::lock_guard<std::mutex> _(mtx);
             users.insert(&conn);
 
-            global_gen.gen_settings.conn.store(&conn);
-            global_gen.gen_settings.send_data.store(true);
-
             if (generators.size()) {
-                global_gen.gen_settings.send_data.store(false);
-                global_gen.gen_settings.conn.store(nullptr);
-                global_gen.reset();
-
                 for (const auto& x : generators) {
                     x->gen_settings.conn.store(&conn);
                     x->gen_settings.send_data.store(true);
@@ -370,6 +364,17 @@ int main() {
                     x->conn = &conn;
                 }
             }
+
+            // NOTE: pre-condion, let /api/simulate fill up these global variables
+            /*
+            Engine engine(initial_capital);
+
+            std::thread([&]{
+                run_generated_simulation(engine, *python_strategy, generators, 0);
+            }).detach();
+            */
+
+            // Results are in engine.get_balance(), engine.get_fill_log(), engine.get_positions()
         })
         .onclose([&]( // need to reset
             crow::websocket::connection &conn,
@@ -379,12 +384,9 @@ int main() {
             fmt::print("websocket connection closed: {}\n", reason);
             std::lock_guard<std::mutex> _(mtx);
 
-            if (!generators.size()) {
-                global_gen.gen_settings.send_data.store(false);
-                global_gen.gen_settings.conn.store(nullptr);
-                global_gen.reset();
-            }
             users.erase(&conn);
+
+            // TODO: clean up global vars
         })
         .onmessage([&](
             crow::websocket::connection &conn,
@@ -428,77 +430,91 @@ int main() {
                     price,
                     target
                 );
-
-                std::thread([&]{
-                    global_gen.generate_ws();
-                }).detach();
             }
             else if (data == "flash_crash") {
-                if (global_gen.gen_settings.new_event.load() == 0) {
-                    global_gen.gen_settings.new_event.store(1);
-                    fmt::print("flash crash!\n");
+                fmt::print("flash crash!\n");
+
+                for (const auto& x : generators) {
+                    x->gen_settings.new_event.store(1);
                 }
             }
             else if (data == "sideways") {
                 fmt::print("sideways!\n");
-                global_gen.gen_settings.new_event.store(3);
+                for (const auto& x : generators) {
+                    x->gen_settings.new_event.store(3);
+                }
             }
             else if (data == "bear") {
                 fmt::print("bear market triggered!\n");
-                global_gen.gen_settings.new_event.store(4);
+                for (const auto& x : generators) {
+                    x->gen_settings.new_event.store(4);
+                }
             }
             else if (data == "bull") {
                 fmt::print("bull market triggered!\n");
-                global_gen.gen_settings.new_event.store(5);
+                for (const auto& x : generators) {
+                    x->gen_settings.new_event.store(5);
+                }
             }
             else if (data == "stop") {
-                global_gen.gen_settings.send_data.store(false);
+                for (const auto& x : generators) {
+                    x->gen_settings.send_data.store(false);
+                }
             }
             else if (data.starts_with("bubble")) {
-                if (global_gen.gen_settings.new_event.load() == 0) {
-                    int threshold = std::stoi(data.substr(7), nullptr, 10);
-                    global_gen.gen_settings.new_event.store(2);
-                    global_gen.gen_settings.threshold.store(threshold);
-                    fmt::print("bubble! {}\n", threshold);
-                }
-                else if (global_gen.gen_settings.new_event.load() == 2) {
-                    fmt::print("bubble is ignored: called consecutively when another is active!\n");
+                for (const auto& x : generators) {
+                    if (x->gen_settings.new_event.load() == 0) {
+                        int threshold = std::stoi(data.substr(7), nullptr, 10);
+                        x->gen_settings.new_event.store(2);
+                        x->gen_settings.threshold.store(threshold);
+                        fmt::print("bubble! {}\n", threshold);
+                    }
+                    else if (x->gen_settings.new_event.load() == 2) {
+                        fmt::print("bubble is ignored: called consecutively when another is active!\n");
+                    }
                 }
             }
             else if (data == "pause") {
-                global_gen.gen_settings.pause.store(true);
+                for (const auto& x : generators) {
+                    x->gen_settings.pause.store(true);
+                }
             }
             else if (data == "resume") {
-                global_gen.gen_settings.pause.store(false);
+                for (const auto& x : generators) {
+                    x->gen_settings.pause.store(false);
+                }
             }
             else if (data.starts_with("freq:")) {
                 int interval = std::stoi(data.substr(5));
-                global_gen.gen_settings.snapshot_interval.store(interval);
                 for (auto& g : generators) {
                     g->gen_settings.snapshot_interval.store(interval);
                 }
             }
             else if (data.starts_with("update")) {
-                size_t index = data.find(":");
-                global_gen.overwrite(stod(data.substr(index + 2)));
+                int index = data.find(":");
+                for (auto& g : generators) {
+                    g->overwrite(stod(data.substr(index + 2)));
+                }
             }
             else if (data.starts_with("rewind")) {
-                if (global_gen.gen_settings.new_event.load() == 0) {
-                    i64 rewind_count = std::stoi(data.substr(7), nullptr, 10);
-                    rewind_count = std::min<i64>(rewind_count, global_gen.streamed_points->size());
-                    double last_price_point =
-                        global_gen.streamed_points->at(
-                            global_gen.streamed_points->size() - rewind_count);
+                for (auto& g : generators) {
+                    if (g->gen_settings.new_event.load() == 0) {
+                        int rewind_count = std::stoi(data.substr(7), nullptr, 10);
+                        rewind_count = std::min<int>(rewind_count, g->streamed_points->size());
+                        double last_price_point =
+                            g->streamed_points->at(
+                                    g->streamed_points->size() - rewind_count);
 
-                    global_gen.streamed_points->erase(
-                        global_gen.streamed_points->end() - rewind_count,
-                        global_gen.streamed_points->end()
-                    );
-                    global_gen.gen_settings.reset_price.store(last_price_point);
-                    global_gen.gen_settings.new_event.store(6);
-                }
-                else if (global_gen.gen_settings.new_event.load() == 2) {
-                    fmt::print("rewind is ignored: another event is active\n");
+                        g->streamed_points->erase(
+                                g->streamed_points->end() - rewind_count,
+                                g->streamed_points->end()
+                                );
+                        g->gen_settings.reset_price.store(last_price_point);
+                        g->gen_settings.new_event.store(6);
+                    }
+                    else if (g->gen_settings.new_event.load() == 2) {
+                        fmt::print("rewind is ignored: another event is active\n");
+                    }
                 }
             }
             else if (data.starts_with("set_fields"))
@@ -525,12 +541,10 @@ int main() {
                 fields_str = fields_str.substr(find_pos + 1);
                 int target_price = std::stoi(fields_str);
 
+                /*
                 global_gen.set_fields(base_price, percent_drift, percent_volatility,
                         market_cap, target_price);
-            }
-            else if (data.starts_with("multiple")) {
-                size_t index = data.find("(");
-                // TODO:
+                */
             }
         });
 
@@ -790,6 +804,7 @@ int main() {
         }
     });
 
+    /*
     CROW_ROUTE(app, "/api/loadSim").methods(
         crow::HTTPMethod::POST,
         crow::HTTPMethod::Patch)([&](const crow::request& req) {
@@ -836,6 +851,7 @@ int main() {
 
         return res;
     });
+    */
 
     CROW_ROUTE(app, "/api/saveLayout").methods(
         crow::HTTPMethod::POST,
@@ -1023,10 +1039,6 @@ int main() {
         res.set_static_file_info_unsafe("../../my-project/src/components/catchall.html");
         return res;
     });
-
-    std::thread([&]{
-        global_gen.generate_ws();
-    }).detach();
 
     app.bindaddr("127.0.0.1").port(18080).multithreaded().run();
 

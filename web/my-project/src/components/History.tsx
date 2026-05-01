@@ -131,7 +131,7 @@ export default function HistoryComponent() {
       if (!containerRef.current) return;
 
       chartRef.current = createChart(containerRef.current, {
-        width: 520,
+        width: containerRef.current.clientWidth,
         height: 300,
         layout: {
           textColor: "black",
@@ -146,10 +146,21 @@ export default function HistoryComponent() {
           timeFormatter: (time: number) => `${time}s`,
         },
       });
+
       lineRef.current = chartRef.current.addSeries(LineSeries);
 
+      const resizeObserver = new ResizeObserver((entries) => {
+          if (entries[0].contentRect.width > 0 && chartRef.current) {
+              chartRef.current.applyOptions({ width: entries[0].contentRect.width });
+              chartRef.current.timeScale().fitContent();
+          }
+      });
+
+      resizeObserver.observe(containerRef.current);
+
       return () => {
-        chartRef.current?.remove();
+          resizeObserver.disconnect();
+          chartRef.current?.remove();
       };
     }, []);
 
@@ -159,7 +170,7 @@ export default function HistoryComponent() {
       const data = chartIndex == true ? testLineData : testDrawDownData
 
       lineRef.current.setData(data);
-      chartRef.current.timeScale().fitContent;
+      chartRef.current.timeScale().fitContent();
     }, [chartIndex]);
 
     return (
@@ -177,7 +188,7 @@ export default function HistoryComponent() {
       if (!containerRef.current) return;
 
       chartRef.current = createChart(containerRef.current, {
-        width: 520,
+        width: containerRef.current.clientWidth,
         height: 300,
         layout: {
           textColor: "black",
@@ -195,8 +206,18 @@ export default function HistoryComponent() {
 
       histRef.current = chartRef.current.addSeries(HistogramSeries, { color: "#26a69a" });
 
+      const resizeObserver = new ResizeObserver((entries) => {
+          if (entries[0].contentRect.width > 0 && chartRef.current) {
+              chartRef.current.applyOptions({ width: entries[0].contentRect.width });
+              chartRef.current.timeScale().fitContent();
+          }
+      });
+
+      resizeObserver.observe(containerRef.current);
+
       return () => {
-        chartRef.current?.remove();
+          resizeObserver.disconnect();
+          chartRef.current?.remove();
       };
     }, []);
 
@@ -206,7 +227,7 @@ export default function HistoryComponent() {
       const data = chartIndex == true ? testPLData : testIndividualPLData;
 
       histRef.current.setData(data);
-      chartRef.current.timeScale().fitContent;
+      chartRef.current.timeScale().fitContent();
     }, [chartIndex])
 
     return (
@@ -274,7 +295,7 @@ export default function HistoryComponent() {
           </div>
         </div>
 
-        <div className="history-table-entry-expanded-container" style={{ display: collapsed ? "none" : "grid" }}>
+        <div className="history-table-entry-expanded-container" style={{ display: collapsed ? "none" : "flex" }}>
           <div className="history-table-entry-expanded-linecharts-container">
             <DisplayLineChart chartIndex={lineIndex}></DisplayLineChart>
             <div className="button-group">

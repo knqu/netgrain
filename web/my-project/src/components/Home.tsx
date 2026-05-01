@@ -112,10 +112,6 @@ export default function AppHome() {
         return (
           <div className="Grid_and_Leaderboard">
             <GridComponent widgets={widgets} removeWidget={removeWidget} addWidget={addWidget} setInitialWidgets={setWidgets}></GridComponent>
-            <div className="Leaderboard_and_DailyMarket">
-              <DailyMarketComponenet></DailyMarketComponenet>
-              <LeaderboardComponent></LeaderboardComponent>
-            </div>
           </div>
         );
       case "History" :
