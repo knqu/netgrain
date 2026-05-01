@@ -73,9 +73,6 @@ int main() {
 
     std::vector<std::unique_ptr<Generator>> generators;
     std::vector<std::unique_ptr<Engine>> engines;
-
-    // NOTE: global variables for simulating
-    std::vector<std::unique_ptr<Generator>> generators;
     std::unique_ptr<PythonUserStrategy> python_strategy;
 
     CROW_ROUTE(app, "/api/market").methods(

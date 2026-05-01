@@ -38,7 +38,7 @@ function App() {
         <Route path="/verification" element={<Verification />} />
         <Route path="/forgot" element={<ForgotPassword />} />
         <Route path="*" element={<Login />} />
-        <Route path="/simRun" element={<SimulationRun num_stocks={3} />} />
+        <Route path="/simRun" element={<SimulationRun num_stocks={3} tickers={['']}/>} />
         <Route path="/resultsTemplate" element={<ResultsTemplate />} />
         <Route path="/remix" element={<Remix />} />
       </Routes>
