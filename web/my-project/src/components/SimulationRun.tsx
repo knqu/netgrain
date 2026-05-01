@@ -400,6 +400,7 @@ export default function SimulationRun({ num_stocks }: simulationRunProps) {
   function endSim() {
     data = []
     socketRef.current!.send("stop");
+    socketRef.current!.close();
     var widgetVal: WidgetInterface[] = [];
     widgetVal.length = 0;
     switch (selectedOption) {
@@ -432,7 +433,9 @@ export default function SimulationRun({ num_stocks }: simulationRunProps) {
 
 
   const renderPage = () => {
-    if (currentPage === "End") return <EndSimulation items={Stats} />;
+    if (currentPage === "End") {
+      return <EndSimulation items={Stats} />;
+    }
 
     return (
       <div className="simulation-container">
@@ -443,7 +446,7 @@ export default function SimulationRun({ num_stocks }: simulationRunProps) {
             <div className="button-row">
               <button onClick={pause}>Pause</button>
               <button onClick={resume}>Resume</button>
-              <button onClick={() => setPage("End")} style={{background: '#ef4444'}}>End Simulation</button>
+              <button onClick={() => endSim()} style={{background: '#ef4444'}}>End Simulation</button>
             </div>
             <div className="speed-slider" style={{marginTop: '10px'}}>
               <label style={{fontSize: '0.8rem'}}>Speed: <strong>{speed}x</strong></label>
@@ -475,7 +478,6 @@ export default function SimulationRun({ num_stocks }: simulationRunProps) {
           </div>
         </div>
 
-        {/* Stock Selector Tabs[cite: 2] */}
         <div className="button-row">
           {Array.from({ length: num_stocks }, (_, i) => (
             <button 
@@ -488,7 +490,6 @@ export default function SimulationRun({ num_stocks }: simulationRunProps) {
           ))}
         </div>
 
-        {/* Main Content Row: Chart + Snapshots + Orders */}
         <div className="main-content-row">
           {/* Component 1: Chart */}
           <div className="Chart_outer_container">
