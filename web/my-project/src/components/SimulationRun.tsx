@@ -418,7 +418,8 @@ export default function SimulationRun({ num_stocks, tickers }: simulationRunProp
 
 
   function endSim() {
-    data = []
+    data = [];
+    order_data = [];
     socketRef.current!.send("stop");
     var widgetVal: WidgetInterface[] = [];
     widgetVal.length = 0;
