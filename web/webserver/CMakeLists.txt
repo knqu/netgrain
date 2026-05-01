@@ -41,7 +41,6 @@ set(NETGRAIN_SIMULATOR_SOURCES
 )
 
 add_executable(my_app src/main.cpp ${NETGRAIN_SIMULATOR_SOURCES})
-target_compile_definitions(my_app PRIVATE CROW_ENABLE_SSL)
 
 target_include_directories(my_app PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/../../core/src/simulator

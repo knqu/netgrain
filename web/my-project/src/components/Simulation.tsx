@@ -683,6 +683,13 @@ const Simulation: React.FC = () => {
     }
   };
 
+   function getTickers() : String[] {
+    var ret: String[] = [];
+    for (var i = 0; i < stocks.length; i++) {
+      ret.push(stocks[i].ticker);
+    }
+    return ret;
+  }
   function renderPage() {
     switch (currentPage) {
       case "Sim":
@@ -728,7 +735,7 @@ const Simulation: React.FC = () => {
           </div>
         );
       case "Begin":
-        return <SimulationRun num_stocks={stocks.length} />;
+        return <SimulationRun num_stocks={stocks.length} tickers={getTickers()}/>;
     }
   }
 

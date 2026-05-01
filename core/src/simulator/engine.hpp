@@ -3,6 +3,10 @@
 #include <string>
 #include <vector>
 #include <unordered_map>
+#include <crow.h>
+#include <thread>
+#include <filesystem>
+#include <chrono>
 
 #include "order.hpp"
 #include "historicalData.hpp"
@@ -32,6 +36,9 @@ class Engine {
     }
 
 public:
+    int simID;  
+    crow::websocket::connection * conn = nullptr;
+    
     Engine(i64 starting_balance, PersistenceQueue *pq = nullptr) {
         init_balance = starting_balance;
         balance = starting_balance;
@@ -103,6 +110,10 @@ public:
     }
 
     std::vector<Fill> process_bar(std::unordered_map<std::string, MarketDataRow> bars) {
+        while (conn == nullptr) {
+            std::cerr << "Waiting 1 second" << std::endl;
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+        }
         std::vector<Fill> fills;
 
         for (auto order = pending_orders.begin(); order != pending_orders.end(); ) {
@@ -202,25 +213,31 @@ public:
                 ++order;
             }
         }
-
         fill_log.insert(fill_log.end(), fills.begin(), fills.end());
+        std::cerr << "Current :" << std::filesystem::current_path() << std::endl;
 
-        if (pq && !fills.empty()) {
-            for (auto& f : fills)
-                pq->push(FillEvent{f});
+        std::ostringstream oss;
+        oss << "../src/sims/" << simID << "/";
+        std::string path = oss.str();
+        std::cerr << "Path :" << path << std::endl;
 
-            pq->push(BalanceEvent{balance, fills.back().timestamp});
+        fstream marketData(path + "marketData", ios::out);
+        for (const auto& [ticker, info] : bars) {
+            marketData << ticker << " " << info.close << "\n";
+        }
+        marketData << "End Bar\n";
+        marketData.close();
 
-            // push position snapshots for each ticker that was filled
-            std::unordered_map<std::string, bool> seen;
+        if (!fills.empty()) {
+            fstream algorithmActions(path + "algorithmActions", ios::out);
             for (auto& f : fills) {
-                if (!seen[f.ticker]) {
-                    seen[f.ticker] = true;
-                    auto it = positions.find(f.ticker);
-                    if (it != positions.end())
-                        pq->push(PositionSnapshotEvent{it->second, bars.find(it->second.ticker)->second.close, fills.back().timestamp});
-                }
+                std::ostringstream data;
+                data << "{ \"Ticker : \"" << f.ticker << "\", \"Quantity\" : " << f.quantity << ", \"Fill Price\" : " << f.fill_price << ", \"Side\" : \"" << (f.side == Side::BUY ? "BUY" : "SELL") << "\"}," ;
+                conn->send_text(data.str());
+                algorithmActions << f.ticker << " " << (f.side == Side::BUY ? "BUY" : "SELL") << " " << f.quantity << " " << f.fill_price << " " << balance << "\n";
             }
+            algorithmActions << "End Bar\n";
+            algorithmActions.close();
         }
 
         return fills;

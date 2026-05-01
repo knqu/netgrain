@@ -44,11 +44,11 @@ interface OrderData {
   type: String;
 }
 
+// TODO: update orderdata stuff
 let paused = false;
 var data: pointData[][] = [];
-var order_data: OrderData[][] = [[{ id: 1, qty: 10, t_price: 50.50, type: "BUY" }, { id: 2, qty: 15, t_price: 5.50, type: "SELL" }],
-[{ id: 3, qty: 50, t_price: 15.00, type: "BUY" }, { id: 4, qty: 10, t_price: 17.5, type: "BUY" }],
-[{ id: 5, qty: 75, t_price: 13.00, type: "BUY" }]];
+var order_data: OrderData[][] = [];
+var stock_order_index: number = 0;
 var lowerBound: number;
 var upperBound: number;
 
@@ -59,7 +59,7 @@ var lows: number[] = [1000, 1000];
 
 // -- Sim Run component
 
-const SimRun: React.FC<{ socketRef: WebSocket, activeStock: String, dates: Date[], onNewSnapshot: (snap: Snapshot) => void }> = ({ socketRef, activeStock, dates, onNewSnapshot }) => {
+const SimRun: React.FC<{ tickers: String[], socketRef: WebSocket, activeStock: String, dates: Date[], onNewSnapshot: (snap: Snapshot) => void }> = ({ tickers, socketRef, activeStock, dates, onNewSnapshot }) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const seriesRef = useRef<any>(null);
@@ -81,11 +81,11 @@ const SimRun: React.FC<{ socketRef: WebSocket, activeStock: String, dates: Date[
       try {
         console.log(e.data);
         const payload = JSON.parse(e.data);
-        const price = Number(payload.price);
-        const idx = Number(payload.id);
         const msg_t = String(payload.msg_type);
         switch (msg_t) {
           case "stock":
+            const price = Number(payload.price);
+            const idx = Number(payload.id);
             setTotalTicks(prev => prev + 1);
             if (payload.clamped) {
               setClampedTicks(prev => prev + 1);
@@ -143,7 +143,25 @@ const SimRun: React.FC<{ socketRef: WebSocket, activeStock: String, dates: Date[
               socketRef.send("pause");
             }
             break;
-          case "Order":
+          case "fill":
+            // find which ticker we have filled
+            //Ticker Quantity, Fill_Price, Side
+            const tick = String(payload.Ticker);
+            var tick_idx = -1;
+            for (var i = 0; i < tickers.length; i++) {
+              if (tickers[i] === tick) {
+                tick_idx = i;
+                break;
+              }
+            }
+            if (tick_idx == -1 || tick_idx >= order_data.length) {
+              break;
+            }
+            const quantity = Number(payload.Quantity);
+            const f_price = Number(payload.Fill_Price);
+            const f_side = String(payload.Side);
+            stock_order_index = stock_order_index + 1
+            order_data[tick_idx].push({id: stock_order_index, qty: quantity, t_price: f_price, type: f_side})
           //TODO: order update code
         }
 
@@ -251,12 +269,14 @@ const SimRun: React.FC<{ socketRef: WebSocket, activeStock: String, dates: Date[
 
 interface simulationRunProps {
   num_stocks: number;
+  tickers: String[];
 }
 
 // --- Main Dashboard ---
-export default function SimulationRun({ num_stocks }: simulationRunProps) {
+export default function SimulationRun({ num_stocks, tickers }: simulationRunProps) {
   for (var i = 0; i < num_stocks; i++) {
     data.push([]);
+    order_data.push([]);
   }
   //const [allOrders, setAllOrders] = useState<OrderData[][]>(order_data);
   const [latestPrices, setLatestPrices] = useState<number[]>(new Array(num_stocks).fill(0));
@@ -400,6 +420,7 @@ export default function SimulationRun({ num_stocks }: simulationRunProps) {
   function endSim() {
     data = []
     socketRef.current!.send("stop");
+    socketRef.current!.close();
     var widgetVal: WidgetInterface[] = [];
     widgetVal.length = 0;
     switch (selectedOption) {
@@ -432,7 +453,9 @@ export default function SimulationRun({ num_stocks }: simulationRunProps) {
 
 
   const renderPage = () => {
-    if (currentPage === "End") return <EndSimulation items={Stats} />;
+    if (currentPage === "End") {
+      return <EndSimulation items={Stats} />;
+    }
 
     return (
       <div className="simulation-container">
@@ -443,7 +466,7 @@ export default function SimulationRun({ num_stocks }: simulationRunProps) {
             <div className="button-row">
               <button onClick={pause}>Pause</button>
               <button onClick={resume}>Resume</button>
-              <button onClick={() => setPage("End")} style={{background: '#ef4444'}}>End Simulation</button>
+              <button onClick={() => endSim()} style={{background: '#ef4444'}}>End Simulation</button>
             </div>
             <div className="speed-slider" style={{marginTop: '10px'}}>
               <label style={{fontSize: '0.8rem'}}>Speed: <strong>{speed}x</strong></label>
@@ -475,7 +498,6 @@ export default function SimulationRun({ num_stocks }: simulationRunProps) {
           </div>
         </div>
 
-        {/* Stock Selector Tabs[cite: 2] */}
         <div className="button-row">
           {Array.from({ length: num_stocks }, (_, i) => (
             <button 
@@ -483,16 +505,15 @@ export default function SimulationRun({ num_stocks }: simulationRunProps) {
               className={activeStock === i.toString() ? 'active' : ''}
               onClick={() => updateChart(i.toString())}
             >
-              Stock {i + 1}: ${latestPrices[i]?.toFixed(2)}
+              ${tickers[i]}: ${latestPrices[i]?.toFixed(2)}
             </button>
           ))}
         </div>
 
-        {/* Main Content Row: Chart + Snapshots + Orders */}
         <div className="main-content-row">
           {/* Component 1: Chart */}
           <div className="Chart_outer_container">
-            <SimRun socketRef={socketRef.current!} activeStock={activeStock} dates={dates.current!} onNewSnapshot={handleNewSnapshot} />
+            <SimRun tickers={tickers} socketRef={socketRef.current!} activeStock={activeStock} dates={dates.current!} onNewSnapshot={handleNewSnapshot} />
           </div>
 
           {/* Component 2: Snapshot Metrics */}

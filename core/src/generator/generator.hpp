@@ -157,6 +157,8 @@ public:
     this->gen_settings.gen.store(true);
     this->gen_settings.new_event.store(0);
     this->gen_settings.send_data.store(false);
+    this->gen_settings.bar_ready.store(false);
+
     // NOTE: even though the simulator passes in an int scaled by 100,
     // the gbm math looks to be scale invariant
 
@@ -217,8 +219,7 @@ public:
 
   double send_price() {
     if (data_buffer->size() == 0) return base_price;
-    double data = data_buffer->front();
-    data_buffer->pop();
+    double data = data_buffer->back();
     return data;
   }
 
@@ -244,7 +245,7 @@ public:
    * takes, current price
    */
   void generate_new_data_point() {
-    u32 new_data = data_buffer->front();
+    double new_data = data_buffer->front();
     short multiplier = 1;
     if (rand_int_inclusive_(0, 9) == 0) {
       multiplier = -1;
@@ -277,11 +278,18 @@ public:
     double high = cur;
     double low = cur;
 
+    while (!this->gen_settings.bar_ready.load()) {
+      continue;
+    }
+
+    
     for (int i = 0; i < ticks_per_bar; i++) {
-      cur = gbm(cur);
+      cur = data_buffer->front();
+      data_buffer->pop();
       if (cur > high) high = cur;
       if (cur < low) low = cur;
     }
+    this->gen_settings.bar_ready.store(false);
 
     last_bar_close = cur;
     has_bar_state = true;
@@ -594,6 +602,10 @@ public:
             price_val, this->last_was_clamped ? "true" : "false", this->id, this->percent_drift, this->percent_volatility));
           this->streamed_points->push_back(price_val);
         }
+      }
+
+      if (data_buffer->size() > 50) {
+        this->gen_settings.bar_ready.store(true);
       }
 
       // goto

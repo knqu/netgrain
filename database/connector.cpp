@@ -58,9 +58,9 @@ try
         {
           pqxx::row r = tx.exec(query, pqxx::params{uuid}).one_row();
         }
-        catch (const std::exception &e)
+        catch (...)
         {
-            return UUID_NOT_FOUND;
+          return UUID_NOT_FOUND;
         }
         return SUCCESS;
       }
@@ -76,7 +76,7 @@ try
         {
           r = tx.exec(query, pqxx::params{identifier}).one_row();
         }
-        catch (const std::exception &e)
+        catch (...)
         {
           return -1;
         }
@@ -122,7 +122,7 @@ try
               );
             #endif
           }
-          catch (const std::exception &e)
+          catch (...)
           {
             std::cout << "Please launch your psql service\n";
             abort();
@@ -141,7 +141,7 @@ try
       {
         pqxx::row r = tx.exec(query, pqxx::params{identifier, password}).one_row();
       }
-      catch (const std::exception &e)
+      catch (...)
       {
         std::cout << "User not found\n";
         return false;
@@ -181,7 +181,7 @@ try
         std::string query = "SELECT * FROM userlogin WHERE (email = $1)";
         pqxx::result r = tx.exec(query, pqxx::params{email}).no_rows();
       }
-      catch (const std::exception &e)
+      catch (...)
       {
         fmt::print("EMAIL_ALREADY_REGISTERED: {}\n", email);
         return EMAIL_ALREADY_REGISTERED;
@@ -217,7 +217,7 @@ try
         std::string query = "UPDATE userlogin SET password = $1 WHERE (userid = $2)";
         pqxx::result r = tx.exec(query, pqxx::params{newPassword, uuID}).no_rows();
       }
-      catch (const std::exception &e)
+      catch (...)
       {
         return -1;
       }
@@ -319,7 +319,7 @@ try
       {
         r = tx.exec(query).one_row();
       }
-      catch (const std::exception &e)
+      catch (...)
       {
         return "";
       }
@@ -351,7 +351,7 @@ try
     }
 
     // returns (path_to_data, dateofsim)
-    std::vector<std::string> fetchSimulation(int simID, std::string identifier) {
+    std::vector<std::string> fetchSimulation(int64_t simID, std::string identifier) {
       int uuid = getUUID(identifier);
       pqxx::work tx(*conn);
       pqxx::row r;
@@ -457,7 +457,7 @@ try
         std::cerr << e.what() << std::endl;
       }
 
-      std::string path = "./sims/" + std::to_string(currentSeq) + "/";
+      std::string path = "../src/sims/" + std::to_string(currentSeq) + "/";
       std::filesystem::create_directories(path);
 
       std::filesystem::permissions(
@@ -497,7 +497,7 @@ try
         {
           pqxx::row r = tx.exec(query, pqxx::params{globalPresetID}).one_row();
         }
-        catch (const std::exception &e)
+        catch (...)
         {
             return PRESET_ID_NOT_FOUND;
         }
@@ -639,7 +639,7 @@ try
     // adding again, uuid doesn't exist,
     // convert simulation time into timestamp
     // simulationTime should be string HH:MM:SS, there are some workarounds needed for other time libraries
-    int addLeaderboardAttempt(std::string identiifer, int profit, std::string simulationTime) {
+    int addLeaderboardAttempt(std::string identiifer, int64_t profit, std::string simulationTime) {
       int uuID = getUUID(identiifer);
 
       if (uuIDfound(uuID) == -1) {
@@ -655,7 +655,7 @@ try
         std::string query = "SELECT * FROM leaderboard WHERE (userid = $1)";
         pqxx::result r = tx.exec(query, pqxx::params{uuID}).no_rows();
       }
-      catch (const std::exception &e)
+      catch (...)
       {
         return LEADERBOARD_ATTEMPT_MADE;
       }
@@ -740,7 +740,7 @@ try
         std::string query = "SELECT * FROM globalcustompresets WHERE (scaling = $1) AND (volatility = $2) AND (liquidity = $3) AND (tradingvolume = $4)";
         pqxx::result r = tx.exec(query, pqxx::params{scaling, volatility, liquidity, tradingVol}).no_rows();
       }
-      catch (const std::exception &e)
+      catch (...)
       {
           return DUPLICATE_PRESET_FOUND;
       }
@@ -763,7 +763,7 @@ try
       return r[0].as<int>();
     }
 
-    std::unordered_map<std::string, std::string> fetchMetrics(int sim_id) {
+    std::unordered_map<std::string, std::string> fetchMetrics(int64_t sim_id) {
       pqxx::work tx(*conn);
       std::unordered_map<std::string, std::string> ret;
 
@@ -896,12 +896,3 @@ try
       return ret;
     }
 };
-
-/*
-int main() {
-    ConnectorSingleton::getInstance().createSimulation("user1", "", -1);
-    ConnectorSingleton::getInstance().createSimulation("user2", "", -1);
-    ConnectorSingleton::getInstance().createSimulation("user2", "", -1);
-    return 0;
-}
-*/
