@@ -30,7 +30,6 @@ public:
   double percent_drift;
   double percent_volatility;
   double dt;
-  bool bar_ready;
 
   std::vector<double> *streamed_points;
 
@@ -126,7 +125,6 @@ public:
     this->gen_settings.gen.store(true);
     this->gen_settings.new_event.store(0);
     this->gen_settings.send_data.store(false);
-    this->bar_ready = false;
 
     deterministic ? seed_rng_deterministic_(seed) : seed_rng_nondeterministic_();
   }
@@ -159,6 +157,8 @@ public:
     this->gen_settings.gen.store(true);
     this->gen_settings.new_event.store(0);
     this->gen_settings.send_data.store(false);
+    this->gen_settings.bar_ready.store(false);
+
     // NOTE: even though the simulator passes in an int scaled by 100,
     // the gbm math looks to be scale invariant
 
@@ -220,7 +220,6 @@ public:
   double send_price() {
     if (data_buffer->size() == 0) return base_price;
     double data = data_buffer->back();
-    //data_buffer->pop();
     return data;
   }
 
@@ -279,15 +278,18 @@ public:
     double high = cur;
     double low = cur;
 
-    while (!this->bar_ready) {}
+    while (!this->gen_settings.bar_ready.load()) {
+      continue;
+    }
 
+    
     for (int i = 0; i < ticks_per_bar; i++) {
-      
       cur = data_buffer->front();
       data_buffer->pop();
       if (cur > high) high = cur;
       if (cur < low) low = cur;
     }
+    this->gen_settings.bar_ready.store(false);
 
     last_bar_close = cur;
     has_bar_state = true;
@@ -602,8 +604,8 @@ public:
         }
       }
 
-      if (data_buffer->size() == 50) {
-        this->bar_ready = true;
+      if (data_buffer->size() > 50) {
+        this->gen_settings.bar_ready.store(true);
       }
 
       // goto
