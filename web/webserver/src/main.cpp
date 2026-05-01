@@ -1,7 +1,3 @@
-#define CROW_ENABLE_SSL
-
-// HEADERS
-
 #include <fmt/format.h>
 #include <crow.h>
 #include "crow/middlewares/cookie_parser.h"
@@ -76,6 +72,7 @@ int main() {
     std::mutex mtx;
 
     std::vector<std::unique_ptr<Generator>> generators;
+    std::vector<std::unique_ptr<Engine>> engines;
 
     Generator global_gen(0.02, 2, 100, 100, 0);
 
@@ -186,7 +183,8 @@ int main() {
 
         try {
             j = njson::parse(req.body); //HACK:
-        } catch (const njson::parse_error& e) {
+            std::cerr << j << std::endl;
+        } catch (...) {
             std::cout << "ERROR\n";
             crow::response res(R"({"error": "Invalid JSON"})");
             res.set_header("Access-Control-Allow-Origin", "*");
@@ -221,24 +219,6 @@ int main() {
             return res;
         }
 
-        // For each ticker, add to ticker_entries
-        // Example:
-        // {
-        //   "initial_capital":100000,
-        //   "stocks":[
-        //     {
-        //       "ticker":"GOOGL",
-        //       "base_price":135,
-        //       "liquidity":50,
-        //       "volatility":2,
-        //       "market_cap":3
-        //     }
-        //   ],
-        //   "start_date":"",
-        //   "end_date":"",
-        //   "trade_fee":1.5,
-        //   "script":""
-        // }
         for (auto& stock : j["stocks"]) {
             TickerEntry entry;
             entry.name = stock.at("ticker").get<std::string>();
@@ -262,7 +242,7 @@ int main() {
             return res;
         }
 
-        Engine engine(initial_capital);
+        engines.push_back(std::make_unique<Engine>(initial_capital));
         SimulationResult result;
 
         std::unique_ptr<PythonUserStrategy> python_strategy;
@@ -292,13 +272,15 @@ int main() {
 
         auto& cookie = app.get_context<crow::CookieParser>(req);
         std::string email = cookie.get_cookie("email");
-        std::cerr << email << std::endl;
 
         // Generate Mode: convert ticker entries to generators
         // NOTE: run_generated_simulation() seems to basically call gbm()
         // for num_bars (finite) and outputs SimulationResult
         if (mode == "generated") {
-            fmt::print("entering generated branch\n");
+            int newSimID = ConnectorSingleton::getInstance().createSimulation(email, "", -1);
+            std::cerr << "Sim ID: " << newSimID << std::endl;
+            engines.back().get()->simID = newSimID;
+
             for (const auto& entry : ticker_entries) {
                 generators.push_back(std::make_unique<Generator>(
                             entry.name, entry.base_price, entry.volatility,
@@ -306,7 +288,6 @@ int main() {
                 std::cerr << "Initializing generator: " << id << std::endl;
 
                 Generator* gen_ptr = generators.back().get();
-                ConnectorSingleton::getInstance().createSimulation(email, "", -1);
 
                 std::thread([gen_ptr]{
                     gen_ptr->generate_ws();
@@ -314,7 +295,7 @@ int main() {
             }
             try {
                 fmt::print("calling run_generated_simulation...\n");
-                result = run_generated_simulation(engine, *python_strategy, generators, num_bars);
+                result = run_generated_simulation(*(engines.back()), *python_strategy, generators, num_bars);
                 fmt::print("run_generated_simulation done\n");
             } catch (const std::exception& e) {
                 fmt::print("simulation failed: {}\n", e.what());
@@ -341,7 +322,7 @@ int main() {
             }
             try {
                 fmt::print("calling run_csv_simulation...\n");
-                result = run_csv_simulation(engine, *python_strategy, data_manager, tickers);
+                result = run_csv_simulation(*(engines.back()), *python_strategy, data_manager, tickers);
                 fmt::print("run_csv_simulation done\n");
             } catch (const std::exception& e) {
                 fmt::print("simulation failed: {}\n", e.what());
@@ -354,9 +335,10 @@ int main() {
         }
 
         std::string output = serialize_simulation_result(result);
-        fmt::print("responding: fills={}, positions={}\n",
-                   result.fills.size(), result.positions.size());
-
+        fmt::print("responding: fills={}, positions={}\n", result.fills.size(), result.positions.size());
+        
+        std::cerr << "output: " << output << std::endl;
+        
         crow::response res(output);
         res.set_header("Access-Control-Allow-Origin", "*");
         res.set_header("Content-Type", "application/json");
@@ -381,6 +363,11 @@ int main() {
                 for (const auto& x : generators) {
                     x->gen_settings.conn.store(&conn);
                     x->gen_settings.send_data.store(true);
+                }
+
+                for (const auto& x: engines) {
+                    std::cerr << "Set a connection" << std::endl;
+                    x->conn = &conn;
                 }
             }
         })
@@ -417,7 +404,7 @@ int main() {
             if (data.starts_with("sim")) {
                 std::string sim_args_str = data.substr(5);
 
-                int find_pos = sim_args_str.find_first_of("!");
+                size_t find_pos = sim_args_str.find_first_of("!");
                 double drift = std::stod(sim_args_str.substr(0, find_pos));
 
                 sim_args_str = sim_args_str.substr(find_pos + 1);
@@ -492,13 +479,13 @@ int main() {
                 }
             }
             else if (data.starts_with("update")) {
-                int index = data.find(":");
+                size_t index = data.find(":");
                 global_gen.overwrite(stod(data.substr(index + 2)));
             }
             else if (data.starts_with("rewind")) {
                 if (global_gen.gen_settings.new_event.load() == 0) {
-                    int rewind_count = std::stoi(data.substr(7), nullptr, 10);
-                    rewind_count = std::min<int>(rewind_count, global_gen.streamed_points->size());
+                    i64 rewind_count = std::stoi(data.substr(7), nullptr, 10);
+                    rewind_count = std::min<i64>(rewind_count, global_gen.streamed_points->size());
                     double last_price_point =
                         global_gen.streamed_points->at(
                             global_gen.streamed_points->size() - rewind_count);
@@ -518,7 +505,7 @@ int main() {
             {
                 std::string fields_str = data.substr(11);
 
-                int find_pos = fields_str.find_first_of("~");
+                size_t find_pos = fields_str.find_first_of("~");
                 int base_price = std::stoi(fields_str.substr(0, find_pos));
 
                 fields_str = fields_str.substr(find_pos + 1);
@@ -542,7 +529,7 @@ int main() {
                         market_cap, target_price);
             }
             else if (data.starts_with("multiple")) {
-                int index = data.find("(");
+                size_t index = data.find("(");
                 // TODO:
             }
         });
@@ -588,7 +575,7 @@ int main() {
         std::string email = reqBody["login_submitted_email"].s();
         std::string password = reqBody["login_submitted_password"].s();
 
-        int dbResponse = ConnectorSingleton::getInstance().login(email, password) ;
+        bool dbResponse = ConnectorSingleton::getInstance().login(email, password) ;
 
         if (dbResponse == true) {
             auto& cookie = app.get_context<crow::CookieParser>(req);
@@ -984,11 +971,8 @@ int main() {
         crow::HTTPMethod::POST,
         crow::HTTPMethod::Patch)([&](const crow::request& req) {
 
-        std::cout << "is this working" << std::endl;
         auto reqBody = crow::json::load(req.body);
-        int simID = reqBody["simID"].i();
-        std::cout << "simID" << std::endl;
-        std::cout<< simID << std::endl;
+        int64_t simID = reqBody["simID"].i();
 
         std::unordered_map<std::string, std::string> metrics;
         try {

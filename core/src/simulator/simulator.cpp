@@ -4,6 +4,198 @@
 
 #include <sstream>
 #include <algorithm>
+#include <chrono>
+
+std::string month_to_string(int month) {
+    const char* months[] = {
+        "January", "February", "March", "April",
+        "May", "June", "July", "August",
+        "September", "October", "November", "December"
+    };
+
+    return months[month - 1];
+}
+
+std::vector<i64> calculate_equity_and_write_PL(unsigned simID) {
+    std::ostringstream oss;
+    oss << "../src/sims/" << simID << "/";
+    std::string path = oss.str();;
+
+    std::vector<i64> retVec;
+    std::unordered_map<std::string, i64> posMap; // ticker -> quantity held
+    std::unordered_map<std::string, std::deque<std::pair<i64, i64>>> entryMap; // ticker -> ([price, quantity])
+    std::unordered_map<std::string, i64> marketMap; // ticker -> last market_price
+    std::unordered_map<i64, int> PnLMap;
+
+    fstream algorithmActions(path + "algorithmActions", ios::in);
+    fstream marketData(path + "marketData", ios::in);
+
+    std::string line;
+    std::string market_line;
+    i64 balance = 0;
+
+    while (std::getline(algorithmActions, line)) {
+        if (line == "End Bar") {
+            i64 equity = balance;
+            while (std::getline(marketData, market_line)) {
+                if (market_line == "End Bar") {
+                    break;
+                }
+                std::string tick_name;
+                i64 market_price;
+
+                std::istringstream miss(market_line);
+                miss >> tick_name;
+                miss >> market_price;
+
+                marketMap[tick_name] = market_price;
+
+                if (posMap[tick_name] != 0) {
+                    equity += posMap[tick_name] * market_price;
+                }
+            }
+            retVec.push_back(equity);
+            continue;
+        }
+
+        std::string ticker;
+        std::string side;
+        i64 quantity;
+        i64 fill_price;
+        
+        std::istringstream aiss(line);
+        aiss >> ticker;
+        aiss >> side;
+        aiss >> quantity;
+        aiss >> fill_price;
+        aiss >> balance;
+
+        if (side == "BUY"){
+            posMap[ticker] += quantity;
+            entryMap[ticker].push_back({fill_price, quantity});
+        }
+        else {
+            posMap[ticker] -= quantity;
+
+            i64 PL = 0;
+            while (quantity > 0) {
+                std::pair<i64, i64> temp = entryMap[ticker].front();
+                entryMap[ticker].pop_front();
+
+                if (quantity - temp.second >= 0) {
+                    PL += (fill_price - temp.first) * temp.second;
+                    quantity -= temp.second;
+                }
+                else {
+                    PL += (fill_price - temp.first) * temp.second;
+                    temp.second -= quantity;
+                    quantity = 0;
+                    entryMap[ticker].push_front(temp);
+                }
+            }
+            PnLMap[PL]++;
+        }
+    }
+    algorithmActions.close();
+    marketData.close();
+
+    for (auto& [ticker, deque] : entryMap) {
+        i64 market_price = marketMap[ticker];
+
+        while (deque.empty() == false) {
+            i64 PL = 0;
+
+            std::pair<i64, i64> temp = deque.front();
+            deque.pop_front();
+
+            PL += (market_price - temp.first) * temp.second;
+            PnLMap[PL]++;
+        }
+    }
+
+    fstream simResults(path + "simResults", ios::out);
+    simResults << "[";
+    for (const auto [PnL, quantity] : PnLMap) {
+         simResults << "{ \"time\" : " << PnL << ", \"value\" : " << quantity << "\"color\" : " << (PnL >= 0 ? "\"green\"" : "\"red\"") << " },";
+    }
+    simResults << "]\n";
+    simResults.close();
+
+    return retVec;
+}
+
+std::string equity_to_str(std::vector<i64> equityVec) {
+    std::ostringstream retStr;
+    retStr << "[";
+    for (size_t i = 0; i < equityVec.size(); i++) {
+        retStr << "{ \"time\" : " << i << ", \"value\" : " << equityVec[i] << " },";
+    }
+    retStr << "]";
+    return retStr.str();
+}
+
+void write_metrics(int simID, double duration) {
+    std::ostringstream oss;
+    oss << "../src/sims/" << simID << "/";
+    std::string path = oss.str();;
+
+    fstream simResults(path + "simResults", ios::out);
+    simResults << "Simulation " << simID << "\n";
+
+    auto now = std::chrono::system_clock::now();
+    auto today = std::chrono::floor<std::chrono::days>(now);
+    std::chrono::year_month_day ymd{today};
+
+    simResults << unsigned(ymd.day()) << " " << month_to_string(unsigned(ymd.month())) << " " << int(ymd.year()) << "\n";
+    simResults << duration << "\n";
+
+    simResults << "PL Start\n";
+    std::vector<i64> equity_vec = calculate_equity_and_write_PL(simID);
+    simResults << "PL End\n";
+
+    std::string equity_gain = "";
+    std::string equity_str = equity_to_str(equity_vec);
+    if (equity_vec.size() == 0) {
+        equity_gain = "0";
+    }
+    else if (equity_vec.size() == 1) {
+        equity_gain = std::to_string(equity_vec[0]);
+    }
+    else {
+        equity_gain = std::to_string(equity_vec[equity_vec.size() - 1] - equity_vec[0]);
+    }
+
+    simResults << equity_gain << "\n";
+    simResults << "\n";
+    simResults << "fees and stuff\n";
+
+    simResults << "Equity Start\n";
+    simResults << equity_str << "\n";
+    simResults << "Equity End\n";
+    
+    std::ostringstream dds;
+    i64 peak = -1;
+    dds << "[";
+    for (size_t i = 0; i < equity_vec.size(); i++) {
+        double drawdown;
+        if (equity_vec[i] > peak) {
+            drawdown = 0.0;
+            peak =  equity_vec[i];
+        }
+        else {
+            drawdown = ((double) (equity_vec[i] - peak)) / ((double) peak);
+        }
+
+        dds << "{ \"time\" : " << i << ", \"value\" : " << drawdown << " },"; 
+    }
+    dds << "]";
+
+    simResults << "Drawdown Start\n";
+    simResults << dds.str() << "\n";
+    simResults << "Drawdown End\n";
+
+    simResults.close();
+}
 
 SimulationResult run_csv_simulation(Engine& engine, Strategy& strategy, MarketDataManager& data,
                                     const std::vector<std::string>& tickers) {
@@ -34,6 +226,8 @@ SimulationResult run_generated_simulation(Engine& engine, Strategy& strategy,
                                           std::vector<std::unique_ptr<Generator>>& generators, int num_bars) {
     Broker broker(&engine);
 
+    auto start = std::chrono::high_resolution_clock::now();
+    std::cerr << "runnign sim\n";
     for (int i = 0; i < num_bars; i++) {
         u32 date = static_cast<u32>(i);
 
@@ -42,9 +236,16 @@ SimulationResult run_generated_simulation(Engine& engine, Strategy& strategy,
         for (auto& gen : generators) {
             bar_map[gen->get_ticker()] = gen->generate_bar(date);
         }
+        std::cerr << "generated bars\n";
         strategy.on_bar(bar_map, broker);
+        std::cerr << "pyton on bar\n";
         engine.process_bar(bar_map);
+        std::cerr << "is this working now\n";
     }
+    auto end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> duration = end - start;
+    
+    write_metrics(engine.simID, duration.count());
 
     return {engine.get_balance(), engine.get_fill_log(), engine.get_positions()};
 }
