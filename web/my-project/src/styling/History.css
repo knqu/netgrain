@@ -2,145 +2,77 @@
     background-color: #3D3F42;
     border-radius: 0.3em;
     height: 91%;
-    width: 98.75%;
-
-    display: grid;
-    grid-template-columns: 3fr 90fr 3fr;
-    grid-template-rows: 1fr 8fr;
+    width: 95vw;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 1em;
+    box-sizing: border-box;
+    overflow-x: hidden;
 }
 
 .history-table-header-container {
     background-color: #252628;
     width: 100%;
-    height: fit-content;
     border-radius: 0.3em;
-    padding: 0.75em;
-    margin-top: 1em;
-    
-    grid-column: 2;
-    grid-row: 1;
+    padding: 0.75em 1em;
+    box-sizing: border-box;
 }
 
 .HistoryTable {
-    grid-column: 2;
-    grid-row: 2;
+    width: 100%;
     overflow-y: auto;
+    margin-top: 1em;
+}
+
+.history-table-header,
+.history-table-contents {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr) 80px;
+    width: 100%;
+    align-items: center;
+    text-align: center;
 }
 
 .history-table-header {
-    font-size: 2em;
+    font-size: 1.8em;
     font-weight: 400;
-
-    display: grid;
-    grid-template-columns: 2fr repeat(4, 24fr) 1fr 1fr;
-    grid-template-rows: auto;
-}
-
-#sim-name {
-    grid-column: 2;
 }
 
 .history-table-parent-container {
     background-color: #252628;
     border-radius: 0.3em;
-    padding: 1em;
-    width: 90vw;
+    padding: 1.5em;
+    width: 100%;
+    box-sizing: border-box;
     margin-bottom: 0.8em;
 }
 
-.history-table-entry-container {
-    display: flex;
-    align-items: center;
-}
-
-.history-table-contents {
-    display: grid;
-    width: 90vw;
-    grid-template-columns: 2fr repeat(4, 24fr) 1fr 1fr;
-    grid-template-rows: auto;
-
-    font-size: 1.5em;
-}
-
-#table-entry-sim-name {
-    grid-column: 2;
-}
-
-#history-table-arrow {
-    margin-top: 2px;
-    margin-left: 10px;
-}
-
-.arrow-button {
-    border: none;
-    background-color: transparent;
-    padding: 0;
-    margin: 0;
-}
-
-.arrow-button:enabled {
-    outline: none;
-}
-
 .history-table-entry-expanded-container {
-    display: grid;
-    grid-template-columns: 2fr repeat(3, 32fr) 1fr 1fr;
-    grid-template-rows: 1fr;
-    margin-top: 2em;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 20px;
+    margin-top: 1.5em;
+    width: 100%;
+    box-sizing: border-box;
 }
 
-.history-table-entry-expanded-linecharts-container {
-    background-color: #3D3F42;
-    border-radius: 0.3em;
-    width: fit-content;
-    padding: 0.75em;
-
-    grid-column: 2;
-    grid-row: 1
-}
-
+.history-table-entry-expanded-linecharts-container,
 .history-table-entry-expanded-tradecharts-container {
     background-color: #3D3F42;
     border-radius: 0.3em;
-    width: fit-content;
-    padding: 0.75em;
-
-    grid-column: 3;
-    grid-row: 1
+    padding: 1em;
+    flex: 1;
+    min-width: 0;
 }
 
 .history-table-entry-expanded-stats-container {
     background-color: #3D3F42;
     border-radius: 0.3em;
-    padding: 0.5em;
-    width: 550px;
-    height: fit-content;
-    
-    grid-column: 4;
-    grid-row: 1;
-    align-self: center;
-}
-
-.expand-button {
-    height: fit-content;
-    background-color: transparent;
-    border: none;
-    padding: 0;
-
-    grid-column : 5;
-    grid-row: 1;
-    align-self: end;
-}
-
-.expand-button:enabled {
-    outline: none;
-}
-
-#history-table-expand {
-    margin-left: 15px;
-}
-
-.history-table-entry-expanded-stats-container {
+    padding: 1.5em;
+    flex: 0 0 350px;
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -150,23 +82,33 @@
     display: flex;
     flex-direction: row;
     justify-content: space-between;
-    font-size: 2em;
+    font-size: 1.2em;
+    gap: 15px;
 }
 
-.stat-headers{
+.stat-headers, .stat-infos {
     text-align: left;
 }
 
-.stat-infos {
-    text-align: left;
+.lineChart {
+    width: 100%;
 }
 
 .button-group {
     display: flex;
-    flex-direction: row;
     justify-content: center;
-    align-items: center;
     gap: 0.5em;
-
     margin-top: 0.8em;
+}
+
+.arrow-button, .expand-button {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    margin: 0;
+}
+
+#history-table-arrow, #history-table-expand {
+    display: block;
 }
