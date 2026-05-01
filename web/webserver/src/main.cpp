@@ -21,6 +21,7 @@
 #include <algorithm>
 #include <cstdio>
 #include <filesystem>
+#include <chrono>
 
 namespace py = pybind11;
 
@@ -68,8 +69,12 @@ int main() {
 
     crow::mustache::set_global_base("../../my-project/dist");
 
+    auto start = std::chrono::high_resolution_clock::now();
+
     std::unordered_set<crow::websocket::connection *> users;
     std::mutex mtx;
+
+    int lastSimID;
 
     std::vector<std::unique_ptr<Generator>> generators;
     std::vector<std::unique_ptr<Engine>> engines;
@@ -275,9 +280,12 @@ int main() {
         // NOTE: run_generated_simulation() seems to basically call gbm()
         // for num_bars (finite) and outputs SimulationResult
         if (mode == "generated") {
+            std::cerr << email << std::endl;
             int newSimID = ConnectorSingleton::getInstance().createSimulation(email, "", -1);
+            std::cerr << "calling create simulation for " << newSimID << std::endl;
             std::cerr << "Sim ID: " << newSimID << std::endl;
             engines.back().get()->simID = newSimID;
+            lastSimID = newSimID;
 
             for (const auto& entry : ticker_entries) {
                 generators.push_back(std::make_unique<Generator>(
@@ -361,17 +369,6 @@ int main() {
                     x->conn = &conn;
                 }
             }
-
-            // NOTE: pre-condion, let /api/simulate fill up these global variables
-            /*
-            Engine engine(initial_capital);
-
-            std::thread([&]{
-                run_generated_simulation(engine, *python_strategy, generators, 0);
-            }).detach();
-            */
-
-            // Results are in engine.get_balance(), engine.get_fill_log(), engine.get_positions()
         })
         .onclose([&]( // need to reset
             crow::websocket::connection &conn,
@@ -383,6 +380,21 @@ int main() {
             users.erase(&conn);
 
             // TODO: clean up global vars
+            std::string filePath = "../src/sims/" + std::to_string(lastSimID) + "/simResults";
+            std::cerr << "attempting to serialize to " << lastSimID << std::endl;
+            std::ofstream file(filePath);
+
+            file << "Daniel's Sim\n";
+            file << "1 May 2026\n";
+
+            auto end = std::chrono::high_resolution_clock::now();
+
+            auto sec = duration_cast<std::chrono::seconds>(end - start);
+
+            file << std::to_string(sec.count()) << " seconds\n";
+            file << "+6\n\n";
+            file << "1231,123,515,15,26,31\n";
+            file.close();
         })
         .onmessage([&](
             crow::websocket::connection &conn,
@@ -932,55 +944,59 @@ int main() {
         }
     });
 
-    CROW_ROUTE(app, "/api/fetchHistory").methods(
-        crow::HTTPMethod::GET,
-        crow::HTTPMethod::Patch)([&](const crow::request& req) {
+    CROW_ROUTE(app, "/api/fetchHistory").methods(crow::HTTPMethod::GET, crow::HTTPMethod::PATCH)
+        ([&](const crow::request& req) {
+         auto& cookie = app.get_context<crow::CookieParser>(req);
+         std::string email = cookie.get_cookie("email");
 
-        auto& cookie = app.get_context<crow::CookieParser>(req);
-        std::string email = cookie.get_cookie("email");
+         if (email.empty()) return crow::response(401);
 
-        if (email.empty()) return crow::response(401);
+         try {
+             std::vector<int> hist = ConnectorSingleton::getInstance().fetchAllSims(email);
+             
+             std::cerr << "this user has " << hist.size() << std::endl;
 
-        try {
-            std::vector<int> hist = ConnectorSingleton::getInstance().fetchAllSims(email);
+             if (hist.empty()) {
+                 return crow::response(201);
+             }
 
-            if (hist.size() == 0) {
-                crow::response res;
-                res.code = 201;
-                return res;
-            }
+             std::vector<crow::json::wvalue> simList;
 
-            std::string jsonStr = "[";
-            for (int i = 0; i < hist.size(); i++) {
-                std::string filePath = "../src/sims/" + std::to_string(hist[i]) + "/simResults";
-                std::vector<std::string> fileInfo(4);
-                std::ifstream file(filePath);
-                for (int j = 0; j < 4; j++) {
-                    std::getline(file, fileInfo[j]);
-                }
-                file.close();
+             for (int simID : hist) {
+                 std::string filePath = "../src/sims/" + std::to_string(simID) + "/simResults";
+                 std::ifstream file(filePath);
 
-                jsonStr += "{";
-                jsonStr += "\"SimName\":\"" + fileInfo[0] + "\",";
-                jsonStr += "\"Date\":\"" + fileInfo[1] + "\",";
-                jsonStr += "\"Duration\":\"" + fileInfo[2] + "\",";
-                jsonStr += "\"Profit\":\"" + fileInfo[3] + "\",";
-                jsonStr += "\"ID\":" + std::to_string(hist[i]);
-                jsonStr += "},";
-            }
-            jsonStr.pop_back();
-            jsonStr += "]";
+                 if (!file.is_open()) continue;
 
-            crow::response res;
-            res.code = 200;
-            res.set_header("Access-Control-Allow-Origin", "https://localhost");
-            res.set_header("Access-Control-Allow-Credentials", "true");
-            res.set_header("Content-Type", "application/json");
-            res.write(jsonStr);
-            return res;
-        } catch (...) {
-            return crow::response(500);
-        }
+                 std::vector<std::string> fileInfo(4);
+                 for (int j = 0; j < 4; j++) {
+                     std::getline(file, fileInfo[j]);
+                 }
+                 file.close();
+
+                 crow::json::wvalue simObj;
+                 simObj["SimName"] = fileInfo[0];
+                 simObj["Date"] = fileInfo[1];
+                 simObj["Duration"] = fileInfo[2];
+                 simObj["Profit"] = fileInfo[3];
+                 simObj["ID"] = simID;
+
+                 simList.push_back(std::move(simObj));
+             }
+
+             crow::json::wvalue finalResponse = std::move(simList);
+
+             crow::response res;
+             res.code = 200;
+             res.set_header("Access-Control-Allow-Origin", "https://localhost");
+             res.set_header("Access-Control-Allow-Credentials", "true");
+             res.set_header("Content-Type", "application/json");
+             res.body = finalResponse.dump();
+             return res;
+
+         } catch (...) {
+             return crow::response(500);
+         }
     });
 
     CROW_ROUTE(app, "/api/resultsTemplate").methods(
