@@ -30,6 +30,7 @@ public:
   double percent_drift;
   double percent_volatility;
   double dt;
+  bool bar_ready;
 
   std::vector<double> *streamed_points;
 
@@ -125,6 +126,7 @@ public:
     this->gen_settings.gen.store(true);
     this->gen_settings.new_event.store(0);
     this->gen_settings.send_data.store(false);
+    this->bar_ready = false;
 
     deterministic ? seed_rng_deterministic_(seed) : seed_rng_nondeterministic_();
   }
@@ -217,8 +219,8 @@ public:
 
   double send_price() {
     if (data_buffer->size() == 0) return base_price;
-    double data = data_buffer->front();
-    data_buffer->pop();
+    double data = data_buffer->back();
+    //data_buffer->pop();
     return data;
   }
 
@@ -277,8 +279,12 @@ public:
     double high = cur;
     double low = cur;
 
+    while (!this->bar_ready) {}
+
     for (int i = 0; i < ticks_per_bar; i++) {
-      cur = gbm(cur);
+      
+      cur = data_buffer->front();
+      data_buffer->pop();
       if (cur > high) high = cur;
       if (cur < low) low = cur;
     }
@@ -594,6 +600,10 @@ public:
             price_val, this->last_was_clamped ? "true" : "false", this->id, this->percent_drift, this->percent_volatility));
           this->streamed_points->push_back(price_val);
         }
+      }
+
+      if (data_buffer->size() == 50) {
+        this->bar_ready = true;
       }
 
       // goto
